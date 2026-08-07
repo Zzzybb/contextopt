@@ -14,12 +14,20 @@ from collections.abc import Callable, Mapping
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
+from contextopt.runtime.identity import stable_hash
 from contextopt.runtime.protocol import (
     RunLimits,
     RunPermissions,
     ToolCall,
     ToolDefinition,
     ToolOutcome,
+)
+from contextopt.runtime.tool_state import (
+    ReplayPolicy,
+    ToolExecutionPlan,
+    ToolReconciliation,
+    tool_call_fingerprint,
+    tool_replay_policy,
 )
 
 _WINDOWS_RESERVED = {
@@ -112,13 +120,8 @@ class _WorkspaceResolver:
             raise ValueError("workspace must be a directory")
         self.root = resolved
 
-    def resolve(
-        self,
-        raw: str,
-        *,
-        must_exist: bool,
-        allow_directory: bool = False,
-    ) -> tuple[Path, str]:
+    @staticmethod
+    def _validated_parts(raw: str) -> tuple[str, ...]:
         if not raw or raw != unicodedata.normalize("NFC", raw):
             raise _PathViolation("path must be non-empty normalized Unicode")
         if "\\" in raw:
@@ -140,6 +143,22 @@ class _WorkspaceResolver:
             stem = part.split(".", 1)[0].upper()
             if stem in _WINDOWS_RESERVED:
                 raise _PathViolation("path contains a reserved device name")
+        return parts
+
+    def lexical_relative(self, raw: str) -> str:
+        """Validate a path lexically without consulting mutable filesystem state."""
+
+        parts = self._validated_parts(raw)
+        return PurePosixPath(*parts).as_posix()
+
+    def resolve(
+        self,
+        raw: str,
+        *,
+        must_exist: bool,
+        allow_directory: bool = False,
+    ) -> tuple[Path, str]:
+        parts = self._validated_parts(raw)
 
         candidate = self.root.joinpath(*parts)
         current = self.root
@@ -200,6 +219,25 @@ class WorkspaceTools:
     def definitions(self) -> tuple[ToolDefinition, ...]:
         return self._definitions
 
+    @property
+    def configuration_fingerprint(self) -> str:
+        """Fingerprint the exact workspace/tool boundary used by a resumable run."""
+
+        workspace_identity = stable_hash(
+            {"resolved_path": os.path.normcase(str(self.workspace))}
+        )
+        return stable_hash(
+            {
+                "workspace_identity": workspace_identity,
+                "permissions": self.permissions.to_dict(),
+                "definitions": [item.to_dict() for item in self.definitions],
+                "test_commands": {
+                    scope: list(argv)
+                    for scope, argv in sorted(self._test_commands.items())
+                },
+            }
+        )
+
     async def execute(self, call: ToolCall) -> ToolOutcome:
         handler = self._handlers.get(call.name)
         if handler is None:
@@ -230,6 +268,390 @@ class WorkspaceTools:
             return _error(
                 call, "io_error", f"workspace operation failed: {exc.strerror or exc}"
             )
+
+    async def prepare(
+        self,
+        call: ToolCall,
+        operation_id: str,
+        fingerprint: str,
+    ) -> ToolExecutionPlan:
+        """Seal the replay policy and expected state transition before execution.
+
+        Calls that cannot currently succeed raise ``ValueError`` or
+        ``PermissionError``; callers may pass those calls to :meth:`execute` to
+        preserve its structured failure outcome.
+        """
+
+        return await asyncio.to_thread(
+            self._prepare_sync, call, operation_id, fingerprint
+        )
+
+    async def execute_prepared(self, plan: ToolExecutionPlan) -> ToolOutcome:
+        """Execute an intact plan once, preserving the existing tool API semantics."""
+
+        plan.validate()
+        self._validate_plan_semantics(plan)
+        outcome = await self.execute(plan.call)
+        if (
+            plan.replay_policy == "reconcile"
+            and outcome.ok
+            and outcome.to_dict() != plan.planned_outcome.to_dict()
+        ):
+            raise RuntimeError(
+                "tool result did not match its planned successful outcome"
+            )
+        return outcome
+
+    async def reconcile(self, plan: ToolExecutionPlan) -> ToolReconciliation:
+        """Inspect an interrupted plan without executing its side effect."""
+
+        return await asyncio.to_thread(self._reconcile_sync, plan)
+
+    @staticmethod
+    def _decode_arguments(call: ToolCall) -> dict[str, Any]:
+        try:
+            decoded: Any = json.loads(call.arguments_json)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"arguments are not valid JSON: {exc.msg}") from None
+        if not isinstance(decoded, dict):
+            raise ValueError("tool arguments must be a JSON object")
+        return decoded
+
+    @staticmethod
+    def _generic_planned_outcome(
+        call: ToolCall, replay_policy: ReplayPolicy
+    ) -> ToolOutcome:
+        return ToolOutcome(
+            call_id=call.id,
+            tool_name=call.name,
+            ok=True,
+            content=f"planned successful {call.name} execution",
+            metadata={"replay_policy": replay_policy},
+        )
+
+    @staticmethod
+    def _create_success_outcome(
+        call: ToolCall, relative: str, encoded: bytes, digest: str
+    ) -> ToolOutcome:
+        return ToolOutcome(
+            call_id=call.id,
+            tool_name=call.name,
+            ok=True,
+            content=f"created {relative} ({len(encoded)} bytes, sha256={digest})",
+            metadata={
+                "path": relative,
+                "bytes_written": len(encoded),
+                "sha256": digest,
+            },
+        )
+
+    @staticmethod
+    def _replace_success_outcome(
+        call: ToolCall,
+        relative: str,
+        before_sha256: str,
+        after_sha256: str,
+        replacements: int,
+        bytes_written: int,
+    ) -> ToolOutcome:
+        return ToolOutcome(
+            call_id=call.id,
+            tool_name=call.name,
+            ok=True,
+            content=(
+                f"replaced {replacements} occurrence(s) in {relative}; "
+                f"sha256={after_sha256}"
+            ),
+            metadata={
+                "path": relative,
+                "before_sha256": before_sha256,
+                "after_sha256": after_sha256,
+                "replacements": replacements,
+                "bytes_written": bytes_written,
+            },
+        )
+
+    def _prepare_sync(
+        self,
+        call: ToolCall,
+        operation_id: str,
+        fingerprint: str,
+    ) -> ToolExecutionPlan:
+        expected_fingerprint = tool_call_fingerprint(call)
+        if fingerprint != expected_fingerprint:
+            raise ValueError("tool call fingerprint does not match the call")
+        if call.name not in self._handlers:
+            raise ValueError(f"unknown tool: {call.name}")
+        arguments = self._decode_arguments(call)
+        replay_policy = tool_replay_policy(call.name)
+        if call.name == "create_file":
+            return self._prepare_create(call, arguments, operation_id, fingerprint)
+        if call.name == "replace_text":
+            return self._prepare_replace(call, arguments, operation_id, fingerprint)
+        if call.name == "run_tests":
+            if not self.permissions.allow_command:
+                raise PermissionError("command permission is disabled")
+            scope = _require_string(arguments, "scope")
+            if scope not in self._test_commands:
+                raise ValueError(f"unknown test scope: {scope}")
+            return ToolExecutionPlan(
+                operation_id=operation_id,
+                call=call,
+                fingerprint=fingerprint,
+                replay_policy="never",
+                preconditions={"scope": scope},
+                postconditions={},
+                planned_outcome=self._generic_planned_outcome(call, "never"),
+            )
+        return ToolExecutionPlan(
+            operation_id=operation_id,
+            call=call,
+            fingerprint=fingerprint,
+            replay_policy=replay_policy,
+            preconditions={},
+            postconditions={},
+            planned_outcome=self._generic_planned_outcome(call, replay_policy),
+        )
+
+    def _prepare_create(
+        self,
+        call: ToolCall,
+        arguments: Mapping[str, Any],
+        operation_id: str,
+        fingerprint: str,
+    ) -> ToolExecutionPlan:
+        if not self.permissions.allow_write:
+            raise PermissionError("write permission is disabled")
+        raw_path = _require_string(arguments, "path")
+        content = _require_string(arguments, "content")
+        path, relative = self._resolver.resolve(raw_path, must_exist=False)
+        if path.exists():
+            raise ValueError("file already exists")
+        if not path.parent.exists() or not path.parent.is_dir():
+            raise ValueError("parent directory does not exist")
+        encoded = content.encode("utf-8")
+        if len(encoded) > 2 * 1024 * 1024:
+            raise ValueError("new file exceeds the 2 MiB limit")
+        digest = _sha256(encoded)
+        return ToolExecutionPlan(
+            operation_id=operation_id,
+            call=call,
+            fingerprint=fingerprint,
+            replay_policy="reconcile",
+            preconditions={"path": relative, "exists": False},
+            postconditions={
+                "path": relative,
+                "exists": True,
+                "sha256": digest,
+                "bytes": len(encoded),
+            },
+            planned_outcome=self._create_success_outcome(
+                call, relative, encoded, digest
+            ),
+        )
+
+    def _prepare_replace(
+        self,
+        call: ToolCall,
+        arguments: Mapping[str, Any],
+        operation_id: str,
+        fingerprint: str,
+    ) -> ToolExecutionPlan:
+        if not self.permissions.allow_write:
+            raise PermissionError("write permission is disabled")
+        raw_path = _require_string(arguments, "path")
+        old_text = _require_string(arguments, "old_text")
+        new_text = _require_string(arguments, "new_text")
+        expected_sha256 = _require_string(arguments, "expected_sha256")
+        expected_occurrences = _optional_int(arguments, "expected_occurrences", 1)
+        if not old_text:
+            raise ValueError("old_text must not be empty")
+        path, relative = self._resolver.resolve(raw_path, must_exist=True)
+        raw = self._read_bytes(path)
+        digest = _sha256(raw)
+        if digest != expected_sha256:
+            raise ValueError(f"file changed since it was read; current sha256={digest}")
+        text = raw.decode("utf-8-sig")
+        occurrences = text.count(old_text)
+        if occurrences != expected_occurrences:
+            raise ValueError(
+                f"expected {expected_occurrences} exact occurrence(s), "
+                f"found {occurrences}"
+            )
+        encoded = text.replace(old_text, new_text, expected_occurrences).encode("utf-8")
+        if len(encoded) > 2 * 1024 * 1024:
+            raise ValueError("updated file exceeds the 2 MiB limit")
+        new_digest = _sha256(encoded)
+        return ToolExecutionPlan(
+            operation_id=operation_id,
+            call=call,
+            fingerprint=fingerprint,
+            replay_policy="reconcile",
+            preconditions={
+                "path": relative,
+                "exists": True,
+                "sha256": digest,
+            },
+            postconditions={
+                "path": relative,
+                "exists": True,
+                "sha256": new_digest,
+                "bytes": len(encoded),
+            },
+            planned_outcome=self._replace_success_outcome(
+                call,
+                relative,
+                digest,
+                new_digest,
+                expected_occurrences,
+                len(encoded),
+            ),
+        )
+
+    @staticmethod
+    def _condition_matches(
+        current: Mapping[str, Any], expected: Mapping[str, Any]
+    ) -> bool:
+        return all(current.get(key) == value for key, value in expected.items())
+
+    def _observe_file(self, raw_path: str) -> tuple[dict[str, Any] | None, str | None]:
+        try:
+            path, relative = self._resolver.resolve(raw_path, must_exist=False)
+        except (OSError, _PathViolation) as exc:
+            return None, str(exc)
+        if not path.exists():
+            return {"path": relative, "exists": False}, None
+        if path.is_symlink() or not path.is_file():
+            return None, "path is no longer a regular file"
+        try:
+            raw = self._read_bytes_for_reconciliation(path)
+        except (OSError, ValueError) as exc:
+            return None, str(exc)
+        return {
+            "path": relative,
+            "exists": True,
+            "sha256": _sha256(raw),
+            "bytes": len(raw),
+        }, None
+
+    def _validate_plan_semantics(self, plan: ToolExecutionPlan) -> None:
+        expected_policy = tool_replay_policy(plan.call.name)
+        if plan.replay_policy != expected_policy:
+            raise ValueError("tool execution plan has an invalid replay policy")
+        arguments = self._decode_arguments(plan.call)
+        if expected_policy == "safe":
+            expected_outcome = self._generic_planned_outcome(plan.call, "safe")
+            if (
+                dict(plan.preconditions)
+                or dict(plan.postconditions)
+                or plan.planned_outcome.to_dict() != expected_outcome.to_dict()
+            ):
+                raise ValueError("read-only tool execution plan is inconsistent")
+            return
+        if expected_policy == "never":
+            scope = _require_string(arguments, "scope")
+            expected_outcome = self._generic_planned_outcome(plan.call, "never")
+            if (
+                dict(plan.preconditions) != {"scope": scope}
+                or dict(plan.postconditions)
+                or plan.planned_outcome.to_dict() != expected_outcome.to_dict()
+            ):
+                raise ValueError("non-replayable tool execution plan is inconsistent")
+            return
+
+        raw_path = _require_string(arguments, "path")
+        relative = self._resolver.lexical_relative(raw_path)
+        if plan.call.name == "create_file":
+            content = _require_string(arguments, "content")
+            encoded = content.encode("utf-8")
+            digest = _sha256(encoded)
+            expected_pre = {"path": relative, "exists": False}
+            expected_post = {
+                "path": relative,
+                "exists": True,
+                "sha256": digest,
+                "bytes": len(encoded),
+            }
+            expected_outcome = self._create_success_outcome(
+                plan.call, relative, encoded, digest
+            )
+        else:
+            expected_sha256 = _require_string(arguments, "expected_sha256")
+            expected_occurrences = _optional_int(arguments, "expected_occurrences", 1)
+            expected_pre = {
+                "path": relative,
+                "exists": True,
+                "sha256": expected_sha256,
+            }
+            expected_post = dict(plan.postconditions)
+            after_sha256 = expected_post.get("sha256")
+            bytes_written = expected_post.get("bytes")
+            if not isinstance(after_sha256, str) or not isinstance(bytes_written, int):
+                raise ValueError("replace plan postcondition is incomplete")
+            expected_post = {
+                "path": relative,
+                "exists": True,
+                "sha256": after_sha256,
+                "bytes": bytes_written,
+            }
+            expected_outcome = self._replace_success_outcome(
+                plan.call,
+                relative,
+                expected_sha256,
+                after_sha256,
+                expected_occurrences,
+                bytes_written,
+            )
+        if (
+            dict(plan.preconditions) != expected_pre
+            or dict(plan.postconditions) != expected_post
+            or plan.planned_outcome.to_dict() != expected_outcome.to_dict()
+        ):
+            raise ValueError("write tool execution plan is inconsistent")
+
+    def _reconcile_sync(self, plan: ToolExecutionPlan) -> ToolReconciliation:
+        plan.validate()
+        self._validate_plan_semantics(plan)
+        if plan.replay_policy == "safe":
+            return ToolReconciliation(
+                action="retry",
+                reason="read-only tool is safe to execute again",
+            )
+        if plan.replay_policy == "never":
+            return ToolReconciliation(
+                action="paused",
+                reason=(
+                    "tool may have produced an external effect; automatic replay is "
+                    "disabled"
+                ),
+            )
+
+        arguments = self._decode_arguments(plan.call)
+        raw_path = _require_string(arguments, "path")
+        current, observation_error = self._observe_file(raw_path)
+        if current is None:
+            return ToolReconciliation(
+                action="divergence",
+                reason=f"cannot verify workspace state: {observation_error}",
+            )
+        if self._condition_matches(current, plan.postconditions):
+            return ToolReconciliation(
+                action="completed",
+                reason="workspace already matches the planned postcondition",
+                outcome=plan.planned_outcome,
+            )
+        if self._condition_matches(current, plan.preconditions):
+            return ToolReconciliation(
+                action="retry",
+                reason="workspace still matches the planned precondition",
+            )
+        return ToolReconciliation(
+            action="divergence",
+            reason=(
+                "workspace matches neither the planned precondition nor "
+                f"postcondition: current={json.dumps(current, sort_keys=True)}"
+            ),
+        )
 
     def _build_definitions(self) -> tuple[ToolDefinition, ...]:
         definitions = [
@@ -368,6 +790,14 @@ class WorkspaceTools:
         content = path.read_bytes()
         if b"\x00" in content:
             raise ValueError("binary files are not supported")
+        return content
+
+    def _read_bytes_for_reconciliation(self, path: Path) -> bytes:
+        hard_limit = max(self.limits.max_tool_output_bytes * 8, 2 * 1024 * 1024)
+        with path.open("rb") as handle:
+            content = handle.read(hard_limit + 1)
+        if len(content) > hard_limit:
+            raise ValueError(f"file exceeds the {hard_limit}-byte safety limit")
         return content
 
     def _list_files(self, call: ToolCall, arguments: Mapping[str, Any]) -> ToolOutcome:
@@ -517,17 +947,7 @@ class WorkspaceTools:
             handle.flush()
             os.fsync(handle.fileno())
         digest = _sha256(encoded)
-        return ToolOutcome(
-            call_id=call.id,
-            tool_name=call.name,
-            ok=True,
-            content=f"created {relative} ({len(encoded)} bytes, sha256={digest})",
-            metadata={
-                "path": relative,
-                "bytes_written": len(encoded),
-                "sha256": digest,
-            },
-        )
+        return self._create_success_outcome(call, relative, encoded, digest)
 
     def _replace_text(
         self, call: ToolCall, arguments: Mapping[str, Any]
@@ -583,21 +1003,13 @@ class WorkspaceTools:
             if temporary_name is not None:
                 Path(temporary_name).unlink(missing_ok=True)
         new_digest = _sha256(encoded)
-        return ToolOutcome(
-            call_id=call.id,
-            tool_name=call.name,
-            ok=True,
-            content=(
-                f"replaced {expected_occurrences} occurrence(s) in {relative}; "
-                f"sha256={new_digest}"
-            ),
-            metadata={
-                "path": relative,
-                "before_sha256": digest,
-                "after_sha256": new_digest,
-                "replacements": expected_occurrences,
-                "bytes_written": len(encoded),
-            },
+        return self._replace_success_outcome(
+            call,
+            relative,
+            digest,
+            new_digest,
+            expected_occurrences,
+            len(encoded),
         )
 
     def _run_tests(self, call: ToolCall, arguments: Mapping[str, Any]) -> ToolOutcome:

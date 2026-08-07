@@ -227,6 +227,8 @@ class OpenAICompatibleModelTests(unittest.IsolatedAsyncioTestCase):
             ):
                 await model.complete(_model_request())
 
+        self.assertNotIn(secret, json.dumps(model.configuration, sort_keys=True))
+        self.assertEqual(len(model.configuration_fingerprint), 64)
         self.assertEqual(raised.exception.code, "http_401")
         self.assertFalse(raised.exception.retryable)
         self.assertNotIn(secret, str(raised.exception))
@@ -236,6 +238,35 @@ class OpenAICompatibleModelTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ScriptedModelTests(unittest.IsolatedAsyncioTestCase):
+    async def test_resume_cursor_skips_durable_responses(self) -> None:
+        model = ScriptedModel(
+            [
+                {"response": {"content": "already durable"}},
+                {
+                    "expect": {"turn": 2},
+                    "response": {"content": "continued after resume"},
+                },
+            ],
+            name="scripted:resume-test",
+        )
+        fingerprint = model.configuration_fingerprint
+
+        model.resume_from_turn(1)
+        response = await model.complete(_model_request(turn=2))
+
+        self.assertEqual(response.content, "continued after resume")
+        self.assertEqual(model.configuration["adapter"], "scripted")
+        self.assertEqual(model.configuration_fingerprint, fingerprint)
+
+    async def test_resume_cursor_rejects_invalid_or_late_moves(self) -> None:
+        model = ScriptedModel([{"response": {"content": "only"}}])
+        with self.assertRaises(ValueError):
+            model.resume_from_turn(2)
+
+        await model.complete(_model_request())
+        with self.assertRaises(ValueError):
+            model.resume_from_turn(0)
+
     async def test_expectation_failure_raises_contract_error(self) -> None:
         model = ScriptedModel(
             [

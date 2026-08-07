@@ -1,7 +1,8 @@
 # ForgeAgent runtime
 
-The v0.2a runtime is a bounded, auditable single-agent loop inside the `contextopt`
-package. It is the first executable layer of the ForgeAgent direction; it is not yet a
+The v0.2b runtime is a bounded, auditable and recoverable single-agent loop inside the
+`contextopt` package. It reconstructs execution state from durable events and can resume a
+non-terminal run against the same validated model/tool configuration. It is not yet a
 long-term memory or multi-agent system.
 
 ## Current execution contract
@@ -15,8 +16,10 @@ Task -> AgentRunner -> ModelClient
            │               │ structured ToolCall(s)
            │               v
            └──── observation message <──── WorkspaceTools
-                                             │
-                                      files + visible tests
+           │                                 │
+           │                          files + visible tests
+           v
+ strict event reducer <---- schema-2 log ----> atomic projection cache
 ```
 
 Each model response may contain text and zero or more structured tool calls. The runner
@@ -156,6 +159,110 @@ stale edit.
 This makes the demo sensitive to broken tool-result routing. It still does not test model
 reasoning: the correct tool calls and edit are authored in the script.
 
+## Status and resume
+
+Inspect a schema-2 run without invoking a model:
+
+```bash
+python -m contextopt status <events.jsonl>
+```
+
+`status` reports the reconstructed phase, turns, tool calls, cumulative usage, pending
+model request, pending tools, terminal result, and the last projected event hash. A
+terminal run is not resumable. Running `resume` on it needs no workspace or model arguments
+and returns the existing durable result without appending an event:
+
+```bash
+python -m contextopt resume <terminal-events.jsonl>
+```
+
+Resume a non-terminal scripted run with the same workspace, complete script, and registered
+test command used by the original run:
+
+```bash
+python -m contextopt resume <events.jsonl> \
+  --workspace <same-workspace> \
+  --script <same-script.json> \
+  --test-command "python -m unittest discover -s tests -v"
+```
+
+For a real-model run, pass the same adapter settings instead of `--script`:
+
+```bash
+python -m contextopt resume <events.jsonl> \
+  --workspace <same-workspace> \
+  --model <same-model> \
+  --base-url <same-endpoint> \
+  --api-key-env CONTEXTOPT_API_KEY \
+  --test-command <same-registered-command>
+```
+
+The API key is not fingerprinted or persisted. Model identity/settings, tool definitions,
+resolved workspace identity, permissions, and registered commands are fingerprinted; run
+limits and permissions are also compared directly. A non-terminal resume is rejected
+before adding `run.resumed` if these boundaries do not match.
+
+Schema-1 logs remain readable by `trace` and receive audit-only metadata from `status`.
+They cannot be reduced into resumable state or extended with schema-2 events.
+
+### Recovery projection and checkpoint
+
+The schema-2 event log is authoritative. A strict reducer validates legal state
+transitions and reconstructs:
+
+- initial task/configuration and complete normalized messages;
+- turns, cumulative token usage, and limits;
+- pending model requests and ordered pending tool calls;
+- sealed tool-execution plans and completed call outcomes;
+- running, interrupted, paused, or terminal phase.
+
+An atomic JSON checkpoint caches one validated projection. It stores its source sequence,
+event hash, and state hash. If it is absent, corrupt, stale, or inconsistent with the log,
+the runtime ignores it and performs a full replay. A state hash is not authentication, so
+the current format also strictly replays the anchored event prefix and compares the result
+before accepting a self-consistent checkpoint, then reduces the suffix. This is a
+correctness-first recovery artifact, not yet a startup-performance claim. The checkpoint
+is disposable cache, not an alternative source of truth and not a workspace snapshot.
+
+On resume, a projection still marked `running` is first marked `run.interrupted`; an
+interrupted or paused projection then receives `run.resumed`. A persisted final model
+response with no terminal event can be completed without calling the model again. A pending
+model request may be called again because no durable response exists.
+
+### Interrupted tool recovery
+
+Before executing a tool, the runner persists its operation id, call fingerprint, replay
+policy, and—where available—pre/postconditions. Recovery is deliberately tool-specific:
+
+| Interrupted tool | Default recovery |
+|---|---|
+| `list_files`, `search_text`, `read_file` | Retry automatically; these tools are read-only. |
+| `create_file` | Compare non-existence precondition and content-SHA postcondition. Record completion if post-state matches, retry if pre-state matches, otherwise pause on divergence. |
+| `replace_text` | Compare before/after file SHA. Record completion if post-state matches, retry if pre-state matches, otherwise pause on divergence. |
+| `run_tests` | Never replay automatically; pause because the registered command may have external effects. |
+
+The default pause returns status `paused` and CLI exit code 4. An operator must explicitly
+choose one of these continuations:
+
+```bash
+# Do not rerun. Feed the model an indeterminate failed tool observation.
+python -m contextopt resume <events.jsonl> \
+  --workspace <same-workspace> --script <same-script.json> \
+  --test-command "python -m unittest discover -s tests -v" \
+  --pending-tool-resolution mark_failed
+
+# Run the command again, accepting possible repeated effects.
+python -m contextopt resume <events.jsonl> \
+  --workspace <same-workspace> --script <same-script.json> \
+  --test-command "python -m unittest discover -s tests -v" \
+  --pending-tool-resolution retry
+```
+
+This is not an exactly-once protocol. A process can stop between an external effect and its
+durable outcome; reconciliation reduces duplicate writes when observable state proves what
+happened, but it cannot prove arbitrary external effects. Explicit `retry` may execute an
+operation again.
+
 ## Limits and termination
 
 `RunLimits` bounds:
@@ -164,7 +271,7 @@ reasoning: the correct tool calls and edit are authored in the script.
 - executed tool calls;
 - cumulative reported input and output tokens;
 - maximum output tokens requested per model call;
-- run wall time;
+- active-session wall time;
 - each registered test command;
 - retained tool-output bytes.
 
@@ -172,11 +279,16 @@ The runtime checks tool and turn limits before the next action. Provider token u
 known only after a response, so a response can report a small overage; in that case its
 tool calls are not executed and the run stops with `token_limit_after_response`.
 
+Turn, tool-call, and token consumption are reconstructed and remain cumulative across
+resume sessions. Wall timeout is different: it bounds each active `run` or `resume`
+session and does not charge time while the process is stopped.
+
 Run status and task correctness are intentionally different:
 
 - `completed`: the model returned a response without tool calls;
 - `stopped`: a configured limit or timeout ended the run;
 - `failed`: a normalized model failure or runtime contract error occurred;
+- `paused`: recovery needs an explicit operator decision;
 - `cancelled`: the caller cancelled the asynchronous run.
 
 A `completed` run has not necessarily fixed the task. Visible and hidden executable oracles
@@ -199,31 +311,44 @@ untrusted repositories outside an actual container or virtual-machine boundary.
 
 ## Event log
 
-Every JSONL line has this versioned envelope:
+Every new JSONL line has this schema-2 envelope:
 
 ```json
 {
-  "schema_version": "1",
+  "schema_version": "2",
   "run_id": "runtime-demo",
   "seq": 15,
   "timestamp": "2026-08-08T00:00:00.000Z",
   "type": "tool.completed",
-  "data": {}
+  "data": {},
+  "prev_event_sha256": "<sha256-of-event-14>",
+  "event_sha256": "<sha256-of-this-canonical-event>"
 }
 ```
 
+The reader verifies contiguous sequence numbers, one run id, every event hash, and every
+link to the previous hash. This is **corruption-evident integrity**, not protection against
+malicious rewriting: there is no secret, signature, trusted timestamp, or external anchor,
+so an attacker able to rewrite the complete file can recompute the entire chain.
+
 Current event families are:
 
-- `run.started`, followed by exactly one terminal `run.completed`, `run.stopped`,
-  `run.failed`, or `run.cancelled`;
+- `run.started`, `run.interrupted`, `run.resumed`, and `run.paused`, followed eventually
+  by at most one terminal `run.completed`, `run.stopped`, `run.failed`, or `run.cancelled`;
 - `model.requested`, `model.responded`, and `model.failed`;
 - `budget.updated` after a model response;
-- `tool.started`, `tool.completed`, `tool.failed`, and idempotent `tool.reused`;
+- `tool.started`, `tool.completed`, `tool.failed`, and cached `tool.reused`;
 - `runtime.failed` for a contract or local runtime failure.
 
-The log is appended and flushed after every event. A reader tolerates only an incomplete
-final line, which lets a partial trace survive abrupt process termination. The current
-runtime does not yet reconstruct and resume execution from that trace.
+The log is appended and flushed after every event. A reader preserves the last valid byte
+offset and tolerates only an incomplete final line. Opening an appendable log refuses that
+tail unless repair is explicitly requested; CLI resume requests repair and physically
+removes only the incomplete suffix. A complete final JSON event without a newline is
+preserved, terminated, and safely continued.
+
+`EventLog` holds a non-blocking lease backed by `msvcrt.locking` on Windows or `flock` on
+POSIX, plus an in-process registry. A second cooperative writer fails clearly. This is a
+single-host file lease, not a distributed consensus mechanism.
 
 ## Optional real-model boundary
 
@@ -243,8 +368,8 @@ versions, repetitions, and independent hidden tests.
 
 ## Next runtime milestones
 
-1. Reconstruct authoritative state from events and resume from a workspace checkpoint.
-2. Make tool calls idempotent across process restarts, not only within one live run.
-3. Extract context candidates from code, test output, decisions, and trajectory events.
-4. Compile each model request through ContextOpt and persist its `ContextFrame` receipt.
+1. Extract context candidates from code, test output, decisions, and trajectory events.
+2. Compile each model request through ContextOpt and persist its `ContextFrame` receipt.
+3. Add durable model-call idempotency hooks where providers expose them.
+4. Snapshot or reference workspace versions rather than requiring one unchanged path.
 5. Fork isolated workspaces and allocate a fixed budget across test-guided search branches.

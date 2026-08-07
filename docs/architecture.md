@@ -14,17 +14,21 @@ The architecture separates four concepts:
 - **Memory** is selectively retained experience such as decisions and failed attempts.
 - **Context** is the bounded view compiled for one model invocation.
 
-Messages are not authoritative state, an event log is not automatically usable memory, and
-persisting events does not by itself provide checkpoint/resume.
+Messages alone are not authoritative state, an event log is not automatically usable
+memory, and persistence without a strict transition model does not provide safe resume.
 
-## Current runtime — v0.2a
+## Current runtime — v0.2b
 
 ```text
 Task
   │
   v
-AgentRunner ──────────────> EventLog (append-only JSONL)
-  │        ^
+AgentRunner ──────────────> EventLog (schema-2 hash chain)
+  │        ^                         │
+  │        │                         v
+  │        │              strict reducer ──> RunProjection
+  │        │                                      │
+  │        │                            atomic checkpoint cache
   │        │ normalized ModelResponse / ToolOutcome
   v        │
 ModelClient
@@ -41,25 +45,30 @@ Owns the single-agent turn loop. It constructs provider-neutral requests, accoun
 reported token usage, enforces limits before later actions, executes tool calls in order,
 and writes one terminal event. A model response without tool calls ends the run.
 
-Repeated call ids with identical arguments reuse the cached outcome within one live run;
-reusing an id with different arguments is a contract error. Cross-process idempotency and
-resume are not implemented yet.
+Repeated call ids with identical arguments reuse the reconstructed completed outcome;
+reusing an id with different arguments is a contract error. Turn, tool-call, and token
+budgets are cumulative across resumes. Wall timeout applies to each active execution
+session, so stopped process time is not charged.
 
 ### ModelClient
 
-The runtime depends on a narrow async protocol rather than one provider SDK. v0.2a has:
+The runtime depends on a narrow async protocol rather than one provider SDK. v0.2b has:
 
 - `ScriptedModel`, used for deterministic observation-aware offline conformance runs;
 - `OpenAICompatibleModel`, a minimal non-streaming Chat Completions adapter.
 
 Both normalize assistant text, structured tool calls, finish reason, provider usage, and
-model failures into the same runtime types.
+model failures into the same runtime types. The initial event persists a non-secret model
+configuration fingerprint. A non-terminal resume must present the same fingerprint;
+ScriptedModel also moves its deterministic cursor past already durable responses.
 
 ### WorkspaceTools
 
 Tools are rooted at one resolved workspace. Paths are normalized and constrained; writes
-and registered commands require explicit permissions. File replacement uses exact text and
-a SHA-256 compare-and-swap precondition, then atomically replaces the target.
+and registered commands require explicit permissions. The resolved workspace, permissions,
+tool definitions, and registered commands form a configuration fingerprint that must match
+on resume. File replacement uses exact text and a SHA-256 compare-and-swap precondition,
+then atomically replaces the target.
 
 `run_tests` executes only a command registered by the caller. A nonzero test exit is a
 completed tool observation, not an infrastructure failure. This distinction is necessary
@@ -68,12 +77,55 @@ for an Agent to diagnose and repair code after reproducing a bug.
 These checks are not a container security boundary. Registered commands are trusted host
 processes.
 
+Before a tool executes, the runner persists an operation id, canonical call fingerprint,
+replay policy, and sealed execution plan when preparation succeeds. Recovery classes are:
+
+- `list_files`, `search_text`, and `read_file`: safe to retry;
+- `create_file`: reconcile absent-file precondition against content-SHA postcondition;
+- `replace_text`: reconcile before-SHA against after-SHA;
+- `run_tests`: never replay automatically; pause until explicit `mark_failed` or `retry`.
+
+For reconciled writes, matching post-state records the planned outcome without writing
+again; matching pre-state retries; any third state pauses as divergence. This is not a
+general exactly-once guarantee. An explicit retry can repeat effects, and arbitrary command
+effects cannot be inferred from workspace hashes.
+
 ### EventLog
 
-Every model, tool, budget, and terminal boundary is appended to versioned JSONL with a
-contiguous sequence number. The log is durable enough to retain completed events if the
-last line is interrupted, but the runner cannot yet recover its conversation, workspace,
-or pending tool calls from that log.
+Every model, tool, budget, interruption, resume, pause, and terminal boundary is appended
+to schema-2 JSONL. Each event includes the previous event hash and its own canonical SHA-256.
+Readers strictly validate sequence, run id, event hashes, and chain links. The chain makes
+accidental corruption or un-recomputed edits evident; it does not stop a malicious writer
+from replacing the whole file and recomputing every hash because there is no signature or
+external trust anchor.
+
+The scanner retains the last valid byte offset. A truncated final JSON fragment is readable
+for audit but cannot be appended until explicit repair physically removes that suffix. A
+complete final event without a newline is preserved and safely terminated before append.
+
+One `RunLease` uses a Windows or POSIX file lock plus an in-process registry to reject a
+second cooperative writer. It is a local single-host lease, not distributed consensus.
+
+Schema-1 logs remain readable and renderable for audit, but are never reduced or resumed.
+
+### Strict projection and checkpoint cache
+
+The event reducer is the execution state machine. It rejects unknown fields, illegal phase
+transitions, reordered tools, mismatched budgets, malformed plans, inconsistent terminal
+results, and model/tool configuration changes. A valid replay reconstructs normalized
+messages, usage, pending work, completed outcomes, phase, and terminal state.
+
+The runner atomically replaces a JSON projection checkpoint after durable transitions. Its
+state hash, source sequence, run id, and source event hash must match. Because these hashes
+are unauthenticated, the current implementation also replays the anchored event prefix and
+compares the reconstructed state before accepting the checkpoint, then reduces the suffix.
+Invalid or forged cache data falls back to the full authoritative log. The cache contains
+no workspace snapshot and does not yet claim faster startup.
+
+`contextopt status` exposes this projection. `contextopt resume` returns a terminal result
+without a model call, or resumes a non-terminal projection after fingerprint validation.
+An unclean active phase receives `run.interrupted` followed by `run.resumed` before work
+continues.
 
 See [Runtime](runtime.md) for the executable contract and offline demonstration.
 
@@ -142,7 +194,7 @@ Candidate Builder <──── Repository Graph / Memory Store
 
 Every compiled request should persist both its exact context and selection receipt. This
 will permit replay and paired context-policy comparisons from the same authoritative state.
-None of that wiring is claimed as implemented in v0.2a.
+None of that wiring is claimed as implemented in v0.2b.
 
 ## Claim boundaries
 
@@ -150,7 +202,11 @@ None of that wiring is claimed as implemented in v0.2a.
 - Runtime conformance is not model reasoning ability.
 - A normal model stop is not proof that code is correct.
 - Visible test success is not a substitute for an independent hidden oracle.
-- JSONL durability is not checkpoint/resume.
+- The event hash chain is corruption-evident, not authenticated against malicious rewrite.
+- The atomic JSON checkpoint is a disposable replay cache, not authoritative state or a
+  workspace checkpoint.
+- Tool reconciliation reduces duplicate effects but does not provide general exactly-once
+  execution.
 - Workspace-bounded tools are not an OS sandbox.
 
 End-to-end claims require executable hidden tests under paired, fixed-model, fixed-tool,

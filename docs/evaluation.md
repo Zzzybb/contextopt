@@ -66,7 +66,45 @@ does **not** measure:
 This evaluation is an engine test: it establishes that a later real model can use the same
 runtime path and that failures can be audited.
 
-## Level 2b: controlled real-model coding tasks — planned
+## Level 2b: recovery conformance — implemented
+
+Deterministic crash-injection and CLI tests validate the v0.2b recovery contract:
+
+- schema-2 sequence, run-id, event-hash, and previous-hash validation;
+- schema-1 read/trace compatibility without resume;
+- explicit physical repair of only a truncated final JSON fragment;
+- continuation after a complete final event that lacks a newline;
+- cross-instance and real cross-process run-lease exclusion;
+- strict full replay of messages, budgets, pending work, completed outcomes, and terminal
+  state;
+- an atomic projection checkpoint whose corruption or internally rehashed forged state
+  falls back to the authoritative event replay;
+- equivalence between full replay and a validated checkpoint plus suffix replay;
+- rejection of illegal transitions, reordered tools, and mismatched model/tool/limit
+  configuration;
+- resuming a pending model request and completing an interrupted scripted run;
+- completing a durable final model response without making another model call;
+- automatic retry of interrupted read-only tools;
+- `create_file` and `replace_text` reconciliation for pre-state, post-state, and divergent
+  SHA states;
+- default pause for an interrupted `run_tests`, followed only by explicit `mark_failed` or
+  `retry`;
+- CLI `status`, terminal lookup, non-terminal `resume`, paused exit code semantics, and a
+  visible `run.resumed` trace.
+
+These tests establish deterministic recovery behavior for covered crash points. They do
+not prove arbitrary exactly-once effects, recovery from machine loss, workspace snapshot
+restore, or correctness under a maliciously rewritten log. The schema-2 hash chain is
+corruption-evident but unauthenticated: a writer who can replace the whole log can recompute
+the chain.
+
+The JSON checkpoint is evaluated only as a cache. A result counts as recoverable only if
+the authoritative event stream can be fully replayed when that cache is deleted or damaged.
+
+Turn, tool, and token budgets remain cumulative across sessions. Wall timeout is measured
+per active `run` or `resume` session, so downtime is intentionally excluded.
+
+## Level 3: controlled real-model coding tasks — planned
 
 Use the same model snapshot, system prompt, tools, repository commit, maximum turns, token
 budget, timeout, and visible tests for every policy. Keep hidden tests outside the Agent
@@ -88,13 +126,13 @@ confidence intervals, not only aggregate point estimates. Preserve failed trajec
 exact model/version metadata.
 
 Before comparing context policies, the runtime must actually compile their outputs into
-otherwise identical model requests. That integration is not present in v0.2a.
+otherwise identical model requests. That integration is not present in v0.2b.
 
-## Level 3: long-horizon robustness — planned
+## Level 4: extended long-horizon robustness — planned
 
 Inject controlled failures:
 
-- process termination between durable events;
+- process and machine termination at additional model/tool/filesystem boundaries;
 - forced context compaction;
 - stale or conflicting memory;
 - duplicated tool results;
@@ -102,11 +140,13 @@ Inject controlled failures:
 - repeated tool-call ids;
 - workspace changes between read and compare-and-swap edit.
 
-Measure checkpoint recovery, idempotency, extra steps after resume, stale-memory rejection,
-budget overage, duplicate work, and final hidden-test success. Event-log survival alone is
-not counted as recovery.
+Measure replay recovery, extra steps after resume, stale-memory rejection, budget overage,
+duplicate work, operator-paused rate, and final hidden-test success. Distinguish automatic
+retry, state reconciliation, and explicit operator decisions rather than combining them
+under an unqualified “idempotent” or “exactly once” label. Event-log survival alone is not
+counted as recovery.
 
-## Level 4: test-guided search and multi-agent scheduling — planned
+## Level 5: test-guided search and multi-agent scheduling — planned
 
 Compare under one shared compute budget:
 
@@ -132,6 +172,8 @@ Every reported experiment should preserve:
 - system and user prompts;
 - tool definitions, permissions, registered commands, and limits;
 - raw JSONL traces and terminal run status;
+- schema version, last verified event hash, and whether truncated-tail repair occurred;
+- checkpoint use or full-replay fallback;
 - final patch or changed-file hashes;
 - visible and hidden oracle commands/results;
 - random seeds where supported;
@@ -139,5 +181,5 @@ Every reported experiment should preserve:
 
 The two v0.1 optimizer reports can be regenerated with commands in the README. Their
 objective and selection metrics are deterministic; timing is local diagnostic data. The
-v0.2a Runtime Conformance Eval is deterministic except for timestamps, elapsed durations,
-temporary paths, and subprocess timing.
+v0.2a Runtime Conformance and v0.2b Recovery Conformance are deterministic except for
+timestamps, active-session elapsed durations, temporary paths, and subprocess timing.

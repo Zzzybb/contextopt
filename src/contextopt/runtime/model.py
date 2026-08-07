@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from contextopt.runtime.errors import ModelError, RuntimeContractError
+from contextopt.runtime.identity import stable_hash
 from contextopt.runtime.protocol import (
     AgentMessage,
     ModelRequest,
@@ -61,14 +62,46 @@ class ScriptedModel:
     def __init__(
         self, steps: Sequence[Mapping[str, Any]], *, name: str = "scripted:v1"
     ):
-        self._steps = tuple(dict(step) for step in steps)
+        normalized: Any = json.loads(
+            json.dumps(list(steps), ensure_ascii=False, sort_keys=True)
+        )
+        self._steps = tuple(
+            dict(_mapping(step, f"steps[{index}]"))
+            for index, step in enumerate(_sequence(normalized, "steps"))
+        )
         self._position = 0
         self._name = name
+        self._script_sha256 = stable_hash(self._steps)
         self.requests: list[ModelRequest] = []
 
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def configuration(self) -> Mapping[str, Any]:
+        """Non-secret identity persisted to reject mismatched resume attempts."""
+
+        return {
+            "adapter": "scripted",
+            "name": self._name,
+            "script_sha256": self._script_sha256,
+        }
+
+    @property
+    def configuration_fingerprint(self) -> str:
+        return stable_hash(self.configuration)
+
+    def resume_from_turn(self, completed_turns: int) -> None:
+        """Move the deterministic cursor to the next unconsumed response."""
+
+        if completed_turns < 0 or completed_turns > len(self._steps):
+            raise ValueError("completed_turns is outside the scripted response range")
+        if self.requests:
+            raise ValueError(
+                "cannot move a scripted model after it has received requests"
+            )
+        self._position = completed_turns
 
     @classmethod
     def from_path(cls, path: str | Path) -> ScriptedModel:
@@ -210,6 +243,29 @@ class OpenAICompatibleModel:
     @property
     def name(self) -> str:
         return f"openai-compatible:{self.model}"
+
+    @property
+    def configuration(self) -> Mapping[str, Any]:
+        """Return resume-relevant adapter settings without the API key."""
+
+        return {
+            "adapter": "openai-compatible-chat-completions",
+            "base_url": self.base_url,
+            "model": self.model,
+            "timeout_seconds": self.timeout_seconds,
+            "max_retries": self.max_retries,
+            "temperature": self.temperature,
+        }
+
+    @property
+    def configuration_fingerprint(self) -> str:
+        return stable_hash(self.configuration)
+
+    def resume_from_turn(self, completed_turns: int) -> None:
+        """The HTTP adapter is stateless; validate only the restored counter."""
+
+        if completed_turns < 0:
+            raise ValueError("completed_turns must be non-negative")
 
     async def complete(self, request: ModelRequest) -> ModelResponse:
         return await asyncio.to_thread(self._complete_sync, request)

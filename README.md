@@ -15,14 +15,15 @@ Task ──> bounded AgentRunner ──> ModelClient ──> structured tool cal
                              │
                   workspace + visible tests
 
-Every boundary ──> durable JSONL event log
+Every boundary ──> durable schema-2 JSONL event log + verified state projection
 ```
 
-> **Status — v0.2a runtime foundation:** the repository now contains a real single-agent
-> read/edit/test loop, deterministic scripted-model evaluation, an optional
-> OpenAI-compatible adapter, workspace-bounded tools, budgets, and durable traces. It does
-> **not** yet implement checkpoint/resume, learned memory, multi-agent scheduling, branch
-> search, or end-to-end context optimization inside the runtime.
+> **Status — v0.2b recoverable runtime:** the repository now contains a real single-agent
+> read/edit/test loop, a corruption-evident event chain, strict state reconstruction,
+> resumable interrupted runs, conservative tool reconciliation, deterministic scripted
+> evaluation, and an optional OpenAI-compatible adapter. It does **not** yet implement live
+> ContextOpt policies, learned memory, multi-agent scheduling, branch search, or an OS
+> sandbox.
 
 ## Why this project exists
 
@@ -44,7 +45,7 @@ claim that the v0.1 optimizer already improves coding success.
 
 ## What is implemented
 
-### ForgeAgent runtime — v0.2a
+### ForgeAgent runtime — v0.2b
 
 - Provider-neutral messages, tool definitions, tool calls, responses, and token usage.
 - A bounded asynchronous `AgentRunner` with turn, tool-call, token, wall-clock, command,
@@ -54,11 +55,30 @@ claim that the v0.1 optimizer already improves coding success.
 - Workspace-bounded file listing, literal search, numbered reads, file creation, atomic
   SHA-256 compare-and-swap replacement, and pre-registered visible-test commands.
 - Explicit write and command permissions; both are disabled unless enabled by the caller.
-- Append-only, versioned JSONL events plus a compact trace renderer.
+- Schema-2 append-only JSONL events with a verifiable SHA-256 chain, strict sequence and
+  run-id validation, explicit truncated-tail repair, and a compact trace renderer.
+- A strict event reducer that reconstructs messages, cumulative usage, pending model and
+  tool work, completed-call cache, phase, and terminal result.
+- Atomic JSON projection checkpoints used only as disposable recovery caches; missing,
+  corrupt, or self-consistent forged caches fall back to the authoritative log. The
+  current unauthenticated format verifies checkpoint state against a strict prefix replay
+  before reducing the suffix, prioritizing correctness over startup speed.
+- A Windows/POSIX cross-process run lease that rejects a concurrent cooperative writer.
+- `contextopt status` and `contextopt resume`, including terminal-result lookup without a
+  new model call.
+- Persisted model and tool-configuration fingerprints that must match before a non-terminal
+  run resumes.
+- Recovery policies for interrupted tools: retry read-only calls, reconcile `create_file`
+  and `replace_text` through persisted pre/post file state and hashes, and pause
+  `run_tests` until an operator chooses `mark_failed` or `retry`.
 - Failure semantics that distinguish a test process returning exit code 1 from a tool or
   runtime infrastructure failure.
 - A deterministic Runtime Conformance Eval covering read, edit, failing tests, passing
   tests, budgets, and partial traces after model failure.
+
+The event hash chain provides verifiable, corruption-evident integrity. It is not a
+signature or malicious-rewrite defense: someone who can replace the entire log can also
+recompute the complete chain because there is no secret or external trust anchor.
 
 ### ContextOpt engine — v0.1
 
@@ -71,7 +91,8 @@ claim that the v0.1 optimizer already improves coding success.
 
 ## What is deliberately not implemented yet
 
-- Checkpoint/resume or reconstruction of a live run from the event log.
+- Automatic workspace snapshots, rollback, migration to another workspace, or distributed
+  coordination. Resume operates on the same configured workspace and validates what it can.
 - Context compaction, memory lifecycle, candidate extraction from runtime events, or a
   `ContextPolicy` wired into model requests.
 - Planner/coder/reviewer role orchestration, parallel agents, PatchTree, beam search, or
@@ -82,6 +103,8 @@ claim that the v0.1 optimizer already improves coding success.
 - A general shell tool, autonomous package installation, or unrestricted network access.
 - A claim that the scripted demo measures model reasoning or real-world issue resolution.
 - A trace UI or statistically powered real-model coding benchmark.
+- Exactly-once external side effects. Recovery is tool-specific and conservative;
+  explicitly retrying a command can execute it again.
 
 ## Quick start
 
@@ -117,7 +140,37 @@ Render any completed or partial run:
 
 ```bash
 contextopt trace <events.jsonl>
+contextopt status <events.jsonl>
 ```
+
+Resume a non-terminal scripted run with the same workspace, script, and registered test
+command used originally:
+
+```bash
+contextopt resume <events.jsonl> \
+  --workspace <same-workspace> \
+  --script <same-script.json> \
+  --test-command "python -m unittest discover -s tests -v"
+```
+
+If an interrupted `run_tests` is pending, the default resume pauses with exit code 4. The
+operator must then choose whether to expose an indeterminate failed result to the model or
+explicitly run the command again:
+
+```bash
+contextopt resume <events.jsonl> \
+  --workspace <same-workspace> --script <same-script.json> \
+  --test-command "python -m unittest discover -s tests -v" \
+  --pending-tool-resolution mark_failed
+# or, accepting possible repeated command effects:
+contextopt resume <events.jsonl> \
+  --workspace <same-workspace> --script <same-script.json> \
+  --test-command "python -m unittest discover -s tests -v" \
+  --pending-tool-resolution retry
+```
+
+A terminal log needs no model or workspace parameters: `contextopt resume <events.jsonl>`
+returns the already durable result without appending a new event.
 
 The original optimizer commands remain available:
 
@@ -139,6 +192,8 @@ actions. It verifies runtime plumbing, not intelligence:
 - the final visible tests and an independent hidden semantic oracle pass;
 - token and tool limits prevent later actions when exhausted;
 - every model and tool boundary remains in the JSONL trace, including partial failed runs.
+- state can be strictly replayed and interrupted tool paths can be resumed under the
+  recovery contract.
 
 Because the solution path is scripted, this result must not be reported as model coding
 accuracy, SWE-bench performance, or evidence that one context policy beats another. See the
@@ -165,12 +220,12 @@ surrogate-objective misalignment, not evidence of downstream Agent improvement.
 
 ```text
 src/contextopt/
-├── runtime/              # model protocol, AgentRunner, tools, events, limits
+├── runtime/              # runner, recovery reducer, tool plans, events, limits
 ├── models.py             # context candidates, constraints, receipts
 ├── policies/             # interchangeable selection algorithms
 ├── synthetic.py          # deterministic context microbench generation
 ├── benchmark.py          # paired optimizer metrics and reports
-└── cli.py                # run, trace, pack, and benchmark commands
+└── cli.py                # run, status, resume, trace, pack, benchmark
 
 tests/                    # standard-library unit and integration tests
 examples/runtime_demo/    # offline scripted coding-loop demonstration
@@ -182,10 +237,10 @@ docs/                     # architecture, runtime, and evaluation contract
 ## Roadmap
 
 - **v0.1 — Context optimizer:** algorithms, receipts, oracle, and synthetic microbench.
-- **v0.2a — Runtime foundation:** current read/edit/test loop, limits, JSONL trace, offline
-  conformance evaluation, and optional model adapter.
-- **v0.2b — Recoverable execution:** event replay, workspace checkpoint references,
-  idempotency, interruption, and resume.
+- **v0.2a — Runtime foundation:** read/edit/test loop, limits, offline conformance
+  evaluation, and optional model adapter.
+- **v0.2b — Recoverable execution:** current schema-2 hash chain, strict event replay,
+  projection cache, run lease, interruption/resume, and tool reconciliation.
 - **v0.3 — Live context engine:** candidate extraction, compaction, memory invalidation,
   ContextOpt policies, and per-turn context receipts.
 - **v0.4 — Test-guided search:** isolated branches, duplicate-state detection, adaptive
