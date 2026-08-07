@@ -1,4 +1,4 @@
-"""Algorithmic context optimization for long-horizon agents."""
+"""Auditable runtime and context optimization for long-horizon agents."""
 
 from contextopt.models import (
     ContextFrame,
@@ -16,4 +16,4 @@ __all__ = [
     "SelectionProblem",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0a1"

@@ -1,59 +1,87 @@
-# ContextOpt
+# ForgeAgent / ContextOpt
 
-**Algorithmic context optimization and evaluation for long-horizon coding agents.**
+**An auditable long-horizon coding-agent runtime with an algorithmic context engine.**
 
-ContextOpt treats context construction as a constrained set-selection problem instead of
-an embedding `top-k` call. It is an early, research-oriented foundation for a coding-agent
-runtime that can answer three questions on every model turn:
+ForgeAgent is the runtime direction of this project: take a coding task, let a model inspect
+and change one workspace through bounded tools, feed every observation back into the next
+turn, and preserve an append-only trace of what happened. ContextOpt remains the repository,
+Python package, CLI, and context-selection engine that will eventually compile the bounded
+view for each ForgeAgent model call.
 
-1. Which state, code, memory, and trajectory items entered the context?
-2. Why were they selected or rejected under the token budget?
-3. Did that decision improve an executable downstream outcome?
+```text
+Task ──> bounded AgentRunner ──> ModelClient ──> structured tool calls
+              ^                                      │
+              └──────────── tool observations <──────┘
+                             │
+                  workspace + visible tests
 
-> **Status:** `v0.1` is an offline, model-free optimization lab. It intentionally does not
-> claim to improve an end-to-end coding agent yet. The checked-in experiments establish
-> baselines and expose where a hand-designed objective disagrees with critical-fact labels.
+Every boundary ──> durable JSONL event log
+```
+
+> **Status — v0.2a runtime foundation:** the repository now contains a real single-agent
+> read/edit/test loop, deterministic scripted-model evaluation, an optional
+> OpenAI-compatible adapter, workspace-bounded tools, budgets, and durable traces. It does
+> **not** yet implement checkpoint/resume, learned memory, multi-agent scheduling, branch
+> search, or end-to-end context optimization inside the runtime.
 
 ## Why this project exists
 
-Long-running agents accumulate more potentially useful information than a model can see at
-once: task constraints, code, tests, tool output, failed attempts, decisions, and memories.
-Ranking every item independently misses several properties of the actual packing problem:
+A useful coding agent is more than one prompt and one generated patch. It must repeatedly
+inspect evidence, call tools, survive expected failures, respect cost and time limits, and
+leave enough state to explain or resume the run. Long runs also accumulate more code,
+tests, tool output, decisions, and failed attempts than a model can keep in context.
 
-- two individually relevant chunks may be redundant;
-- a code span can require an interface or definition to be useful;
-- stale memory may conflict with current code;
-- a long observation can crowd out several complementary facts;
-- semantic relevance is only a proxy for downstream utility.
+The project therefore has two connected layers:
 
-ContextOpt's current transparent objective is:
+- **ForgeAgent runtime:** executes a bounded, auditable coding loop against a real
+  workspace.
+- **ContextOpt engine:** studies which state, code, memory, and trajectory items should
+  enter a limited model context.
 
-```text
-maximize  relevance(S) + importance(S) + freshness(S)
-          + topic_coverage(S) - duplicate_penalty(S)
-
-subject to token_cost(S) <= budget
-           mandatory items are included
-           dependencies are closed
-           conflicting items are not co-selected
-```
-
-The long-term goal is to replace hand-tuned utility with feedback learned from compilation,
-tests, task progress, and counterfactual trajectory forks.
+The current runtime intentionally uses its message history directly. Connecting
+`ContextFrame` selection to live model requests is a later milestone; the project does not
+claim that the v0.1 optimizer already improves coding success.
 
 ## What is implemented
 
-- Immutable `ContextItem` candidates with provenance and token cost.
-- Mandatory, dependency, conflict, topic, freshness, and duplicate-group signals.
-- A shared `ContextPolicy` interface.
-- Standalone relevance `top-k` and relevance-per-token baselines.
-- Exact additive 0/1 knapsack dynamic programming.
-- Dependency-aware marginal-gain/submodular greedy selection.
-- An exhaustive exact oracle for small instances.
-- Deterministic synthetic tasks with hidden critical-fact labels.
-- Paired evaluation across policies and budgets.
-- Machine-readable selection receipts for every accepted and rejected item.
-- A dependency-free Python CLI and standard-library test suite.
+### ForgeAgent runtime — v0.2a
+
+- Provider-neutral messages, tool definitions, tool calls, responses, and token usage.
+- A bounded asynchronous `AgentRunner` with turn, tool-call, token, wall-clock, command,
+  and tool-output limits.
+- Observation-aware `ScriptedModel` runs that need no network or API key.
+- A minimal non-streaming OpenAI-compatible Chat Completions adapter.
+- Workspace-bounded file listing, literal search, numbered reads, file creation, atomic
+  SHA-256 compare-and-swap replacement, and pre-registered visible-test commands.
+- Explicit write and command permissions; both are disabled unless enabled by the caller.
+- Append-only, versioned JSONL events plus a compact trace renderer.
+- Failure semantics that distinguish a test process returning exit code 1 from a tool or
+  runtime infrastructure failure.
+- A deterministic Runtime Conformance Eval covering read, edit, failing tests, passing
+  tests, budgets, and partial traces after model failure.
+
+### ContextOpt engine — v0.1
+
+- Immutable context candidates with provenance, token cost, dependencies, conflicts,
+  freshness, topics, and duplicate groups.
+- Top-K, density, exact 0/1 knapsack, graph-aware submodular greedy, and a small-instance
+  exhaustive oracle.
+- Deterministic paired synthetic experiments with hidden critical-fact labels.
+- Machine-readable selection receipts explaining every accepted and rejected candidate.
+
+## What is deliberately not implemented yet
+
+- Checkpoint/resume or reconstruction of a live run from the event log.
+- Context compaction, memory lifecycle, candidate extraction from runtime events, or a
+  `ContextPolicy` wired into model requests.
+- Planner/coder/reviewer role orchestration, parallel agents, PatchTree, beam search, or
+  MCTS.
+- A container or virtual-machine security boundary. Workspace path checks and permission
+  flags reduce accidental access, but are not an OS sandbox. Registered test commands are
+  trusted host processes.
+- A general shell tool, autonomous package installation, or unrestricted network access.
+- A claim that the scripted demo measures model reasoning or real-world issue resolution.
+- A trace UI or statistically powered real-model coding benchmark.
 
 ## Quick start
 
@@ -64,40 +92,62 @@ python -m pip install -e .
 python -m unittest discover -s tests -v
 ```
 
-Run the checked-in independent-item experiment:
+Run the fully offline coding loop after copying its workspace to a temporary directory:
 
-```bash
-contextopt benchmark \
-  --instances 100 \
-  --items 14 \
-  --critical 4 \
-  --budget 800 \
-  --seed 42
+```text
+contextopt run "Fix merge_settings so only None inherits a default." \
+  --workspace <temporary-workspace-copy> \
+  --script examples/runtime_demo/script.json \
+  --allow-write --allow-command \
+  --test-command "python -m unittest discover -s tests -v" \
+  --event-log <temporary-events.jsonl>
 ```
 
-Run a graph-constrained experiment:
+The script drives this real sequence:
 
-```bash
-contextopt benchmark \
-  --instances 100 \
-  --items 14 \
-  --budget 900 \
-  --seed 4242 \
-  --graph-rate 0.2 \
-  --conflict-rate 0.02 \
-  --policies topk,density,submodular,oracle
+```text
+read source -> read tests -> tests fail -> atomic edit -> tests pass -> final
 ```
 
-Pack a concrete context problem and inspect its selection receipt:
+Use the exact PowerShell or POSIX commands in the
+[runtime guide](docs/runtime.md#offline-runtime-demo). The checked-in fixture is never
+modified by those instructions.
+
+Render any completed or partial run:
+
+```bash
+contextopt trace <events.jsonl>
+```
+
+The original optimizer commands remain available:
 
 ```bash
 contextopt pack examples/auth_context.json --policy submodular
+contextopt benchmark --instances 100 --items 14 --budget 900 \
+  --seed 4242 --graph-rate 0.2 --conflict-rate 0.02 \
+  --policies topk,density,submodular,oracle
 ```
 
-## First reproducible result
+## What the offline demo proves
 
-The graph-constrained baseline contains 100 paired synthetic instances, 14 candidates per
-instance, and a 900-token budget. The full raw report is checked in at
+The Runtime Conformance Eval uses a scripted model that already contains the intended
+actions. It verifies runtime plumbing, not intelligence:
+
+- tool calls execute against a temporary real Python workspace;
+- SHA-256 from `read_file` is required by the later atomic edit;
+- a failing visible test is returned as an observation and the loop continues;
+- the final visible tests and an independent hidden semantic oracle pass;
+- token and tool limits prevent later actions when exhausted;
+- every model and tool boundary remains in the JSONL trace, including partial failed runs.
+
+Because the solution path is scripted, this result must not be reported as model coding
+accuracy, SWE-bench performance, or evidence that one context policy beats another. See the
+[evaluation protocol](docs/evaluation.md).
+
+## First ContextOpt result
+
+The v0.1 graph-constrained baseline has 100 paired synthetic instances, 14 candidates per
+instance, and a 900-token budget. Raw runs are in
 [`experiments/v0.1-graph.json`](experiments/v0.1-graph.json).
 
 | Policy | Objective / oracle | Critical recall | Redundancy | Budget used |
@@ -107,69 +157,50 @@ instance, and a 900-token budget. The full raw report is checked in at
 | Submodular | 0.991 | 0.945 | 0.000 | 0.930 |
 | Exact oracle | 1.000 | 0.948 | 0.000 | 0.955 |
 
-### Read this result correctly
-
-The graph-aware policy improves the declared set objective and removes duplicate context.
-It does **not** beat Top-K on the synthetic critical-fact label. Even the exact objective
-oracle has lower critical recall than Top-K in this run.
-
-That is not hidden as a failed experiment. It is the first useful finding: optimizing a
-clean mathematical surrogate is insufficient when the surrogate is misaligned with task
-success. The next milestone therefore learns utility from executable feedback rather than
-adding more hand-tuned weights.
-
-Timing columns in checked-in reports are local diagnostic measurements, not cross-machine
-performance claims.
-
-## Selection receipts
-
-Every policy emits a `ContextFrame` with one decision per candidate:
-
-```json
-{
-  "item_id": "old-auth-doc",
-  "status": "rejected",
-  "reason": "conflict: jwt-interface vs old-auth-doc",
-  "marginal_gain": null,
-  "added_tokens": null
-}
-```
-
-This receipt is the basis of the planned Context DevTools UI: users will be able to inspect
-what survived into context, what was evicted, and how an alternate policy would differ.
+The graph-aware policy improves the declared mathematical objective and removes duplicate
+context, but it does not beat Top-K on hidden critical-fact recall. This is evidence of
+surrogate-objective misalignment, not evidence of downstream Agent improvement.
 
 ## Repository layout
 
 ```text
 src/contextopt/
-├── models.py             # candidates, constraints, objective, receipts
+├── runtime/              # model protocol, AgentRunner, tools, events, limits
+├── models.py             # context candidates, constraints, receipts
 ├── policies/             # interchangeable selection algorithms
-├── synthetic.py          # deterministic benchmark generation
-├── benchmark.py          # paired metrics and reports
-└── cli.py                # benchmark and pack commands
+├── synthetic.py          # deterministic context microbench generation
+├── benchmark.py          # paired optimizer metrics and reports
+└── cli.py                # run, trace, pack, and benchmark commands
 
-tests/                    # deterministic unit and integration tests
-examples/                 # human-readable packing problems
-experiments/              # checked-in configurations and raw results
-docs/                     # architecture and evaluation protocol
+tests/                    # standard-library unit and integration tests
+examples/runtime_demo/    # offline scripted coding-loop demonstration
+examples/auth_context.json
+experiments/              # checked-in optimizer configurations and raw results
+docs/                     # architecture, runtime, and evaluation contract
 ```
 
 ## Roadmap
 
-- **v0.1 — Offline optimizer:** current pull request.
-- **v0.2 — Coding-agent trace:** event log, tool observations, and candidate extraction.
-- **v0.3 — Long-horizon state:** checkpoint/resume, compaction, and memory lifecycle.
-- **v0.4 — Online utility:** contextual bandit trained from visible test progress.
-- **v0.5 — Context Fork:** paired rollouts from the same workspace checkpoint.
-- **v1.0 — Agent DevTools:** end-to-end controlled coding benchmark and trace UI.
+- **v0.1 — Context optimizer:** algorithms, receipts, oracle, and synthetic microbench.
+- **v0.2a — Runtime foundation:** current read/edit/test loop, limits, JSONL trace, offline
+  conformance evaluation, and optional model adapter.
+- **v0.2b — Recoverable execution:** event replay, workspace checkpoint references,
+  idempotency, interruption, and resume.
+- **v0.3 — Live context engine:** candidate extraction, compaction, memory invalidation,
+  ContextOpt policies, and per-turn context receipts.
+- **v0.4 — Test-guided search:** isolated branches, duplicate-state detection, adaptive
+  budget allocation, and controlled policy comparisons.
+- **v1.0 — Agent DevTools:** real coding-task benchmark, trace/search visualization, and
+  statistically defensible evaluations.
 
-See [Architecture](docs/architecture.md) and [Evaluation protocol](docs/evaluation.md) for
-the concrete design and claim boundaries.
+See [Architecture](docs/architecture.md), [Runtime](docs/runtime.md), and
+[Evaluation protocol](docs/evaluation.md) for the design and claim boundaries.
 
 ## Contributing
 
-Issues, counterexamples, new policies, and reproducible benchmark tasks are welcome. Read
-[`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request.
+Issues, adversarial fixtures, provider adapters, safe tools, context policies, and
+reproducible coding tasks are welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before
+opening a pull request.
 
 ## License
 

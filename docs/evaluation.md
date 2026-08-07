@@ -1,15 +1,19 @@
 # Evaluation protocol
 
-ContextOpt separates optimizer quality from downstream agent quality.
+ForgeAgent/ContextOpt separates solver correctness, runtime conformance, context quality,
+and real Agent task success. Results from one level must not be promoted into a claim about
+another.
 
-## Level 0: solver correctness
+## Level 0: solver correctness — implemented
 
 - Validate mandatory, budget, dependency, and conflict constraints.
 - Compare heuristic objective values with the exact oracle.
 - Report approximation ratio and latency distributions.
 - Use deterministic seeds and preserve raw results.
 
-## Level 1: context quality
+This level tests ContextOpt algorithms, not an Agent loop.
+
+## Level 1: synthetic context quality — implemented
 
 Synthetic cases label critical facts outside the policy-visible data. Metrics include:
 
@@ -20,31 +24,120 @@ Synthetic cases label critical facts outside the policy-visible data. Metrics in
 - token-budget utilization.
 
 Critical recall and objective score are reported separately so surrogate misalignment
-cannot be hidden by a composite score.
+cannot be hidden by a composite score. Synthetic labels and artificial candidate features
+do not establish performance on real repository trajectories.
 
-## Level 2: controlled coding tasks (planned)
+## Level 2a: Runtime Conformance Eval — implemented
 
-Use the same model snapshot, system prompt, tools, repository commit, maximum steps, and
-token budget for every policy. The primary outcome is executable hidden-test success.
+The first offline coding fixture executes against a temporary real Python workspace. An
+observation-aware `ScriptedModel` performs:
+
+```text
+read source -> read tests -> tests fail -> atomic edit -> tests pass -> final
+```
+
+The fixture verifies:
+
+- tool calls and observations preserve names and call ids;
+- the SHA-256 returned by `read_file` is required by the later edit;
+- a nonzero test exit is reported to the next model turn rather than terminating the run;
+- only the intended file changes and visible tests pass after the edit;
+- an independent hidden semantic oracle passes;
+- scripted token usage is accounted exactly;
+- tool and token limits prevent disallowed later actions;
+- a model failure leaves a valid partial JSONL trace.
+
+The demo in [Runtime](runtime.md#offline-runtime-demo) reproduces the main path without an
+API key.
+
+### What this result does not mean
+
+The ScriptedModel already contains the correct solution and tool sequence. It supplies
+fixed token usage rather than invoking a tokenizer or model. Therefore Runtime Conformance
+does **not** measure:
+
+- code reasoning or autonomous planning;
+- issue resolution rate;
+- model quality;
+- context-policy quality;
+- robustness to natural-language ambiguity;
+- SWE-bench or comparable benchmark performance.
+
+This evaluation is an engine test: it establishes that a later real model can use the same
+runtime path and that failures can be audited.
+
+## Level 2b: controlled real-model coding tasks — planned
+
+Use the same model snapshot, system prompt, tools, repository commit, maximum turns, token
+budget, timeout, and visible tests for every policy. Keep hidden tests outside the Agent
+workspace. The primary outcome is hidden-test task success.
 
 Secondary metrics:
 
-- total input and output tokens;
+- total reported input and output tokens;
 - repeated file reads and tool calls;
-- visible test-progress delta;
+- visible test-progress delta and progress-over-time area;
+- changed-file and patch-size distribution;
 - wall-clock latency;
-- constraint retention after compaction.
+- invalid or denied tool-call rate;
+- constraint retention after future compaction.
 
-At least three repetitions per task will be used for final comparisons. Results will report
-paired bootstrap confidence intervals instead of only point estimates.
+At least three repetitions per task are required for exploratory comparisons; stronger
+claims require more runs based on observed variance. Report paired differences and
+confidence intervals, not only aggregate point estimates. Preserve failed trajectories and
+exact model/version metadata.
 
-## Level 3: robustness (planned)
+Before comparing context policies, the runtime must actually compile their outputs into
+otherwise identical model requests. That integration is not present in v0.2a.
 
-Inject process termination, forced compaction, stale memory, conflicting facts, duplicated
-tool results, and model timeouts. Measure recovery success and extra steps after recovery.
+## Level 3: long-horizon robustness — planned
 
-## Reproduction
+Inject controlled failures:
 
-The two v0.1 reports can be regenerated with the commands in the README. Objective and
-selection metrics are deterministic. Runtime measurements depend on the host and are kept
-only as local diagnostics.
+- process termination between durable events;
+- forced context compaction;
+- stale or conflicting memory;
+- duplicated tool results;
+- provider timeouts and retryable failures;
+- repeated tool-call ids;
+- workspace changes between read and compare-and-swap edit.
+
+Measure checkpoint recovery, idempotency, extra steps after resume, stale-memory rejection,
+budget overage, duplicate work, and final hidden-test success. Event-log survival alone is
+not counted as recovery.
+
+## Level 4: test-guided search and multi-agent scheduling — planned
+
+Compare under one shared compute budget:
+
+- single-path Agent;
+- independent best-of-N;
+- fixed beam search;
+- adaptive branch scheduling.
+
+Each branch needs an isolated workspace and the same executable oracle. Candidate metrics
+include issue resolved rate, tokens per solved task, time to first valid patch, test-progress
+area, repeated-state ratio, branch pruning precision, and merge-conflict rate.
+
+Role-playing transcripts are not evidence of multi-agent value. Each additional Agent or
+branch must perform a measurable state transformation or evaluation and be included in the
+shared budget.
+
+## Reproduction rules
+
+Every reported experiment should preserve:
+
+- task/fixture identifier and repository snapshot;
+- model provider, exact model identifier, parameters, and adapter version;
+- system and user prompts;
+- tool definitions, permissions, registered commands, and limits;
+- raw JSONL traces and terminal run status;
+- final patch or changed-file hashes;
+- visible and hidden oracle commands/results;
+- random seeds where supported;
+- environment and Python version.
+
+The two v0.1 optimizer reports can be regenerated with commands in the README. Their
+objective and selection metrics are deterministic; timing is local diagnostic data. The
+v0.2a Runtime Conformance Eval is deterministic except for timestamps, elapsed durations,
+temporary paths, and subprocess timing.

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "contextopt"
-version = "0.1.0"
-description = "Algorithmic context optimization and evaluation for long-horizon coding agents."
+version = "0.2.0a1"
+description = "An auditable runtime and context optimizer for long-horizon coding agents."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
