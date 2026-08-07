@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "contextopt"
+version = "0.1.0"
+description = "Algorithmic context optimization and evaluation for long-horizon coding agents."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Zzzybb" }]
+keywords = ["agents", "context-engineering", "optimization", "coding-agents"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["mypy", "ruff"]
+
+[project.scripts]
+contextopt = "contextopt.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Zzzybb/contextopt"
+Repository = "https://github.com/Zzzybb/contextopt"
+Issues = "https://github.com/Zzzybb/contextopt/issues"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
