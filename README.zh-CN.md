@@ -9,9 +9,10 @@
 - 多角色编排：planner 形成假设，solver 生成候选，reviewer 审计证据；
 - 安全边界：测试和 apply/rollback 都是显式操作，不能因为模型说成功就写盘。
 
-当前状态是 v0.7。已经实现单 Agent 运行时、上下文选择、分支搜索、可恢复的
-proposal/test session，以及顺序的 planner / solver / reviewer 编排。并行工作区、
-PatchTree/MCTS 和真实模型统计评测仍在后续计划中。
+当前状态是 v0.8。已经实现单 Agent 运行时、上下文选择、分支搜索、可恢复的
+proposal/test session、顺序的 planner / solver / reviewer 编排，以及固定 ACM/数学
+题目的代码 Agent 策略评测。并行工作区、PatchTree/MCTS 和真实模型统计评测仍在后续
+计划中。
 
 ## 为什么适合面试 Agent 开发岗
 
@@ -48,6 +49,19 @@ python -m unittest tests.test_orchestrator -v
 可见测试命令。它会输出角色调用数、实际测试进程数、缓存复用数、分支状态、
 reviewer 决策、oracle gate 和 checkpoint。
 
+代码 Agent 策略评测可以直接离线运行：
+
+~~~text
+python -m contextopt agent-eval \
+  --fixtures all --repetitions 1 \
+  --output agent-eval.json --markdown agent-eval.md
+~~~
+
+默认包含 `two-sum`（ACM 算法）和 `extended-gcd`（数论/数学）两个可执行 fixture，
+比较 `single_pass`、`best_of_n` 与 `orchestrated`。每个 fixture 都有完整根快照、
+故意失败的候选、正确候选和可见测试；报告会把成功率、模型/角色调用、候选数、
+实际测试进程、缓存复用和 token 用量放在同一张表中。
+
 ## 评测指标
 
 主要指标不是 reviewer 的自信度，而是：
@@ -57,10 +71,13 @@ reviewer 决策、oracle gate 和 checkpoint。
 - 每轮分支的 visible-test 通过情况、去重、剪枝和 best branch；
 - total_tokens、checkpoint 事件链和恢复后的状态一致性；
 - oracle gate：只有 reviewer accept 且候选可见测试通过才会 accepted。
+- 策略评测的 `success_rate`、`mean_model_calls`、`mean_test_calls`、
+  `mean_candidate_proposals` 和 `mean_total_tokens`。
 
-脚本模型只能证明协议、预算、持久化和恢复流程正确，不能证明真实模型的编码
-能力。真实模型比较必须固定模型版本、提示词、仓库快照、工具和预算，并加入
-独立隐藏测试。
+脚本模型只能证明协议、预算、持久化、恢复和策略控制流正确，不能证明真实模型的
+编码能力。`agent-eval` 的成功率只是固定脚本在可见测试上的通过率，不代表隐藏测试、
+泛化能力、延迟或生产安全。真实模型比较必须固定模型版本、提示词、仓库快照、工具
+和预算，并加入独立隐藏测试。
 
 ## 项目文档
 
@@ -69,6 +86,7 @@ reviewer 决策、oracle gate 和 checkpoint。
 - 运行时说明：[docs/runtime.md](docs/runtime.md)
 - PR 变更说明约定：[docs/pr/README.md](docs/pr/README.md)
 - PR #1 中文回顾：[docs/pr/0001-contextopt-evolution.zh-CN.md](docs/pr/0001-contextopt-evolution.zh-CN.md)
+- v0.8 中文变更说明：[docs/pr/0001-v0.8-evaluation-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、
 指标名称是权威定义。

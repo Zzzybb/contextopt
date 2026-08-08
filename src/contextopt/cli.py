@@ -20,9 +20,13 @@ from contextopt.benchmark import (
     run_benchmark,
 )
 from contextopt.evaluation import (
+    AgentEvalConfig,
     ContextRoutingEvalConfig,
+    render_agent_evaluation_console,
+    render_agent_evaluation_markdown,
     render_context_routing_console,
     render_context_routing_markdown,
+    run_agent_evaluation,
     run_context_routing_evaluation,
 )
 from contextopt.models import ContextItem, ObjectiveWeights, SelectionProblem
@@ -140,6 +144,32 @@ def _context_eval(args: argparse.Namespace) -> int:
     print(render_context_routing_console(report))
     _write(args.output, json.dumps(report, indent=2, sort_keys=True) + "\n")
     _write(args.markdown, render_context_routing_markdown(report))
+    return 0
+
+
+def _agent_eval(args: argparse.Namespace) -> int:
+    strategies = tuple(
+        name.strip() for name in args.strategies.split(",") if name.strip()
+    )
+    raw_fixtures = tuple(
+        name.strip() for name in args.fixtures.split(",") if name.strip()
+    )
+    fixtures = ("two-sum", "extended-gcd") if "all" in raw_fixtures else raw_fixtures
+    config = AgentEvalConfig(
+        strategies=strategies,
+        fixtures=fixtures,
+        repetitions=args.repetitions,
+        max_rounds=args.max_rounds,
+        max_model_calls=args.max_model_calls,
+        max_candidates=args.max_candidates,
+        max_test_calls=args.max_test_calls,
+    )
+    report = run_agent_evaluation(config)
+    print(render_agent_evaluation_console(report), end="")
+    _write(args.output, json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n")
+    _write(args.markdown, render_agent_evaluation_markdown(report))
+    # A completed evaluation is useful even when an intentionally weak baseline
+    # fails; callers should inspect the success-rate columns.
     return 0
 
 
@@ -747,6 +777,29 @@ def build_parser() -> argparse.ArgumentParser:
     context_eval.add_argument("--output", help="write the complete JSON report")
     context_eval.add_argument("--markdown", help="write the summary as Markdown")
     context_eval.set_defaults(handler=_context_eval)
+
+    agent_eval = subparsers.add_parser(
+        "agent-eval",
+        help="compare coding-agent search strategies on fixed ACM/math fixtures",
+    )
+    agent_eval.add_argument(
+        "--strategies",
+        default="single_pass,best_of_n,orchestrated",
+        help="comma-separated strategies: single_pass,best_of_n,orchestrated",
+    )
+    agent_eval.add_argument(
+        "--fixtures",
+        default="all",
+        help="all or comma-separated fixture ids (two-sum,extended-gcd)",
+    )
+    agent_eval.add_argument("--repetitions", type=int, default=1)
+    agent_eval.add_argument("--max-rounds", type=int, default=2)
+    agent_eval.add_argument("--max-model-calls", type=int, default=6)
+    agent_eval.add_argument("--max-candidates", type=int, default=2)
+    agent_eval.add_argument("--max-test-calls", type=int, default=2)
+    agent_eval.add_argument("--output", help="write the complete JSON report")
+    agent_eval.add_argument("--markdown", help="write the summary as Markdown")
+    agent_eval.set_defaults(handler=_agent_eval)
 
     propose = subparsers.add_parser(
         "propose-case",

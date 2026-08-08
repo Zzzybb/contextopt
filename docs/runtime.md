@@ -67,6 +67,28 @@ For a deterministic local run, give orchestrate three ScriptedModel JSON files a
 trusted visible-test command used by search-session. Real-model experiments should keep
 provider, prompt, tool, budget, and repository versions fixed across role ablations.
 
+## Coding-agent strategy evaluation harness
+
+The repository also ships a model-free outer-loop comparison for the control policies that
+are easiest to explain in an interview. Run it from the repository root:
+
+```text
+python -m contextopt agent-eval --fixtures all --repetitions 1 \
+  --output agent-eval.json --markdown agent-eval.md
+```
+
+The two fixtures are complete ACM/math workspaces. `single_pass` gets one intentionally
+weak candidate, `best_of_n` gets a bad and a good candidate in one response, and
+`orchestrated` receives a failing first round followed by a reviewer-gated retry. Every
+candidate is materialized in a disposable workspace and tested by the same standard-
+library command. The result is a paired ledger, not a model leaderboard.
+
+The report separates actual test processes from cache reuses and records model/role calls,
+candidate proposals, rounds, and provider-reported token usage. A baseline failure remains
+visible in the report, while the CLI returns zero once the matrix itself has completed.
+These metrics establish the implementation's accounting and oracle gates; they do not
+establish generalization, hidden-test correctness, latency, or real-model coding ability.
+
 ## Live context compilation
 
 Every new CLI run constructs a deterministic `ContextCompiler`. Before a model call, the
@@ -566,7 +588,9 @@ Remaining milestones are:
 2. Connect session events to runtime context receipts and richer recovery metadata.
 3. Connect role events to runtime context receipts and richer role-specific recovery
    metadata.
-4. Add container/VM isolation and a controlled real-model coding benchmark with fixed
+4. Connect the strategy harness to real model adapters and independent hidden tests while
+   preserving the paired budgets and report schema.
+5. Add container/VM isolation and a controlled real-model coding benchmark with fixed
    snapshots, versions, repetitions, and independent hidden tests.
 
 The repository still has no parallel multi-agent scheduling, OS sandbox, or published

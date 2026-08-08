@@ -368,6 +368,22 @@ reviewer awaits and after evaluation. A stopped planner request requires explici
 after a durable planner response, the solver can safely continue on resume. Parallel
 workspace execution and adaptive branch scheduling remain future work.
 
+## Coding-agent strategy evaluation — v0.8
+
+The evaluation layer reuses the same proposal parser, disposable executable oracle, and
+branch accounting instead of inventing a second success path. It builds two complete
+algorithm/math fixtures and runs three policy shapes over each fixture:
+
+    single_pass  -> one candidate -> visible oracle
+    best_of_n    -> several candidates -> branch ranking -> visible oracle
+    orchestrated -> planner -> solver -> oracle -> reviewer -> bounded retry
+
+Each matrix cell is a fresh scripted model and a fresh temporary workspace. The report
+stores the fixture/strategy/repetition ledger plus self-consistent aggregates for success
+rate, role/model calls, candidate proposals, actual tests, cache reuses, rounds, and
+reported token usage. The evaluator is a model-free control-policy contract test; the
+scripted candidate is not evidence that a real model would solve an arbitrary issue.
+
 ## Claim boundaries
 
 - Optimizer objective quality is not Agent task success.

@@ -253,6 +253,36 @@ The CLI entry point is orchestrate; use three scripted model files for a fully o
 run, or provide one OpenAI-compatible model name per role for a real experiment. A
 controlled real-model comparison still belongs to Level 3.
 
+## Level 2h: coding-agent strategy accounting — implemented
+
+The v0.8 `agent-eval` harness compares three control policies on paired executable
+fixtures:
+
+- `single_pass`: one solver response containing one candidate;
+- `best_of_n`: one solver response containing multiple complete snapshots, ranked by the
+  same visible-test oracle and branch-search rules;
+- `orchestrated`: planner, solver, and reviewer with a bounded retry and oracle gate.
+
+The checked-in fixtures are an ACM-style Two Sum repair and an extended Euclidean
+algorithm repair. Each fixture includes a complete failing root snapshot, a deliberately
+weak candidate, a passing candidate, and a standard-library `unittest` command. The CLI
+can write both machine-readable JSON and Markdown:
+
+    python -m contextopt agent-eval --fixtures all --repetitions 1 \
+      --output agent-eval.json --markdown agent-eval.md
+
+The report is paired by fixture, strategy, and repetition. Its primary fields are
+`success_rate`, `mean_model_calls`, role-call decomposition, `mean_candidate_proposals`,
+`mean_test_calls`, `mean_test_reuses`, and `mean_total_tokens`. Failed baseline runs stay
+in the ledger rather than being dropped. The command itself exits successfully when the
+matrix completes; a strategy's visible-test failure is a data point, not a harness crash.
+
+This level tests policy wiring, budget accounting, strict model boundaries, executable
+oracle gates, and report consistency with deterministic scripted responses. It does not
+measure general model capability, hidden-test correctness, latency, provider reliability,
+or production safety. In particular, a `best_of_n` or orchestrated success here must not
+be reported as evidence that a real model would discover the same candidate.
+
 ## Level 3: controlled real-model coding tasks — planned
 
 Use the same model snapshot, system prompt, tools, repository commit, maximum turns, token
