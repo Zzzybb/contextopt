@@ -11,6 +11,7 @@ from contextopt.evaluation.agent_search import (
     build_algorithm_fixtures,
     build_openai_model_factory,
     render_agent_evaluation_console,
+    render_agent_evaluation_html,
     render_agent_evaluation_markdown,
     run_agent_evaluation,
 )
@@ -42,6 +43,7 @@ __all__ = [
     "build_long_coding_traces",
     "build_openai_model_factory",
     "render_agent_evaluation_console",
+    "render_agent_evaluation_html",
     "render_agent_evaluation_markdown",
     "render_context_routing_console",
     "render_context_routing_markdown",

@@ -21,6 +21,7 @@ import json
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
+from html import escape
 from pathlib import PurePosixPath
 from statistics import fmean
 from typing import Any, Literal, cast
@@ -1501,6 +1502,75 @@ def render_agent_evaluation_markdown(report: AgentEvalReport) -> str:
     return "\n".join(lines)
 
 
+def render_agent_evaluation_html(report: AgentEvalReport) -> str:
+    """Render a dependency-free portfolio dashboard for repeated evaluations."""
+
+    summary_rows: list[str] = []
+    chart_rows: list[str] = []
+    for summary in report.summaries:
+        visible = summary.success_rate * 100
+        hidden = (
+            0.0
+            if summary.hidden_success_rate is None
+            else summary.hidden_success_rate * 100
+        )
+        summary_rows.append(
+            "<tr>"
+            f"<td><code>{escape(summary.strategy)}</code></td>"
+            f"<td>{summary.success_count}/{summary.run_count} "
+            f"({summary.success_rate:.0%})</td>"
+            f"<td>{summary.hidden_success_count}/{summary.hidden_run_count} "
+            f"({_format_rate(summary.hidden_success_rate)})</td>"
+            f"<td>{summary.mean_model_calls:.1f}</td>"
+            f"<td>{summary.mean_test_calls:.1f}</td>"
+            f"<td>{summary.mean_total_tokens:.0f}</td>"
+            "</tr>"
+        )
+        chart_rows.append(
+            "<div class='chart-row'>"
+            f"<span class='label'>{escape(summary.strategy)}</span>"
+            "<div class='track'><span class='visible' "
+            f"style='width:{visible:.2f}%'></span></div>"
+            "<div class='track'><span class='hidden' "
+            f"style='width:{hidden:.2f}%'></span></div>"
+            f"<span class='rate'>{summary.success_rate:.0%} / "
+            f"{_format_rate(summary.hidden_success_rate)}</span>"
+            "</div>"
+        )
+    payload = escape(json.dumps(report.to_dict(), ensure_ascii=False, sort_keys=True))
+    return (
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>ContextOpt agent evaluation</title>"
+        "<style>body{font:14px system-ui,sans-serif;margin:2rem;color:#172033;"
+        "max-width:1100px}h1{margin-bottom:.25rem}.muted{color:#5d6b82}"
+        ".legend{display:flex;gap:1rem;margin:.8rem 0}.swatch{display:inline-block;"
+        "width:12px;height:12px;border-radius:3px;margin-right:.3rem}"
+        ".visible-swatch{background:#2563eb}.hidden-swatch{background:#f97316}"
+        ".chart{border:1px solid #d7dce8;border-radius:10px;padding:1rem;"
+        "background:#fbfcff}.chart-row{display:grid;grid-template-columns:130px 1fr "
+        "1fr 100px;gap:.6rem;align-items:center;margin:.55rem 0}.track{height:12px;"
+        "background:#e8edf5;border-radius:999px;overflow:hidden}.track span{"
+        "display:block;"
+        "height:100%}.visible{background:#2563eb}.hidden{background:#f97316}.rate{"
+        "text-align:right;font-variant-numeric:tabular-nums}table{border-collapse:collapse;"
+        "width:100%;margin-top:1.5rem}th,td{border:1px solid #d7dce8;padding:.55rem;"
+        "text-align:left}th{background:#f5f7fb}details{margin-top:1.5rem}"
+        "code{white-space:pre-wrap}</style></head><body>"
+        "<h1>ContextOpt coding-agent evaluation</h1>"
+        f"<p class='muted'>{escape(report.claim_boundary)}</p>"
+        "<div class='legend'><span><i class='swatch visible-swatch'></i>"
+        "visible success</span>"
+        "<span><i class='swatch hidden-swatch'></i>hidden success</span></div>"
+        f"<section class='chart'>{''.join(chart_rows)}</section>"
+        "<table><thead><tr><th>strategy</th><th>visible</th><th>hidden</th>"
+        "<th>mean model calls</th><th>mean tests</th><th>mean tokens</th>"
+        f"</tr></thead><tbody>{''.join(summary_rows)}</tbody></table>"
+        "<details><summary>durable evaluation JSON</summary><code>"
+        f"{payload}</code></details></body></html>\n"
+    )
+
+
 __all__ = [
     "AgentEvalConfig",
     "AgentEvalFixture",
@@ -1512,6 +1582,7 @@ __all__ = [
     "build_algorithm_fixtures",
     "build_openai_model_factory",
     "render_agent_evaluation_console",
+    "render_agent_evaluation_html",
     "render_agent_evaluation_markdown",
     "run_agent_evaluation",
 ]

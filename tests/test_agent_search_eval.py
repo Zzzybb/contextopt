@@ -13,6 +13,7 @@ from contextopt.evaluation import (
     AgentEvalReport,
     build_algorithm_fixtures,
     build_openai_model_factory,
+    render_agent_evaluation_html,
     run_agent_evaluation,
 )
 
@@ -109,11 +110,20 @@ class AgentEvaluationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unknown"):
             AgentEvalConfig(strategies=("made_up",))  # type: ignore[arg-type]
 
-    def test_cli_writes_json_and_markdown_reports(self) -> None:
+    def test_html_dashboard_contains_summary_bars_and_durable_payload(self) -> None:
+        html = render_agent_evaluation_html(self.report)
+        self.assertIn("visible success", html)
+        self.assertIn("hidden success", html)
+        self.assertIn("<table>", html)
+        self.assertIn("orchestrated", html)
+        self.assertIn("durable evaluation JSON", html)
+
+    def test_cli_writes_json_markdown_and_html_reports(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             output = root / "agent-eval.json"
             markdown = root / "agent-eval.md"
+            html = root / "agent-eval.html"
             stdout = io.StringIO()
             with redirect_stdout(stdout):
                 exit_code = main(
@@ -125,6 +135,8 @@ class AgentEvaluationTests(unittest.TestCase):
                         str(output),
                         "--markdown",
                         str(markdown),
+                        "--html",
+                        str(html),
                     ]
                 )
 
@@ -136,6 +148,7 @@ class AgentEvaluationTests(unittest.TestCase):
             rendered = markdown.read_text(encoding="utf-8")
             self.assertIn("Claim boundary", rendered)
             self.assertIn("best_of_n", rendered)
+            self.assertIn("<table>", html.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

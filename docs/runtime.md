@@ -85,7 +85,7 @@ are easiest to explain in an interview. Run it from the repository root:
 
 ```text
 python -m contextopt agent-eval --fixtures all --repetitions 1 \
-  --output agent-eval.json --markdown agent-eval.md
+  --output agent-eval.json --markdown agent-eval.md --html agent-eval.html
 ```
 
 The two fixtures are complete ACM/math workspaces. `single_pass` gets one intentionally
@@ -102,7 +102,8 @@ provider-reported token usage. A baseline failure remains visible in the report,
 CLI returns zero once the matrix itself has completed. Use `--model` and `--base-url` to
 replace scripted responses with fresh OpenAI-compatible adapters per cell. These metrics
 establish the implementation's accounting and oracle gates; they do not establish
-generalization, latency, or production coding ability.
+generalization, latency, or production coding ability. The optional HTML output is a
+self-contained dashboard with visible/hidden success bars and the complete JSON ledger.
 
 ## Live context compilation
 

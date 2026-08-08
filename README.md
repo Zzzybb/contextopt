@@ -335,11 +335,14 @@ For an exploratory OpenAI-compatible run, provide the model and API key environm
 python -m contextopt agent-eval \
   --model <model-name> --base-url <endpoint> \
   --api-key-env CONTEXTOPT_API_KEY --repetitions 3 \
-  --output agent-eval-real.json --markdown agent-eval-real.md
+  --output agent-eval-real.json --markdown agent-eval-real.md \
+  --html agent-eval-real.html
 ```
 
 This path records provider usage but is still not a statistically powered benchmark; keep
 model versions, prompts, fixtures, tools, and budgets fixed when comparing strategies.
+The HTML output is a self-contained dashboard with visible/hidden success bars, cost columns,
+and the complete JSON ledger embedded for portfolio or PR review.
 
 Run the v0.4 test-guided branch-search demo and write all three report formats:
 
@@ -530,7 +533,9 @@ docs/                     # architecture, runtime, and evaluation contract
 The v0.8 follow-up is documented in [the role-context addendum](docs/pr/0001-v0.8-context-memory-addendum.md)
 and its [Chinese translation](docs/pr/0001-v0.8-context-memory-addendum.zh-CN.md). The parallel
 scheduler details are in [the scheduler addendum](docs/pr/0001-v0.8-parallel-scheduler-addendum.md)
-and [Chinese version](docs/pr/0001-v0.8-parallel-scheduler-addendum.zh-CN.md).
+and [Chinese version](docs/pr/0001-v0.8-parallel-scheduler-addendum.zh-CN.md). The evaluation
+dashboard is documented in [the dashboard addendum](docs/pr/0001-v0.8-evaluation-dashboard-addendum.md)
+and [Chinese version](docs/pr/0001-v0.8-evaluation-dashboard-addendum.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers.
 

@@ -271,10 +271,10 @@ The checked-in fixtures are an ACM-style Two Sum repair and an extended Euclidea
 algorithm repair. Each fixture includes a complete failing root snapshot, a deliberately
 weak candidate, a passing candidate, a standard-library visible-test command, and an
 independent hidden grader under `grader/` that is never included in the model-visible root
-snapshot. The CLI can write both machine-readable JSON and Markdown:
+snapshot. The CLI can write machine-readable JSON, Markdown, and a self-contained HTML dashboard:
 
     python -m contextopt agent-eval --fixtures all --repetitions 1 \
-      --output agent-eval.json --markdown agent-eval.md
+      --output agent-eval.json --markdown agent-eval.md --html agent-eval.html
 
 The report is paired by fixture, strategy, and repetition. Its primary fields are visible
 `success_rate`, conditional hidden `hidden_success_rate`, `mean_model_calls`, role-call

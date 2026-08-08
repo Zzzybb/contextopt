@@ -24,6 +24,7 @@ from contextopt.evaluation import (
     ContextRoutingEvalConfig,
     build_openai_model_factory,
     render_agent_evaluation_console,
+    render_agent_evaluation_html,
     render_agent_evaluation_markdown,
     render_context_routing_console,
     render_context_routing_markdown,
@@ -193,6 +194,7 @@ def _agent_eval(args: argparse.Namespace) -> int:
     print(render_agent_evaluation_console(report), end="")
     _write(args.output, json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n")
     _write(args.markdown, render_agent_evaluation_markdown(report))
+    _write(args.html, render_agent_evaluation_html(report))
     # A completed evaluation is useful even when an intentionally weak baseline
     # fails; callers should inspect the success-rate columns.
     return 0
@@ -858,6 +860,9 @@ def build_parser() -> argparse.ArgumentParser:
     agent_eval.add_argument("--temperature", type=float, default=0.0)
     agent_eval.add_argument("--output", help="write the complete JSON report")
     agent_eval.add_argument("--markdown", help="write the summary as Markdown")
+    agent_eval.add_argument(
+        "--html", help="write a self-contained evaluation dashboard"
+    )
     agent_eval.set_defaults(handler=_agent_eval)
 
     propose = subparsers.add_parser(
