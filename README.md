@@ -349,11 +349,15 @@ python -m contextopt agent-eval \
   --api-key-env CONTEXTOPT_API_KEY --repetitions 3 \
   --output agent-eval-real.json --markdown agent-eval-real.md \
   --html agent-eval-real.html \
-  --checkpoint agent-eval-real.checkpoint.json
+  --checkpoint agent-eval-real.checkpoint.json \
+  --manifest agent-eval-real.manifest.json
 ```
 
 This path records provider usage but is still not a statistically powered benchmark; keep
 model versions, prompts, fixtures, tools, and budgets fixed when comparing strategies.
+The optional manifest records the adapter, model names, endpoint origin/path, runtime settings,
+evaluation configuration, and an explicitly supplied revision (`CONTEXTOPT_GIT_REVISION` or
+`GITHUB_SHA`) without writing the API key.
 The HTML output is a self-contained dashboard with visible/hidden success bars, cost columns,
 and the complete JSON ledger embedded for portfolio or PR review.
 `--checkpoint` atomically records each fixture/strategy/repetition cell; if a provider call or
@@ -573,6 +577,8 @@ The runtime trace timeline is documented in [the trace dashboard addendum](docs/
 and [Chinese version](docs/pr/0001-v0.8-trace-dashboard-addendum.zh-CN.md).
 The bounded merge evidence is documented in [the merge-aware snapshot addendum](docs/pr/0001-v0.8-merge-aware-snapshots-addendum.md)
 and [Chinese version](docs/pr/0001-v0.8-merge-aware-snapshots-addendum.zh-CN.md).
+The reproducibility sidecar is documented in [the evaluation manifest addendum](docs/pr/0001-v0.8-evaluation-manifest-addendum.md)
+and [Chinese version](docs/pr/0001-v0.8-evaluation-manifest-addendum.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers.
 

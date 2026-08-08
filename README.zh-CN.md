@@ -114,12 +114,15 @@ python -m contextopt agent-eval \
   --api-key-env CONTEXTOPT_API_KEY --repetitions 3 \
   --output agent-eval-real.json --markdown agent-eval-real.md \
   --html agent-eval-real.html \
-  --checkpoint agent-eval-real.checkpoint.json
+  --checkpoint agent-eval-real.checkpoint.json \
+  --manifest agent-eval-real.manifest.json
 ~~~
 
 真实模型路径会记录 provider token，但仍是固定小样本的探索性评测，不能直接当成统计
 严谨的模型能力结论。HTML 会生成自包含 dashboard，展示 visible/hidden 成功率、成本
 指标和嵌入式 JSON ledger，适合放在 PR 或作品集里。
+`--manifest` 会记录 adapter、模型名、去掉 query/fragment 的 endpoint、运行时设置、
+评测配置和显式提供的 revision（`CONTEXTOPT_GIT_REVISION` 或 `GITHUB_SHA`），不会写入 API key。
 `--checkpoint` 会在每个 fixture/strategy/repetition cell 完成后原子写入；provider 或进程
 中断后，使用相同参数加 `--resume --checkpoint ...`，已完成 cell 会复用，只重跑缺失 cell。
 这是 at-least-once provider 执行语义，不声称 exactly-once。
@@ -159,6 +162,7 @@ python -m contextopt agent-eval \
 - v0.8 评测统计补充：[docs/pr/0001-v0.8-evaluation-statistics-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-statistics-addendum.zh-CN.md)
 - v0.8 trace 可视化补充：[docs/pr/0001-v0.8-trace-dashboard-addendum.zh-CN.md](docs/pr/0001-v0.8-trace-dashboard-addendum.zh-CN.md)
 - v0.8 合并感知快照补充：[docs/pr/0001-v0.8-merge-aware-snapshots-addendum.zh-CN.md](docs/pr/0001-v0.8-merge-aware-snapshots-addendum.zh-CN.md)
+- v0.8 评测 manifest 补充：[docs/pr/0001-v0.8-evaluation-manifest-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-manifest-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、
 指标名称是权威定义。

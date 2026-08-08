@@ -177,6 +177,7 @@ class AgentEvaluationTests(unittest.TestCase):
             markdown = root / "agent-eval.md"
             html = root / "agent-eval.html"
             checkpoint = root / "agent-eval.checkpoint.json"
+            manifest = root / "agent-eval.manifest.json"
             stdout = io.StringIO()
             with redirect_stdout(stdout):
                 exit_code = main(
@@ -192,6 +193,8 @@ class AgentEvaluationTests(unittest.TestCase):
                         str(html),
                         "--checkpoint",
                         str(checkpoint),
+                        "--manifest",
+                        str(manifest),
                     ]
                 )
 
@@ -205,6 +208,13 @@ class AgentEvaluationTests(unittest.TestCase):
             self.assertIn("best_of_n", rendered)
             self.assertIn("<table>", html.read_text(encoding="utf-8"))
             self.assertEqual(len(json.loads(checkpoint.read_text())["runs"]), 3)
+            manifest_payload = json.loads(manifest.read_text(encoding="utf-8"))
+            self.assertEqual(manifest_payload["provider"]["adapter"], "scripted")
+            self.assertIsNone(manifest_payload["provider"]["model"])
+            self.assertEqual(
+                manifest_payload["runtime"]["api_key_env"], "CONTEXTOPT_API_KEY"
+            )
+            self.assertNotIn('"api_key":', manifest.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

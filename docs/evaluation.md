@@ -279,7 +279,8 @@ snapshot. The CLI can write machine-readable JSON, Markdown, and a self-containe
 
     python -m contextopt agent-eval --fixtures all --repetitions 1 \
       --output agent-eval.json --markdown agent-eval.md --html agent-eval.html \
-      --checkpoint agent-eval.checkpoint.json
+      --checkpoint agent-eval.checkpoint.json \
+      --manifest agent-eval.manifest.json
 
 The report is paired by fixture, strategy, and repetition. Its primary fields are visible
 `success_rate`, conditional hidden `hidden_success_rate`, `mean_model_calls`, role-call
@@ -308,6 +309,9 @@ When `--checkpoint PATH` is supplied, the harness atomically persists each compl
 cell. Reusing the same configuration with `--resume --checkpoint PATH` skips durable cells
 and reruns only missing observations; a provider call interrupted before its cell is written
 may run again.
+`--manifest PATH` writes a sidecar identity record containing the adapter/model names, a
+query-free endpoint, runtime settings, the full evaluation configuration, and an optional
+revision from `CONTEXTOPT_GIT_REVISION` or `GITHUB_SHA`; the API key value is never serialized.
 In particular, a `best_of_n` or orchestrated success here must not be reported as evidence
 that a real model would discover the same candidate.
 

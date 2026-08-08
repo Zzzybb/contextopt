@@ -11,6 +11,7 @@ import uuid
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 from contextopt import __version__
 from contextopt.benchmark import (
@@ -86,6 +87,48 @@ def _write(path: str | None, content: str) -> None:
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(content, encoding="utf-8")
+
+
+def _safe_endpoint(value: str | None) -> str | None:
+    """Keep provider origin/path while dropping query and fragment secrets."""
+
+    if not value:
+        return None
+    parts = urlsplit(value)
+    if not parts.scheme or not parts.netloc:
+        return value.split("?", 1)[0].split("#", 1)[0]
+    safe_netloc = parts.netloc.rsplit("@", 1)[-1]
+    return urlunsplit((parts.scheme, safe_netloc, parts.path, "", ""))
+
+
+def _agent_eval_manifest(
+    args: argparse.Namespace, config: AgentEvalConfig, model_adapter: str
+) -> dict[str, Any]:
+    return {
+        "schema_version": "1",
+        "kind": "contextopt.agent-eval.manifest",
+        "config": config.to_dict(),
+        "provider": {
+            "adapter": model_adapter,
+            "model": args.model,
+            "planner_model": args.planner_model,
+            "solver_model": args.solver_model,
+            "reviewer_model": args.reviewer_model,
+            "base_url": _safe_endpoint(args.base_url),
+        },
+        "runtime": {
+            "temperature": args.temperature,
+            "timeout_seconds": args.model_timeout,
+            "max_retries": args.model_retries,
+            "api_key_env": args.api_key_env,
+        },
+        "repository_revision": os.environ.get("CONTEXTOPT_GIT_REVISION")
+        or os.environ.get("GITHUB_SHA"),
+        "claim_boundary": (
+            "The manifest records experiment identity and configuration; it does not "
+            "prove model quality or provider reproducibility."
+        ),
+    }
 
 
 def _benchmark(args: argparse.Namespace) -> int:
@@ -192,6 +235,15 @@ def _agent_eval(args: argparse.Namespace) -> int:
         exploration_constant=args.exploration_constant,
         include_hidden_tests=not args.no_hidden_tests,
         model_adapter=model_adapter,
+    )
+    _write(
+        args.manifest,
+        json.dumps(
+            _agent_eval_manifest(args, config, model_adapter),
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
     )
     report = run_agent_evaluation(
         config,
@@ -882,6 +934,9 @@ def build_parser() -> argparse.ArgumentParser:
     agent_eval.add_argument("--model-retries", type=int, default=2)
     agent_eval.add_argument("--temperature", type=float, default=0.0)
     agent_eval.add_argument("--output", help="write the complete JSON report")
+    agent_eval.add_argument(
+        "--manifest", help="write reproducibility metadata without API credentials"
+    )
     agent_eval.add_argument("--markdown", help="write the summary as Markdown")
     agent_eval.add_argument(
         "--html", help="write a self-contained evaluation dashboard"
