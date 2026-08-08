@@ -165,11 +165,14 @@ python -m contextopt branch-search \
 The checked-in fixture currently proposes 6 candidates, evaluates 5 unique workspace
 states, detects 1 duplicate, prunes 1 low-progress branch, and selects `iterative-fix`
 after all five visible tests pass. This is an algorithm and accounting conformance
-result. Candidate snapshots and test results are fixed inputs; no model is called and no
-arbitrary patch command is executed by this module. Therefore it does not establish
-model coding accuracy, hidden-test success, or multi-agent value. A production adapter
-must create isolated workspaces, run the same executable oracle for every candidate, and
-include those effects in the shared compute budget.
+result. Candidate snapshots and test results are fixed inputs; no model is called by the
+pure core and no patch command is executed by it. The repository also ships an explicit
+local executable adapter: it materializes each unique snapshot in a disposable
+temporary workspace, runs one trusted argv command without a shell, and records a bounded
+stdout/stderr digest and excerpt. This adapter is still a trusted host process, not an OS
+sandbox. Neither path establishes model coding accuracy, hidden-test success, or
+multi-agent value; a production benchmark must include isolation, rollback, and all
+candidate test effects in the shared compute budget.
 
 ## Level 3: controlled real-model coding tasks — planned
 

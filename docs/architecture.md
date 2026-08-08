@@ -247,8 +247,9 @@ their `TestResult` observations. `BranchSearch` assigns each snapshot a stable w
 fingerprint and combines it with a declared test-environment fingerprint. The search
 evaluates a state once, orders failing candidates by a bounded test-progress score, keeps
 the configured beam, and stops at the first passing depth unless configured to continue.
-It never executes a shell command itself; the existing trusted `WorkspaceTools` boundary
-and a future isolated-workspace adapter own that side effect.
+The optional `ExecutableSearchConfig` adapter materializes a candidate in a disposable
+temporary workspace and runs a trusted argv without a shell; it is deliberately not an
+OS sandbox and does not replace the runtime's recovery/tool lease.
 
 Every decision is recorded as a small hash-chained event stream. The report includes the
 candidate nodes, test fingerprints, duplicate/prune reasons, accounting metrics, and a

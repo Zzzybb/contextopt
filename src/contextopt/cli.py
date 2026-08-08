@@ -45,7 +45,9 @@ from contextopt.search import (
     BranchCase,
     BranchSearch,
     BranchSearchConfig,
+    ExecutableSearchConfig,
     demo_case,
+    evaluate_case,
     render_branch_console,
     render_branch_html,
     render_branch_markdown,
@@ -131,6 +133,19 @@ def _load_branch_case(path: str) -> BranchCase:
 
 def _branch_search(args: argparse.Namespace) -> int:
     case = demo_case() if args.input is None else _load_branch_case(args.input)
+    if args.test_command:
+        if not args.allow_command:
+            raise ValueError("--allow-command is required when executing branch tests")
+        case = evaluate_case(
+            case,
+            ExecutableSearchConfig(
+                command=_split_command(args.test_command),
+                suite=args.test_suite,
+                test_name=args.test_name,
+                timeout_seconds=args.test_timeout,
+                max_report_bytes=args.max_report_bytes,
+            ),
+        )
     report = BranchSearch(
         BranchSearchConfig(
             beam_width=args.beam_width,
@@ -461,6 +476,22 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="continue exploring the current frontier after a passing candidate",
     )
+    branch_search.add_argument(
+        "--test-command",
+        help=(
+            "trusted argv command to execute in one disposable workspace per "
+            "unique candidate"
+        ),
+    )
+    branch_search.add_argument(
+        "--allow-command",
+        action="store_true",
+        help="explicitly allow the trusted host test command to execute",
+    )
+    branch_search.add_argument("--test-suite", default="visible-tests")
+    branch_search.add_argument("--test-name", default="all-visible-tests")
+    branch_search.add_argument("--test-timeout", type=float, default=120.0)
+    branch_search.add_argument("--max-report-bytes", type=int, default=64 * 1024)
     branch_search.add_argument("--output", help="write the complete JSON report")
     branch_search.add_argument("--markdown", help="write a Markdown search report")
     branch_search.add_argument("--html", help="write a self-contained SVG HTML report")

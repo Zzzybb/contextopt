@@ -81,6 +81,8 @@ class TestResult:
     failed_tests: tuple[str, ...] = ()
     error: str | None = None
     duration_ms: float = 0.0
+    output_sha256: str | None = None
+    output_excerpt: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "suite", _non_empty(self.suite, "suite"))
@@ -92,6 +94,18 @@ class TestResult:
             object.__setattr__(self, "error", _non_empty(self.error, "error"))
         if not isfinite(self.duration_ms) or self.duration_ms < 0:
             raise ValueError("duration_ms must be finite and non-negative")
+        if self.output_sha256 is not None:
+            digest = _non_empty(self.output_sha256, "output_sha256")
+            if len(digest) != 64 or any(
+                character not in "0123456789abcdef" for character in digest
+            ):
+                raise ValueError("output_sha256 must be a lowercase SHA-256 hex digest")
+            object.__setattr__(self, "output_sha256", digest)
+        if self.output_excerpt is not None:
+            if not isinstance(self.output_excerpt, str):
+                raise ValueError("output_excerpt must be a string or null")
+            if len(self.output_excerpt) > 4096:
+                raise ValueError("output_excerpt must be at most 4096 characters")
         if not passed and not failed and self.error is None:
             raise ValueError("a test result must contain tests or an error")
         object.__setattr__(self, "passed_tests", passed)
@@ -132,6 +146,7 @@ class TestResult:
                 "passed_tests": list(self.passed_tests),
                 "failed_tests": list(self.failed_tests),
                 "error": self.error,
+                "output_sha256": self.output_sha256,
             }
         )
 
@@ -145,6 +160,8 @@ class TestResult:
             "failed_tests",
             "error",
             "duration_ms",
+            "output_sha256",
+            "output_excerpt",
             "total_tests",
             "passed_ratio",
             "quality_score",
@@ -164,12 +181,20 @@ class TestResult:
         duration = data.get("duration_ms", 0.0)
         if not isinstance(duration, (int, float)) or isinstance(duration, bool):
             raise ValueError("duration_ms must be a number")
+        output_sha256 = data.get("output_sha256")
+        if output_sha256 is not None and not isinstance(output_sha256, str):
+            raise ValueError("output_sha256 must be a string or null")
+        output_excerpt = data.get("output_excerpt")
+        if output_excerpt is not None and not isinstance(output_excerpt, str):
+            raise ValueError("output_excerpt must be a string or null")
         result = cls(
             suite=_non_empty(data.get("suite"), "suite"),
             passed_tests=tuple(passed),
             failed_tests=tuple(failed),
             error=error,
             duration_ms=float(duration),
+            output_sha256=output_sha256,
+            output_excerpt=output_excerpt,
         )
         computed: dict[str, Any] = {
             "total_tests": result.total_tests,
@@ -198,6 +223,8 @@ class TestResult:
             "failed_tests": list(self.failed_tests),
             "error": self.error,
             "duration_ms": self.duration_ms,
+            "output_sha256": self.output_sha256,
+            "output_excerpt": self.output_excerpt,
             "total_tests": self.total_tests,
             "passed_ratio": self.passed_ratio,
             "quality_score": self.quality_score,

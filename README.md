@@ -102,6 +102,9 @@ coding success without a controlled real-model benchmark.
   events, plus strict report round-tripping and tamper detection.
 - A zero-dependency report renderer: console table, Markdown accounting, and a
   self-contained SVG HTML graph suitable for a portfolio demo.
+- An explicit executable adapter that materializes each unique snapshot in a disposable
+  temporary workspace, runs a trusted argv test command without a shell, captures a
+  bounded output digest/excerpt, and feeds the observation into the same search core.
 
 The event hash chain provides verifiable, corruption-evident integrity. It is not a
 signature or malicious-rewrite defense: someone who can replace the entire log can also
@@ -123,8 +126,8 @@ recompute the complete chain because there is no secret or external trust anchor
 - Automatic workspace snapshots, rollback, migration to another workspace, or distributed
   coordination. Resume operates on the same configured workspace and validates what it can.
 - Planner/coder/reviewer role orchestration, parallel agents, PatchTree/MCTS scheduling,
-  or a patch executor. The v0.4 branch layer is a deterministic candidate-search core,
-  not yet a multi-agent scheduler.
+  or model-to-patch generation/rollback orchestration. The v0.4 branch layer is a
+  deterministic candidate-search core, not yet a multi-agent scheduler.
 - A container or virtual-machine security boundary. Workspace path checks and permission
   flags reduce accidental access, but are not an OS sandbox. Registered test commands are
   trusted host processes.
@@ -268,8 +271,17 @@ one beam-pruned branch, and one duplicate without a second test call:
 | Best branch | `iterative-fix` |
 
 For a real model adapter, convert each generated patch plus its isolated visible-test
-observation into the same JSON case shape. The search core does not execute arbitrary
-commands itself; the trusted workspace/tool boundary remains the runtime's job.
+observation into the same JSON case shape. For a local executable experiment, pass a
+serialized case and explicitly opt into the trusted host command:
+
+```bash
+contextopt branch-search candidate-case.json \
+  --test-command "python -m unittest discover -s ." \
+  --allow-command --html branch-search.html
+```
+
+The adapter creates disposable workspaces and never invokes a shell, but it is not an OS
+sandbox; use it only with trusted candidate code and test commands.
 
 ## What the offline demo proves
 
@@ -342,9 +354,9 @@ docs/                     # architecture, runtime, and evaluation contract
 - **v0.4 — Test-guided search (implemented):** isolated candidate snapshots,
   test-progress beam search, fixed-environment deduplication, hash-chained decisions,
   and self-contained search visualization.
-- **v1.0 — Agent DevTools:** connect the search core to isolated real workspaces and
-  model-generated patches, then run statistically defensible real-model evaluations and
-  add multi-agent scheduling.
+- **v1.0 — Agent DevTools:** connect the search core to model-generated patches and the
+  runtime's recovery/rollback protocol, then run statistically defensible real-model
+  evaluations and add multi-agent scheduling.
 
 See [Architecture](docs/architecture.md), [Runtime](docs/runtime.md), and
 [Evaluation protocol](docs/evaluation.md) for the design and claim boundaries.
