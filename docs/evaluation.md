@@ -290,6 +290,14 @@ runs stay in the ledger rather than being dropped. The command itself exits succ
 when the matrix completes; a strategy's visible-test failure is a data point, not a harness
 crash. `--no-hidden-tests` is available only when reproducing the visible-only control flow.
 
+The Markdown, console, and HTML renderers also show a descriptive Wilson 95% interval for
+each visible success rate. When at least two strategies are present, they add paired
+comparisons against `single_pass` (or the first configured strategy): wins, losses, ties,
+visible outcome delta, hidden delta when both runs actually executed the hidden grader, and
+mean test/token deltas. These are derived from the raw fixture/repetition ledger, so they do
+not change the durable report schema and must not be read as a significance test with one
+repetition.
+
 By default this level tests policy wiring, budget accounting, strict model boundaries,
 executable visible/hidden oracle gates, and report consistency with deterministic scripted
 responses. `agent-eval --model ... --base-url ...` can replace the scripted factory with
@@ -303,7 +311,7 @@ may run again.
 In particular, a `best_of_n` or orchestrated success here must not be reported as evidence
 that a real model would discover the same candidate.
 
-## Level 3: controlled real-model coding tasks — planned
+## Level 3: controlled real-model coding tasks — harness ready, runs pending
 
 Use the same model snapshot, system prompt, tools, repository commit, maximum turns, token
 budget, timeout, and visible tests for every policy. Keep hidden tests outside the Agent
@@ -320,9 +328,10 @@ Secondary metrics:
 - constraint retention after future compaction.
 
 At least three repetitions per task are required for exploratory comparisons; stronger
-claims require more runs based on observed variance. Report paired differences and
-confidence intervals, not only aggregate point estimates. Preserve failed trajectories and
-exact model/version metadata.
+claims require more runs based on observed variance. The current renderer is ready to report
+paired differences and Wilson intervals, but no real-provider result is claimed until a
+fixed provider/model/prompt/fixture/budget matrix has been run and its full ledger is
+committed as an artifact. Preserve failed trajectories and exact model/version metadata.
 
 Level 2c verifies that the runtime compiles policy outputs into otherwise identical bounded
 requests. Level 3 remains necessary because compiler conformance and labelled retention do

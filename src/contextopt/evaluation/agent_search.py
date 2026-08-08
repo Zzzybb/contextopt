@@ -24,6 +24,7 @@ import tempfile
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from html import escape
+from math import isfinite, sqrt
 from pathlib import Path, PurePosixPath
 from statistics import fmean
 from typing import Any, Literal, cast
@@ -870,6 +871,7 @@ class AgentEvalSummary:
             "hidden_success_rate",
             "mean_hidden_test_calls",
         }
+
         unknown = set(value) - allowed
         if unknown:
             raise ValueError(
@@ -917,6 +919,176 @@ class AgentEvalSummary:
             "hidden_success_rate": self.hidden_success_rate,
             "mean_hidden_test_calls": self.mean_hidden_test_calls,
         }
+
+
+@dataclass(frozen=True, slots=True)
+class AgentEvalComparison:
+    """Paired outcome and cost deltas against one baseline strategy."""
+
+    baseline_strategy: AgentStrategy
+    strategy: AgentStrategy
+    paired_count: int
+    wins: int
+    losses: int
+    ties: int
+    visible_delta: float
+    hidden_paired_count: int
+    hidden_wins: int
+    hidden_losses: int
+    hidden_ties: int
+    hidden_delta: float | None
+    mean_test_call_delta: float
+    mean_token_delta: float
+
+    def __post_init__(self) -> None:
+        if self.baseline_strategy not in _STRATEGIES:
+            raise ValueError(f"unknown baseline strategy: {self.baseline_strategy!r}")
+        if self.strategy not in _STRATEGIES:
+            raise ValueError(f"unknown comparison strategy: {self.strategy!r}")
+        if self.strategy == self.baseline_strategy:
+            raise ValueError("comparison strategy must differ from baseline")
+        if not isinstance(self.paired_count, int) or self.paired_count <= 0:
+            raise ValueError("paired_count must be positive")
+        if self.wins + self.losses + self.ties != self.paired_count:
+            raise ValueError("visible paired outcome counts are inconsistent")
+        if self.visible_delta != (self.wins - self.losses) / self.paired_count:
+            raise ValueError("visible_delta is inconsistent with paired outcomes")
+        if (
+            not isinstance(self.hidden_paired_count, int)
+            or not 0 <= (self.hidden_paired_count) <= self.paired_count
+        ):
+            raise ValueError("hidden_paired_count must be within paired_count")
+        if (
+            self.hidden_wins + self.hidden_losses + self.hidden_ties
+            != self.hidden_paired_count
+        ):
+            raise ValueError("hidden paired outcome counts are inconsistent")
+        expected_hidden_delta = (
+            None
+            if self.hidden_paired_count == 0
+            else (self.hidden_wins - self.hidden_losses) / self.hidden_paired_count
+        )
+        if self.hidden_delta != expected_hidden_delta:
+            raise ValueError("hidden_delta is inconsistent with paired outcomes")
+        for name in ("mean_test_call_delta", "mean_token_delta"):
+            value = getattr(self, name)
+            if not isinstance(value, (int, float)) or isinstance(value, bool):
+                raise ValueError(f"{name} must be a number")
+            if not isfinite(value):
+                raise ValueError(f"{name} must be finite")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "baseline_strategy": self.baseline_strategy,
+            "strategy": self.strategy,
+            "paired_count": self.paired_count,
+            "wins": self.wins,
+            "losses": self.losses,
+            "ties": self.ties,
+            "visible_delta": self.visible_delta,
+            "hidden_paired_count": self.hidden_paired_count,
+            "hidden_wins": self.hidden_wins,
+            "hidden_losses": self.hidden_losses,
+            "hidden_ties": self.hidden_ties,
+            "hidden_delta": self.hidden_delta,
+            "mean_test_call_delta": self.mean_test_call_delta,
+            "mean_token_delta": self.mean_token_delta,
+        }
+
+
+def wilson_interval(
+    successes: int, total: int, *, z: float = 1.96
+) -> tuple[float, float]:
+    """Return a bounded Wilson interval for a Bernoulli success rate."""
+
+    if not isinstance(successes, int) or not isinstance(total, int):
+        raise ValueError("successes and total must be integers")
+    if total <= 0 or not 0 <= successes <= total:
+        raise ValueError("successes must be within a positive total")
+    if not isfinite(z) or z <= 0:
+        raise ValueError("z must be finite and positive")
+    proportion = successes / total
+    denominator = 1.0 + z * z / total
+    center = (proportion + z * z / (2.0 * total)) / denominator
+    margin = (
+        z
+        * sqrt(proportion * (1.0 - proportion) / total + z * z / (4.0 * total * total))
+        / denominator
+    )
+    return max(0.0, center - margin), min(1.0, center + margin)
+
+
+def build_agent_eval_comparisons(
+    report: AgentEvalReport, *, baseline_strategy: AgentStrategy = "single_pass"
+) -> tuple[AgentEvalComparison, ...]:
+    """Build paired deltas without changing the raw report ledger."""
+
+    if baseline_strategy not in report.config.strategies:
+        raise ValueError("baseline strategy is not configured in this report")
+    by_key = {
+        (run.fixture_id, run.repetition, run.strategy): run for run in report.runs
+    }
+    comparisons: list[AgentEvalComparison] = []
+    for strategy in report.config.strategies:
+        if strategy == baseline_strategy:
+            continue
+        pairs = [
+            (
+                by_key[(fixture_id, repetition, baseline_strategy)],
+                by_key[(fixture_id, repetition, strategy)],
+            )
+            for fixture_id in report.config.fixtures
+            for repetition in range(report.config.repetitions)
+        ]
+        wins = sum(
+            candidate.success and not baseline.success for baseline, candidate in pairs
+        )
+        losses = sum(
+            baseline.success and not candidate.success for baseline, candidate in pairs
+        )
+        hidden_pairs = [
+            (baseline, candidate)
+            for baseline, candidate in pairs
+            if baseline.hidden_success is not None
+            and candidate.hidden_success is not None
+        ]
+        hidden_wins = sum(
+            candidate.hidden_success is True and baseline.hidden_success is False
+            for baseline, candidate in hidden_pairs
+        )
+        hidden_losses = sum(
+            baseline.hidden_success is True and candidate.hidden_success is False
+            for baseline, candidate in hidden_pairs
+        )
+        comparisons.append(
+            AgentEvalComparison(
+                baseline_strategy=baseline_strategy,
+                strategy=strategy,
+                paired_count=len(pairs),
+                wins=wins,
+                losses=losses,
+                ties=len(pairs) - wins - losses,
+                visible_delta=(wins - losses) / len(pairs),
+                hidden_paired_count=len(hidden_pairs),
+                hidden_wins=hidden_wins,
+                hidden_losses=hidden_losses,
+                hidden_ties=len(hidden_pairs) - hidden_wins - hidden_losses,
+                hidden_delta=(
+                    None
+                    if not hidden_pairs
+                    else (hidden_wins - hidden_losses) / len(hidden_pairs)
+                ),
+                mean_test_call_delta=fmean(
+                    candidate.test_calls - baseline.test_calls
+                    for baseline, candidate in pairs
+                ),
+                mean_token_delta=fmean(
+                    candidate.total_tokens - baseline.total_tokens
+                    for baseline, candidate in pairs
+                ),
+            )
+        )
+    return tuple(comparisons)
 
 
 def _summary(strategy: AgentStrategy, runs: Sequence[AgentEvalRun]) -> AgentEvalSummary:
@@ -1617,19 +1789,39 @@ def _format_rate(value: float | None) -> str:
     return "n/a" if value is None else f"{value:.0%}"
 
 
+def _format_interval(successes: int, total: int) -> str:
+    if total <= 0:
+        return "n/a"
+    low, high = wilson_interval(successes, total)
+    return f"{low:.0%}-{high:.0%}"
+
+
+def _format_percent_delta(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:+.0%}"
+
+
+def _comparison_baseline(report: AgentEvalReport) -> AgentStrategy | None:
+    if len(report.config.strategies) < 2:
+        return None
+    if "single_pass" in report.config.strategies:
+        return "single_pass"
+    return report.config.strategies[0]
+
+
 def _hidden_label(value: bool | None) -> str:
     return "n/a" if value is None else ("pass" if value else "fail")
 
 
 def render_agent_evaluation_console(report: AgentEvalReport) -> str:
     lines = [
-        "strategy visible | hidden | mean model calls | mean visible tests | "
-        "mean tokens",
-        "--- | ---: | ---: | ---: | ---:",
+        "strategy visible | visible 95% CI | hidden | mean model calls | "
+        "mean visible tests | mean tokens",
+        "--- | ---: | ---: | ---: | ---: | ---:",
     ]
     lines.extend(
         f"{summary.strategy} {summary.success_count}/{summary.run_count} "
         f"({summary.success_rate:.0%}) | "
+        f"{_format_interval(summary.success_count, summary.run_count)} | "
         f"{summary.hidden_success_count}/{summary.hidden_run_count} "
         f"({_format_rate(summary.hidden_success_rate)}) | "
         f"{summary.mean_model_calls:.1f} | {summary.mean_test_calls:.1f} | "
@@ -1650,13 +1842,15 @@ def render_agent_evaluation_markdown(report: AgentEvalReport) -> str:
         "This report uses executable ACM/math fixtures, independent hidden tests, "
         "and deterministic scripted model responses.",
         "",
-        "| Strategy | Visible | Hidden | Mean model calls | Mean visible tests | "
+        "| Strategy | Visible | Visible 95% CI | Hidden | Mean model calls | "
+        "Mean visible tests | "
         "Mean reuses | Mean candidates | Mean tokens |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     lines.extend(
         f"| `{summary.strategy}` | {summary.success_count}/{summary.run_count} "
         f"({summary.success_rate:.0%}) | "
+        f"{_format_interval(summary.success_count, summary.run_count)} | "
         f"{summary.hidden_success_count}/{summary.hidden_run_count} "
         f"({_format_rate(summary.hidden_success_rate)}) | "
         f"{summary.mean_model_calls:.1f} | "
@@ -1664,6 +1858,31 @@ def render_agent_evaluation_markdown(report: AgentEvalReport) -> str:
         f"{summary.mean_candidate_proposals:.1f} | {summary.mean_total_tokens:.0f} |"
         for summary in report.summaries
     )
+    baseline = _comparison_baseline(report)
+    if baseline is not None:
+        comparisons = build_agent_eval_comparisons(report, baseline_strategy=baseline)
+        lines.extend(
+            (
+                "",
+                "## Paired comparisons",
+                "",
+                "Each delta is candidate minus the baseline on the same fixture and "
+                "repetition; positive visible delta means more paired wins.",
+                "",
+                "| Strategy | Baseline | Paired | Wins | Losses | Ties | Visible Δ | "
+                "Hidden Δ | Mean tests Δ | Mean tokens Δ |",
+                "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+            )
+        )
+        lines.extend(
+            f"| `{comparison.strategy}` | `{comparison.baseline_strategy}` | "
+            f"{comparison.paired_count} | {comparison.wins} | {comparison.losses} | "
+            f"{comparison.ties} | {_format_percent_delta(comparison.visible_delta)} | "
+            f"{_format_percent_delta(comparison.hidden_delta)} | "
+            f"{comparison.mean_test_call_delta:+.1f} | "
+            f"{comparison.mean_token_delta:+.0f} |"
+            for comparison in comparisons
+        )
     lines.extend(("", "## Fixtures", "", "| ID | Category | Task |", "|---|---|---|"))
     lines.extend(
         f"| `{fixture.fixture_id}` | {fixture.category} | {fixture.title} |"
@@ -1690,6 +1909,35 @@ def render_agent_evaluation_markdown(report: AgentEvalReport) -> str:
     return "\n".join(lines)
 
 
+def _render_agent_eval_comparison_html(report: AgentEvalReport) -> str:
+    baseline = _comparison_baseline(report)
+    if baseline is None:
+        return ""
+    comparisons = build_agent_eval_comparisons(report, baseline_strategy=baseline)
+    rows = "".join(
+        "<tr>"
+        f"<td><code>{escape(comparison.strategy)}</code></td>"
+        f"<td><code>{escape(comparison.baseline_strategy)}</code></td>"
+        f"<td>{comparison.paired_count}</td>"
+        f"<td>{comparison.wins}/{comparison.losses}/{comparison.ties}</td>"
+        f"<td>{_format_percent_delta(comparison.visible_delta)}</td>"
+        f"<td>{_format_percent_delta(comparison.hidden_delta)}</td>"
+        f"<td>{comparison.mean_test_call_delta:+.1f}</td>"
+        f"<td>{comparison.mean_token_delta:+.0f}</td>"
+        "</tr>"
+        for comparison in comparisons
+    )
+    return (
+        "<h2>Paired comparisons</h2>"
+        "<p class='muted'>Deltas are candidate minus baseline on the same "
+        "fixture and repetition. Win/loss/tie is visible outcome count.</p>"
+        "<table><thead><tr><th>strategy</th><th>baseline</th><th>paired</th>"
+        "<th>wins/losses/ties</th><th>visible Δ</th><th>hidden Δ</th>"
+        "<th>mean tests Δ</th><th>mean tokens Δ</th>"
+        f"</tr></thead><tbody>{rows}</tbody></table>"
+    )
+
+
 def render_agent_evaluation_html(report: AgentEvalReport) -> str:
     """Render a dependency-free portfolio dashboard for repeated evaluations."""
 
@@ -1707,6 +1955,7 @@ def render_agent_evaluation_html(report: AgentEvalReport) -> str:
             f"<td><code>{escape(summary.strategy)}</code></td>"
             f"<td>{summary.success_count}/{summary.run_count} "
             f"({summary.success_rate:.0%})</td>"
+            f"<td>{_format_interval(summary.success_count, summary.run_count)}</td>"
             f"<td>{summary.hidden_success_count}/{summary.hidden_run_count} "
             f"({_format_rate(summary.hidden_success_rate)})</td>"
             f"<td>{summary.mean_model_calls:.1f}</td>"
@@ -1751,9 +2000,11 @@ def render_agent_evaluation_html(report: AgentEvalReport) -> str:
         "visible success</span>"
         "<span><i class='swatch hidden-swatch'></i>hidden success</span></div>"
         f"<section class='chart'>{''.join(chart_rows)}</section>"
-        "<table><thead><tr><th>strategy</th><th>visible</th><th>hidden</th>"
+        "<table><thead><tr><th>strategy</th><th>visible</th><th>visible 95% CI</th>"
+        "<th>hidden</th>"
         "<th>mean model calls</th><th>mean tests</th><th>mean tokens</th>"
         f"</tr></thead><tbody>{''.join(summary_rows)}</tbody></table>"
+        f"{_render_agent_eval_comparison_html(report)}"
         "<details><summary>durable evaluation JSON</summary><code>"
         f"{payload}</code></details></body></html>\n"
     )
@@ -1761,6 +2012,7 @@ def render_agent_evaluation_html(report: AgentEvalReport) -> str:
 
 __all__ = [
     "AgentEvalCheckpoint",
+    "AgentEvalComparison",
     "AgentEvalConfig",
     "AgentEvalFixture",
     "AgentEvalReport",
@@ -1768,6 +2020,7 @@ __all__ = [
     "AgentEvalSummary",
     "AgentModelFactory",
     "AgentStrategy",
+    "build_agent_eval_comparisons",
     "build_algorithm_fixtures",
     "build_openai_model_factory",
     "read_agent_evaluation_checkpoint",
@@ -1775,5 +2028,6 @@ __all__ = [
     "render_agent_evaluation_html",
     "render_agent_evaluation_markdown",
     "run_agent_evaluation",
+    "wilson_interval",
     "write_agent_evaluation_checkpoint",
 ]

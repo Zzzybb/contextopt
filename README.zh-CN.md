@@ -92,7 +92,8 @@ python -m contextopt agent-eval \
 比较 `single_pass`、`best_of_n` 与 `orchestrated`。每个 fixture 都有完整根快照、
 故意失败的候选、正确候选、可见测试和不进入模型快照的独立隐藏 grader；报告会分开
 记录 visible success、hidden success、模型/角色调用、候选数、实际测试进程、缓存复用
-和 token 用量。
+和 token 用量；同时给出描述性 Wilson 95% 区间，以及按相同 fixture/repetition 配对的
+胜/负/平、可见结果差值和测试/token 成本差值，不改变原始 ledger。
 
 如果要接入 OpenAI-compatible 模型，可使用：
 
@@ -144,6 +145,7 @@ python -m contextopt agent-eval \
 - v0.8 评测面板补充：[docs/pr/0001-v0.8-evaluation-dashboard-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-dashboard-addendum.zh-CN.md)
 - v0.8 MCTS 调度补充：[docs/pr/0001-v0.8-mcts-addendum.zh-CN.md](docs/pr/0001-v0.8-mcts-addendum.zh-CN.md)
 - v0.8 评测 checkpoint 补充：[docs/pr/0001-v0.8-evaluation-checkpoint-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-checkpoint-addendum.zh-CN.md)
+- v0.8 评测统计补充：[docs/pr/0001-v0.8-evaluation-statistics-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-statistics-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、
 指标名称是权威定义。

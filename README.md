@@ -174,6 +174,8 @@ recompute the complete chain because there is no secret or external trust anchor
   hidden-test calls after visible acceptance.
 - JSON and Markdown reports expose success rate, role/model calls, actual test processes,
   cache reuses, candidate proposals, and reported token usage without hiding failed runs.
+  They also include descriptive Wilson 95% intervals and same-fixture/repetition paired
+  deltas (wins/losses/ties plus test/token cost deltas) without changing the raw ledger.
 - The evaluator defaults to deterministic scripted responses, but accepts an OpenAI-compatible
   model factory for exploratory runs; either mode keeps the independent hidden grader outside
   the candidate snapshot.
@@ -557,6 +559,8 @@ policy is documented in [the MCTS addendum](docs/pr/0001-v0.8-mcts-addendum.md) 
 version](docs/pr/0001-v0.8-mcts-addendum.zh-CN.md). The durable evaluation matrix is documented
 in [the checkpoint addendum](docs/pr/0001-v0.8-evaluation-checkpoint-addendum.md) and [Chinese
 version](docs/pr/0001-v0.8-evaluation-checkpoint-addendum.zh-CN.md).
+The statistical rendering is documented in [the statistical report addendum](docs/pr/0001-v0.8-evaluation-statistics-addendum.md)
+and [Chinese version](docs/pr/0001-v0.8-evaluation-statistics-addendum.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers.
 

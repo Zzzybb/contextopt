@@ -12,11 +12,14 @@ from contextopt.evaluation import (
     AgentEvalCheckpoint,
     AgentEvalConfig,
     AgentEvalReport,
+    build_agent_eval_comparisons,
     build_algorithm_fixtures,
     build_openai_model_factory,
     read_agent_evaluation_checkpoint,
     render_agent_evaluation_html,
+    render_agent_evaluation_markdown,
     run_agent_evaluation,
+    wilson_interval,
     write_agent_evaluation_checkpoint,
 )
 
@@ -62,6 +65,23 @@ class AgentEvaluationTests(unittest.TestCase):
         self.assertIn(
             "does not measure general model capability", report.claim_boundary
         )
+
+    def test_statistical_summary_is_paired_and_bounded(self) -> None:
+        comparisons = build_agent_eval_comparisons(self.report)
+        by_strategy = {comparison.strategy: comparison for comparison in comparisons}
+        self.assertEqual(by_strategy["best_of_n"].wins, 1)
+        self.assertEqual(by_strategy["best_of_n"].losses, 0)
+        self.assertEqual(by_strategy["best_of_n"].ties, 0)
+        self.assertEqual(by_strategy["best_of_n"].visible_delta, 1.0)
+        self.assertIsNone(by_strategy["best_of_n"].hidden_delta)
+        low, high = wilson_interval(1, 1)
+        self.assertGreaterEqual(low, 0.0)
+        self.assertLessEqual(high, 1.0)
+        self.assertLess(low, high)
+        markdown = render_agent_evaluation_markdown(self.report)
+        self.assertIn("Visible 95% CI", markdown)
+        self.assertIn("Paired comparisons", markdown)
+        self.assertIn("Mean tokens Δ", markdown)
 
     def test_hidden_tests_can_be_disabled_without_leaking_the_grader(self) -> None:
         report = run_agent_evaluation(
@@ -145,6 +165,8 @@ class AgentEvaluationTests(unittest.TestCase):
         self.assertIn("<table>", html)
         self.assertIn("orchestrated", html)
         self.assertIn("durable evaluation JSON", html)
+        self.assertIn("visible 95% CI", html)
+        self.assertIn("Paired comparisons", html)
 
     def test_cli_writes_json_markdown_and_html_reports(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

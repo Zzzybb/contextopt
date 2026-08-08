@@ -2,6 +2,7 @@
 
 from contextopt.evaluation.agent_search import (
     AgentEvalCheckpoint,
+    AgentEvalComparison,
     AgentEvalConfig,
     AgentEvalFixture,
     AgentEvalReport,
@@ -9,6 +10,7 @@ from contextopt.evaluation.agent_search import (
     AgentEvalSummary,
     AgentModelFactory,
     AgentStrategy,
+    build_agent_eval_comparisons,
     build_algorithm_fixtures,
     build_openai_model_factory,
     read_agent_evaluation_checkpoint,
@@ -16,6 +18,7 @@ from contextopt.evaluation.agent_search import (
     render_agent_evaluation_html,
     render_agent_evaluation_markdown,
     run_agent_evaluation,
+    wilson_interval,
     write_agent_evaluation_checkpoint,
 )
 from contextopt.evaluation.context_routing import (
@@ -32,6 +35,7 @@ from contextopt.evaluation.context_routing import (
 
 __all__ = [
     "AgentEvalCheckpoint",
+    "AgentEvalComparison",
     "AgentEvalConfig",
     "AgentEvalFixture",
     "AgentEvalReport",
@@ -43,6 +47,7 @@ __all__ = [
     "EvidenceProbe",
     "RoutingRunMetrics",
     "RoutingTraceCase",
+    "build_agent_eval_comparisons",
     "build_algorithm_fixtures",
     "build_long_coding_traces",
     "build_openai_model_factory",
@@ -55,5 +60,6 @@ __all__ = [
     "run_agent_evaluation",
     "run_context_routing_evaluation",
     "tool_protocol_issues",
+    "wilson_interval",
     "write_agent_evaluation_checkpoint",
 ]
