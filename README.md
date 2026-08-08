@@ -592,6 +592,12 @@ The reproducibility sidecar is documented in [the evaluation manifest addendum](
 and [Chinese version](docs/pr/0001-v0.8-evaluation-manifest-addendum.zh-CN.md).
 The speculative solver fan-out is documented in [the speculative solver addendum](docs/pr/0001-v0.8-speculative-solver-addendum.md)
 and [Chinese version](docs/pr/0001-v0.8-speculative-solver-addendum.zh-CN.md).
+An offline three-repetition control artifact is checked in under
+[`experiments/v0.8-scripted-3-reps`](experiments/v0.8-scripted-3-reps/README.md); it is a
+protocol/accounting baseline, not evidence about real-model quality.
+The corresponding [PR change note](docs/pr/0001-v0.8-scripted-control-artifact.md) and
+[Chinese version](docs/pr/0001-v0.8-scripted-control-artifact.zh-CN.md) record the exact
+regeneration command and claim boundary.
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers.
 

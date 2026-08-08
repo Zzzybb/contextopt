@@ -187,5 +187,11 @@ python -m contextopt agent-eval \
 - v0.8 评测 manifest 补充：[docs/pr/0001-v0.8-evaluation-manifest-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-manifest-addendum.zh-CN.md)
 - v0.8 speculative solver 并发补充：[docs/pr/0001-v0.8-speculative-solver-addendum.zh-CN.md](docs/pr/0001-v0.8-speculative-solver-addendum.zh-CN.md)
 
+离线三次重复的 ACM/数学控制实验产物在
+[`experiments/v0.8-scripted-3-reps`](experiments/v0.8-scripted-3-reps/README.md)，用于审查
+协议、预算、隐藏测试和配对统计；它不是真实模型能力证据。
+本次对应的 [PR 变更说明](docs/pr/0001-v0.8-scripted-control-artifact.zh-CN.md) 和
+[英文版](docs/pr/0001-v0.8-scripted-control-artifact.md) 记录了复现命令与 claim boundary。
+
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、
 指标名称是权威定义。

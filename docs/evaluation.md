@@ -419,3 +419,10 @@ objective and selection metrics are deterministic; timing is local diagnostic da
 v0.2a Runtime Conformance, v0.2b Recovery Conformance, and v0.3 Context Routing
 Conformance fixtures are deterministic except for timestamps, active-session elapsed
 durations, temporary paths, and subprocess timing where those runtime fields are present.
+
+The repository also includes a committed three-repetition scripted control artifact at
+[`experiments/v0.8-scripted-3-reps`](../experiments/v0.8-scripted-3-reps/README.md). It covers
+both bundled fixtures, all three control strategies, visible and independent hidden graders,
+paired deltas, Wilson intervals, a checkpoint, and a reproducibility manifest. Its claim boundary
+is intentionally limited to protocol and accounting behavior; replace the scripted factory with
+an explicitly versioned provider and rerun the same matrix before making model-quality claims.
