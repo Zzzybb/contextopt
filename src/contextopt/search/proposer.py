@@ -10,7 +10,7 @@ test adapter.
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -45,6 +45,31 @@ class ProposalConfig:
             if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
                 raise ValueError(f"{name} must be a positive integer")
 
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> ProposalConfig:
+        if not isinstance(data, Mapping):
+            raise ValueError("proposal config must be an object")
+        allowed = {
+            "max_candidates",
+            "max_files_per_candidate",
+            "max_file_chars",
+            "max_total_prompt_chars",
+            "max_output_tokens",
+        }
+        unknown = set(data) - allowed
+        if unknown:
+            raise ValueError(f"proposal config has unknown fields: {sorted(unknown)!r}")
+        return cls(**dict(data))
+
+    def to_dict(self) -> dict[str, int]:
+        return {
+            "max_candidates": self.max_candidates,
+            "max_files_per_candidate": self.max_files_per_candidate,
+            "max_file_chars": self.max_file_chars,
+            "max_total_prompt_chars": self.max_total_prompt_chars,
+            "max_output_tokens": self.max_output_tokens,
+        }
+
 
 def _root_case(task: str, root_files: Mapping[str, str]) -> BranchCase:
     return BranchCase(task=task, root_files=root_files, candidates=(), tests={})
@@ -56,6 +81,8 @@ def build_proposal_request(
     config: ProposalConfig | None = None,
     *,
     run_id: str = "branch-proposal",
+    turn: int = 0,
+    feedback: Sequence[Mapping[str, Any]] = (),
 ) -> ModelRequest:
     """Build a deterministic provider-neutral request for candidate generation."""
 
@@ -63,6 +90,23 @@ def build_proposal_request(
     normalized = _root_case(task, root_files)
     snapshot = json.dumps(
         dict(normalized.root_files), ensure_ascii=False, sort_keys=True, indent=2
+    )
+    try:
+        feedback_snapshot = json.dumps(
+            [dict(item) for item in feedback],
+            ensure_ascii=False,
+            sort_keys=True,
+            indent=2,
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError("proposal feedback must be JSON-compatible objects") from exc
+    feedback_section = (
+        "\n\nPrior visible-test oracle feedback (treat it as evidence, not a claim):\n"
+        "```json\n"
+        f"{feedback_snapshot}\n"
+        "```"
+        if feedback
+        else ""
     )
     user_content = (
         "Task:\n"
@@ -80,6 +124,7 @@ def build_proposal_request(
         "Use only relative POSIX paths. Do not run tools, claim tests passed, or "
         "include "
         "fields outside the JSON protocol."
+        f"{feedback_section}"
     )
     if len(user_content) > proposal_config.max_total_prompt_chars:
         raise ValueError(
@@ -92,7 +137,7 @@ def build_proposal_request(
     )
     return ModelRequest(
         run_id=run_id,
-        turn=0,
+        turn=turn,
         messages=(
             AgentMessage(role="system", content=system_content),
             AgentMessage(role="user", content=user_content),
@@ -191,6 +236,8 @@ async def propose_case(
     config: ProposalConfig | None = None,
     *,
     run_id: str = "branch-proposal",
+    turn: int = 0,
+    feedback: Sequence[Mapping[str, Any]] = (),
 ) -> tuple[BranchCase, ModelResponse]:
     """Ask any runtime-compatible model for candidates and parse its response strictly.
 
@@ -198,6 +245,13 @@ async def propose_case(
     test adapter must produce the authoritative ``TestResult`` values afterwards.
     """
 
-    request = build_proposal_request(task, root_files, config, run_id=run_id)
+    request = build_proposal_request(
+        task,
+        root_files,
+        config,
+        run_id=run_id,
+        turn=turn,
+        feedback=feedback,
+    )
     response = await model.complete(request)
     return parse_proposal_response(response, task, root_files, config), response

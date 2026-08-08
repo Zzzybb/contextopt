@@ -19,15 +19,16 @@ Task ──> AgentRunner ──> ContextCompiler ──> ModelClient ──> too
 Every boundary ──> durable schema-2 JSONL event log + verified state projection
 ```
 
-> **Status — v0.5 model-to-candidate boundary:** the repository now contains a real single-agent
-> read/edit/test loop, recoverable event-sourced execution, a deterministic live context
-> compiler, an auditable beam search over generated coding candidates, and a strict
-> model-to-candidate proposal boundary. A model can now return bounded complete workspace
-> snapshots that are parsed, rejected on protocol violations, and handed to the same
-> visible-test oracle. The branch layer deduplicates states, spends test calls once per
-> state, and emits a self-contained SVG/JSON/Markdown report. It does **not** yet
-> implement multi-agent scheduling, an OS sandbox, learned semantic memory, or a
-> statistically powered real-model coding benchmark.
+> **Status — v0.6 durable proposal/test/search session:** the repository now contains a real
+> single-agent read/edit/test loop, recoverable event-sourced execution, a deterministic live
+> context compiler, an auditable beam search over generated coding candidates, and a strict
+> model-to-candidate proposal boundary. A model can return bounded complete workspace
+> snapshots; the session feeds visible-test failures into later rounds, deduplicates test
+> work across rounds, persists pending phases and budgets atomically, and can be resumed
+> without pretending that an interrupted provider call was exactly-once. An accepted snapshot
+> can be explicitly applied to a real workspace and rolled back with a stale-baseline guard.
+> It does **not** yet implement multi-agent scheduling, an OS sandbox, learned semantic memory,
+> or a statistically powered real-model coding benchmark.
 
 ## Why this project exists
 
@@ -120,6 +121,20 @@ coding success without a controlled real-model benchmark.
 - Offline scripted-model coverage plus a CLI path that can pipe a generated case into
   `branch-search` for deterministic deduplication and disposable-workspace execution.
 
+### Durable iterative search session — v0.6
+
+- A durable `search-session` loop that composes model proposal, disposable visible-test
+  execution, and pure branch ranking across multiple rounds.
+- Bounded feedback: failed tests, output excerpts, and candidate scores are passed to the
+  next proposal as evidence, while each round still receives a complete workspace snapshot.
+- Global candidate/test budgets, cross-round workspace deduplication, atomic checkpoints,
+  hash-chained session events, model usage accounting, and explicit pending-model retry.
+- Strict checkpoint round-tripping and tamper detection, plus console/Markdown session
+  reports that expose actual test calls separately from cache reuses.
+- An explicit `apply-best` / `rollback-best` boundary with UTF-8 snapshot fingerprints,
+  symlink/path checks, atomic file replacement, stale-workspace conflict rejection, and
+  auditable apply receipts. Applying is never implicit after a test passes.
+
 The event hash chain provides verifiable, corruption-evident integrity. It is not a
 signature or malicious-rewrite defense: someone who can replace the entire log can also
 recompute the complete chain because there is no secret or external trust anchor.
@@ -137,19 +152,19 @@ recompute the complete chain because there is no secret or external trust anchor
 
 ## What is deliberately not implemented yet
 
-- Automatic workspace snapshots, rollback, migration to another workspace, or distributed
-  coordination. Resume operates on the same configured workspace and validates what it can.
+- Automatic workspace snapshots, migration to another workspace, or distributed
+  coordination. `apply-best` and `rollback-best` are explicit local operator actions over
+  the files named in the session baseline; they are not transparent workspace versioning.
 - Planner/coder/reviewer role orchestration, parallel agents, PatchTree/MCTS scheduling,
-  or automatic multi-turn proposal/search/rollback orchestration. The v0.5 proposal
-  boundary is intentionally one-shot and provider-neutral, not yet a multi-agent
-  scheduler.
+  or adaptive multi-agent scheduling. The v0.6 session is a bounded iterative loop around
+  one model client, not yet a multi-agent scheduler.
 - A container or virtual-machine security boundary. Workspace path checks and permission
   flags reduce accidental access, but are not an OS sandbox. Registered test commands are
   trusted host processes.
 - A general shell tool, autonomous package installation, or unrestricted network access.
 - A claim that the scripted demo measures model reasoning or real-world issue resolution.
 - Learned or cross-run semantic memory, a trace UI, or a statistically powered real-model
-  coding benchmark. The branch demo and proposal conformance tests do not pretend
+  coding benchmark. The branch/session demos and proposal conformance tests do not pretend
   synthetic observations or protocol acceptance are model coding accuracy.
 - Exactly-once external side effects. Recovery is tool-specific and conservative;
   explicitly retrying a command can execute it again.
@@ -318,6 +333,47 @@ The proposer is deliberately not a verifier: its output records every candidate 
 useful for comparing models and prompting strategies without letting model claims become
 test evidence.
 
+For the end-to-end iterative loop, use `search-session`. It checkpoints before and after
+each model boundary, carries bounded visible-test feedback into the next round, and stops
+when a candidate passes or a shared budget is exhausted:
+
+```bash
+contextopt search-session \
+  --task "Implement solve so it returns ascending values" \
+  --root-files examples/branch_demo/root-files.json \
+  --checkpoint session.json \
+  --script examples/branch_demo/proposal.json \
+  --test-command "python -m unittest discover -s ." \
+  --allow-command \
+  --output session-report.json \
+  --markdown session-report.md
+```
+
+If the process stops while a provider request is pending, the checkpoint is intentionally
+left in `proposing` rather than claiming exactly-once delivery. Resume with a fresh model
+client and an explicit retry decision:
+
+```bash
+contextopt search-session --resume --retry-pending \
+  --checkpoint session.json --script examples/branch_demo/proposal.json
+```
+
+An accepted snapshot is still not written to a real checkout automatically. Apply it only
+after inspecting the report and explicitly authorizing writes. The command compares the
+named baseline files before changing anything and emits a receipt; rollback refuses if the
+applied files were edited out of band:
+
+```bash
+contextopt apply-best --checkpoint session.json \
+  --workspace ./checkout --allow-write --receipt apply.json
+contextopt rollback-best --checkpoint session.json \
+  --workspace ./checkout --allow-write --receipt apply.json
+```
+
+The apply adapter is a local transaction boundary, not an OS sandbox. Candidate tests still
+run as trusted host processes, and a machine failure during filesystem replacement requires
+normal operator recovery.
+
 ## What the offline demo proves
 
 The Runtime Conformance Eval uses a scripted model that already contains the intended
@@ -362,12 +418,12 @@ surrogate-objective misalignment, not evidence of downstream Agent improvement.
 src/contextopt/
 ├── runtime/              # runner, live context/memory, recovery, tools, events
 ├── evaluation/           # model-free context routing/compiler conformance
-├── search/                # proposal boundary, branch search, dedup, and renderers
+├── search/                # proposal, iterative sessions, branch search, apply/rollback
 ├── models.py             # context candidates, constraints, receipts
 ├── policies/             # interchangeable selection algorithms
 ├── synthetic.py          # deterministic context microbench generation
 ├── benchmark.py          # paired optimizer metrics and reports
-└── cli.py                # run/resume/status/trace, propose-case, branch-search, pack
+└── cli.py                # runtime, search-session, apply/rollback, reports, pack
 
 tests/                    # standard-library unit and integration tests
 examples/runtime_demo/    # offline scripted coding-loop demonstration
@@ -392,9 +448,13 @@ docs/                     # architecture, runtime, and evaluation contract
 - **v0.5 — Proposal boundary (implemented):** strict model-to-candidate JSON, bounded
   complete snapshots, offline conformance tests, and a `propose-case` to `branch-search`
   handoff.
-- **v1.0 — Agent DevTools:** connect proposal/search to the runtime's recovery/rollback
-  protocol, then run statistically defensible real-model evaluations and add multi-agent
-  scheduling.
+- **v0.6 — Durable search session (implemented):** iterative proposal/test feedback,
+  cross-round deduplication, atomic resumable checkpoints, shared budgets, and explicit
+  apply/rollback receipts.
+- **v0.7 — Agent DevTools:** connect session events to the runtime's richer recovery and
+  context receipts, then add planner/coder/reviewer scheduling under one shared budget.
+- **v1.0 — Evaluation and multi-agent:** run statistically defensible real-model coding
+  evaluations with independent hidden tests and compare measurable multi-agent schedulers.
 
 See [Architecture](docs/architecture.md), [Runtime](docs/runtime.md), and
 [Evaluation protocol](docs/evaluation.md) for the design and claim boundaries.

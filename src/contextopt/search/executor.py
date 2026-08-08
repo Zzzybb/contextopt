@@ -16,11 +16,12 @@ import hashlib
 import os
 import subprocess
 import tempfile
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from math import isfinite
 from pathlib import Path, PurePosixPath
 from time import perf_counter
+from typing import Any
 
 from contextopt.search.branching import (
     BranchCase,
@@ -86,6 +87,42 @@ class ExecutableSearchConfig:
             or self.max_report_bytes <= 0
         ):
             raise ValueError("max_report_bytes must be a positive integer")
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> ExecutableSearchConfig:
+        if not isinstance(data, Mapping):
+            raise ValueError("execution config must be an object")
+        allowed = {
+            "command",
+            "suite",
+            "test_name",
+            "timeout_seconds",
+            "max_report_bytes",
+        }
+        unknown = set(data) - allowed
+        if unknown:
+            raise ValueError(
+                f"execution config has unknown fields: {sorted(unknown)!r}"
+            )
+        command = data.get("command")
+        if not isinstance(command, list):
+            raise ValueError("execution config command must be an array")
+        return cls(
+            command=tuple(command),
+            suite=str(data.get("suite", "visible-tests")),
+            test_name=str(data.get("test_name", "all-visible-tests")),
+            timeout_seconds=float(data.get("timeout_seconds", 120.0)),
+            max_report_bytes=int(data.get("max_report_bytes", 64 * 1024)),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "command": list(self.command),
+            "suite": self.suite,
+            "test_name": self.test_name,
+            "timeout_seconds": self.timeout_seconds,
+            "max_report_bytes": self.max_report_bytes,
+        }
 
 
 def _materialize(files: Iterable[tuple[str, str]], root: Path) -> None:

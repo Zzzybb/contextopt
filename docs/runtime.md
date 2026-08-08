@@ -525,16 +525,24 @@ versions, repetitions, and independent hidden tests.
 For v0.3 runs, `model.requested.data.context` is the validated per-turn compiler receipt;
 legacy v0.2 logs without a context configuration continue to replay as full-history runs.
 
-## Next runtime milestones
+## Current outer-loop boundary and remaining milestones
+
+The v0.6 `contextopt.search` package now provides the outer proposal/test/search session
+described in [Architecture](architecture.md): candidates are evaluated in disposable
+workspaces, feedback and budgets survive atomic session checkpoints, and an accepted snapshot
+can be explicitly applied or rolled back with a stale-baseline guard. That outer loop is
+deliberately separate from the v0.3 `AgentRunner` event log; it does not silently mutate the
+runtime workspace or claim that provider calls are exactly once.
+
+Remaining milestones are:
 
 1. Add durable model-call idempotency hooks where providers expose them.
-2. Snapshot or reference workspace versions rather than requiring one unchanged path.
-3. Fork isolated workspaces, deduplicate equivalent states, and allocate a fixed budget
-   across test-guided search branches.
-4. Add multi-agent planner/coder/reviewer scheduling only after branch isolation and budget
-   accounting are measurable.
-5. Add trace/search visualization and a controlled real-model coding benchmark with fixed
+2. Connect session events to runtime context receipts and richer recovery metadata.
+3. Add planner/coder/reviewer scheduling only after each role performs a measurable state
+   transformation under one shared budget.
+4. Add container/VM isolation and a controlled real-model coding benchmark with fixed
    snapshots, versions, repetitions, and independent hidden tests.
 
-The current runtime still has no multi-agent orchestration, branch search, container/VM
-sandbox, or published real-model benchmark.
+The repository still has no multi-agent orchestration, OS sandbox, or published real-model
+benchmark. The explicit apply/rollback adapter is a local filesystem safety boundary, not a
+security boundary.

@@ -198,6 +198,35 @@ Reproduce the offline boundary tests with:
 python -m unittest tests.test_proposer -v
 ```
 
+## Level 2f: durable proposal/test/apply session conformance — implemented
+
+The v0.6 session tests cover the stateful seam that a long-running coding Agent needs above
+the one-shot proposal protocol. A scripted model first proposes a failing snapshot and then a
+passing snapshot. The harness verifies that:
+
+- the next proposal contains bounded visible-test feedback from the previous round;
+- model-call, candidate, round, and actual test-process budgets are shared across rounds;
+- identical workspace fingerprints reuse a prior `TestResult` instead of launching another
+  process, with cache reuses counted separately;
+- checkpoints are atomically round-trippable, pending `proposing` state resumes only after an
+  explicit retry, and forged event or derived-metric data is rejected;
+- an accepted snapshot can be applied only with explicit write permission, refuses a stale
+  baseline or denied path, and produces a tamper-evident apply receipt; rollback refuses when
+  the applied workspace changed out of band.
+
+Run the deterministic session and apply/rollback conformance tests with:
+
+```text
+python -m unittest tests.test_search_session tests.test_apply -v
+```
+
+The meaningful accounting fields are `model_calls`, `candidate_proposals`, `test_calls`,
+`test_reuses`, `rounds`, `total_tokens`, and the per-round branch metrics. These are execution
+and safety measurements, not model intelligence: the scripted responses are fixed, visible
+tests are the only oracle used for ranking, and no hidden-test or real-model success claim is
+made. A passing candidate demonstrates the session control flow and apply boundary, not that a
+provider would discover that candidate on an arbitrary issue.
+
 ## Level 3: controlled real-model coding tasks — planned
 
 Use the same model snapshot, system prompt, tools, repository commit, maximum turns, token

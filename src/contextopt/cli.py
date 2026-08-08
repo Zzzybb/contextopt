@@ -47,12 +47,22 @@ from contextopt.search import (
     BranchSearchConfig,
     ExecutableSearchConfig,
     ProposalConfig,
+    SearchSessionConfig,
+    WorkspaceApplyError,
+    apply_best_snapshot,
     demo_case,
     evaluate_case,
     propose_case,
+    read_apply_receipt,
+    read_session_checkpoint,
     render_branch_console,
     render_branch_html,
     render_branch_markdown,
+    render_session_console,
+    render_session_markdown,
+    rollback_best_snapshot,
+    run_search_session,
+    write_apply_receipt,
 )
 
 
@@ -199,6 +209,126 @@ def _propose_case(args: argparse.Namespace) -> int:
     payload = json.dumps(case.to_dict(), indent=2, sort_keys=True) + "\n"
     print(payload, end="")
     _write(args.output, payload)
+    return 0
+
+
+def _search_session(args: argparse.Namespace) -> int:
+    if args.resume:
+        root_files = None
+    else:
+        if not args.root_files:
+            raise ValueError("--root-files is required for a new search session")
+        root_files = _load_root_files(args.root_files)
+    execution_config = None
+    if args.test_command:
+        if not args.allow_command:
+            raise ValueError("--allow-command is required when executing session tests")
+        execution_config = ExecutableSearchConfig(
+            command=_split_command(args.test_command),
+            suite=args.test_suite,
+            test_name=args.test_name,
+            timeout_seconds=args.test_timeout,
+            max_report_bytes=args.max_report_bytes,
+        )
+    elif not args.resume:
+        raise ValueError("--test-command is required for a new search session")
+    model = _build_model(args)
+    session_config = None
+    proposal_config = None
+    search_config = None
+    if not args.resume:
+        session_config = SearchSessionConfig(
+            max_rounds=args.max_rounds,
+            max_model_calls=args.max_model_calls,
+            max_candidates=args.session_max_candidates,
+            max_test_calls=args.session_max_test_calls,
+        )
+        proposal_config = ProposalConfig(
+            max_candidates=args.proposal_max_candidates,
+            max_files_per_candidate=args.max_files_per_candidate,
+            max_file_chars=args.max_file_chars,
+            max_total_prompt_chars=args.max_total_prompt_chars,
+            max_output_tokens=args.proposal_output_tokens,
+        )
+        search_config = BranchSearchConfig(
+            beam_width=args.beam_width,
+            max_depth=args.max_depth,
+            max_candidates=args.branch_max_candidates,
+            test_environment_fingerprint=args.test_environment,
+            stop_on_pass=not args.no_stop_on_pass,
+        )
+    report = asyncio.run(
+        run_search_session(
+            model,
+            task=args.task,
+            root_files=root_files,
+            execution_config=execution_config,
+            config=session_config,
+            proposal_config=proposal_config,
+            search_config=search_config,
+            run_id=args.run_id or uuid.uuid4().hex,
+            checkpoint_path=args.checkpoint,
+            resume=args.resume,
+            retry_pending=args.retry_pending,
+        )
+    )
+    print(render_session_console(report), end="")
+    _write(args.output, json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n")
+    _write(args.markdown, render_session_markdown(report))
+    if report.status == "accepted":
+        return 0
+    if report.status == "paused":
+        return 4
+    return 3 if report.status == "failed" else 2
+
+
+def _apply_best(args: argparse.Namespace) -> int:
+    if not args.allow_write:
+        raise ValueError("--allow-write is required when applying a snapshot")
+    checkpoint = Path(args.checkpoint)
+    report = read_session_checkpoint(checkpoint)
+    receipt = apply_best_snapshot(
+        report,
+        args.workspace,
+        allow_write=True,
+        allow_delete=args.allow_delete,
+    )
+    receipt_path = (
+        Path(args.receipt)
+        if args.receipt
+        else checkpoint.with_name(checkpoint.name + ".apply.json")
+    )
+    write_apply_receipt(receipt, receipt_path)
+    print(json.dumps(receipt.to_dict(), indent=2, sort_keys=True))
+    print(f"receipt={receipt_path}")
+    return 0
+
+
+def _rollback_best(args: argparse.Namespace) -> int:
+    if not args.allow_write:
+        raise ValueError("--allow-write is required when rolling back a snapshot")
+    checkpoint = Path(args.checkpoint)
+    report = read_session_checkpoint(checkpoint)
+    receipt_path = (
+        Path(args.receipt)
+        if args.receipt
+        else checkpoint.with_name(checkpoint.name + ".apply.json")
+    )
+    receipt = read_apply_receipt(receipt_path)
+    rollback_receipt = rollback_best_snapshot(
+        report,
+        receipt,
+        args.workspace,
+        allow_write=True,
+    )
+    rollback_path = (
+        Path(args.rollback_receipt)
+        if args.rollback_receipt
+        else receipt_path.with_name(receipt_path.name + ".rollback.json")
+    )
+    write_apply_receipt(rollback_receipt, rollback_path)
+    print(json.dumps(rollback_receipt.to_dict(), indent=2, sort_keys=True))
+    print(f"receipt={rollback_path}")
     return 0
 
 
@@ -513,6 +643,95 @@ def build_parser() -> argparse.ArgumentParser:
     propose.add_argument("--output", help="write the proposed BranchCase as JSON")
     propose.set_defaults(handler=_propose_case)
 
+    session = subparsers.add_parser(
+        "search-session",
+        help="run or resume iterative model proposal and test-guided search",
+    )
+    session.add_argument(
+        "--task",
+        help="coding task or issue text; omitted when resuming from a checkpoint",
+    )
+    session.add_argument(
+        "--root-files",
+        help="JSON object mapping relative paths to complete source text",
+    )
+    session.add_argument("--checkpoint", required=True)
+    session.add_argument("--resume", action="store_true")
+    session.add_argument(
+        "--retry-pending",
+        action="store_true",
+        help="retry a model request that was pending when the process stopped",
+    )
+    _add_model_arguments(session)
+    session.add_argument("--run-id")
+    session.add_argument("--test-command")
+    session.add_argument(
+        "--allow-command",
+        action="store_true",
+        help="explicitly allow the trusted host test command",
+    )
+    session.add_argument("--test-suite", default="visible-tests")
+    session.add_argument("--test-name", default="all-visible-tests")
+    session.add_argument("--test-timeout", type=float, default=120.0)
+    session.add_argument("--max-report-bytes", type=int, default=64 * 1024)
+    session.add_argument("--max-rounds", type=int, default=3)
+    session.add_argument("--max-model-calls", type=int, default=4)
+    session.add_argument("--session-max-candidates", type=int, default=16)
+    session.add_argument("--session-max-test-calls", type=int, default=16)
+    session.add_argument("--proposal-max-candidates", type=int, default=4)
+    session.add_argument("--max-files-per-candidate", type=int, default=32)
+    session.add_argument("--max-file-chars", type=int, default=200_000)
+    session.add_argument("--max-total-prompt-chars", type=int, default=400_000)
+    session.add_argument("--proposal-output-tokens", type=int, default=8_192)
+    session.add_argument("--beam-width", type=int, default=2)
+    session.add_argument("--max-depth", type=int, default=4)
+    session.add_argument("--branch-max-candidates", type=int, default=32)
+    session.add_argument("--test-environment", default="visible-tests-v1")
+    session.add_argument("--no-stop-on-pass", action="store_true")
+    session.add_argument("--output", help="write the complete session report")
+    session.add_argument("--markdown", help="write a Markdown session report")
+    session.set_defaults(handler=_search_session)
+
+    apply_best = subparsers.add_parser(
+        "apply-best",
+        help="explicitly apply an accepted search-session snapshot to a workspace",
+    )
+    apply_best.add_argument("--checkpoint", required=True)
+    apply_best.add_argument("--workspace", default=".")
+    apply_best.add_argument(
+        "--allow-write",
+        action="store_true",
+        help="explicitly authorize writes to the target workspace",
+    )
+    apply_best.add_argument(
+        "--allow-delete",
+        action="store_true",
+        help="authorize deletion when the accepted snapshot removes a file",
+    )
+    apply_best.add_argument("--receipt", help="write the apply receipt to this path")
+    apply_best.set_defaults(handler=_apply_best)
+
+    rollback_best = subparsers.add_parser(
+        "rollback-best",
+        help="restore the baseline after an explicit apply-best operation",
+    )
+    rollback_best.add_argument("--checkpoint", required=True)
+    rollback_best.add_argument("--workspace", default=".")
+    rollback_best.add_argument(
+        "--allow-write",
+        action="store_true",
+        help="explicitly authorize writes to the target workspace",
+    )
+    rollback_best.add_argument(
+        "--receipt",
+        help="apply receipt; defaults to <checkpoint>.apply.json",
+    )
+    rollback_best.add_argument(
+        "--rollback-receipt",
+        help="write the rollback receipt to this path",
+    )
+    rollback_best.set_defaults(handler=_rollback_best)
+
     branch_search = subparsers.add_parser(
         "branch-search",
         help="run deterministic test-guided coding-candidate branch search",
@@ -645,7 +864,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return int(args.handler(args))
     except KeyboardInterrupt:
         return 130
-    except ValueError as exc:
+    except (PermissionError, ValueError, WorkspaceApplyError) as exc:
         parser.error(str(exc))
 
 

@@ -287,12 +287,51 @@ accepts only a top-level `candidates` array, enforces candidate/file/prompt budg
 constructs the same `CandidatePatch` and parent graph types used by deterministic search. Every
 candidate receives a `not-executed` result until the executable adapter replaces it with an
 observed result. This separation is important for evaluation: prompt compliance, parser
-acceptance, and test success are different measurements.
+acceptance, and test success are different measurements. `propose-case` remains a useful
+one-shot adapter; the durable session below is the composition that retries across rounds.
 
 The `propose-case` CLI supports both `ScriptedModel` and the OpenAI-compatible adapter. Its JSON
 output can be passed directly to `branch-search`; no provider-specific response shape leaks into
-the search or report layers. The current boundary is one-shot and does not yet schedule
-planner/coder/reviewer agents or persist a model-generated patch transaction.
+the search or report layers. It does not schedule planner/coder/reviewer agents or persist a
+model-generated patch transaction by itself.
+
+## Durable iterative search session — v0.6
+
+`SearchSessionRunner` composes the model-facing boundary, the disposable executable oracle, and
+the pure branch search into one bounded state machine. A round always moves through durable
+phases; the checkpoint is written before a provider call and after its response and test
+evaluation:
+
+```text
+                 checkpoint                     checkpoint
+       ┌──────────────┬───────────────┐      ┌───────────────┐
+       │              v               │      │               v
+ idle ─┴─> proposing ─────> evaluating ─────> idle ──> next round
+              │                 │
+              │ response lost   │ visible-test feedback
+              v                 v
+           paused          accepted / budget_exhausted / failed
+```
+
+The model receives the current best complete snapshot and a bounded list of prior oracle
+observations. A proposal is parsed strictly, then candidate ids are namespaced by round so
+that parent graphs and audit events cannot collide across retries. Each unique workspace state
+is looked up in a session-wide observation cache keyed by its content fingerprint; a cache hit
+is reported separately from an actual test process. The shared counters cover model calls,
+candidate proposals, test processes, and rounds rather than resetting at each round.
+
+Before awaiting a model, the session stores `phase=proposing`. If the process stops before a
+response is durable, resume defaults to `paused`; `--retry-pending` explicitly sends the
+request again. This is a deliberate at-least-once boundary, not an exactly-once provider claim.
+Every phase and decision is hash chained, and `SearchSessionReport.from_dict` recomputes its
+metrics and rejects forged event or metric data.
+
+The session report is still an immutable decision artifact. `apply-best` is a separate operator
+operation: it compares the relevant files in a real workspace with the session's root snapshot,
+rejects stale or linked paths, atomically replaces changed files, and writes an `ApplyReceipt`.
+`rollback-best` performs the inverse only when the applied workspace still matches the receipt's
+observed target. This explicit side-effect boundary keeps search evaluation reproducible and
+makes out-of-band edits visible rather than silently overwriting them.
 
 ## Claim boundaries
 

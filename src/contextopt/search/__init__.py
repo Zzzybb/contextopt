@@ -1,5 +1,16 @@
 """Test-guided branch search for long-running coding agents."""
 
+from contextopt.search.apply import (
+    ApplyReceipt,
+    WorkspaceApplyError,
+    WorkspaceConflict,
+    apply_best_snapshot,
+    apply_snapshot,
+    read_apply_receipt,
+    rollback_best_snapshot,
+    snapshot_fingerprint,
+    write_apply_receipt,
+)
 from contextopt.search.branching import (
     BranchCase,
     BranchNode,
@@ -28,8 +39,20 @@ from contextopt.search.proposer import (
     parse_proposal_response,
     propose_case,
 )
+from contextopt.search.session import (
+    SearchSessionConfig,
+    SearchSessionReport,
+    SearchSessionRound,
+    SearchSessionRunner,
+    read_session_checkpoint,
+    render_session_console,
+    render_session_markdown,
+    run_search_session,
+    write_session_checkpoint,
+)
 
 __all__ = [
+    "ApplyReceipt",
     "BranchCase",
     "BranchNode",
     "BranchSearch",
@@ -39,17 +62,34 @@ __all__ = [
     "ExecutableSearchConfig",
     "ProposalConfig",
     "SearchEvent",
+    "SearchSessionConfig",
+    "SearchSessionReport",
+    "SearchSessionRound",
+    "SearchSessionRunner",
     "TestResult",
+    "WorkspaceApplyError",
+    "WorkspaceConflict",
+    "apply_best_snapshot",
+    "apply_snapshot",
     "build_proposal_request",
     "demo_case",
     "evaluate_candidate",
     "evaluate_case",
     "parse_proposal_response",
     "propose_case",
+    "read_apply_receipt",
+    "read_session_checkpoint",
     "render_branch_console",
     "render_branch_html",
     "render_branch_markdown",
+    "render_session_console",
+    "render_session_markdown",
+    "rollback_best_snapshot",
     "run_executable_search",
+    "run_search_session",
+    "snapshot_fingerprint",
     "validate_search_report",
     "verify_search_events",
+    "write_apply_receipt",
+    "write_session_checkpoint",
 ]
