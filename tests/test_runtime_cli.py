@@ -149,8 +149,13 @@ class RuntimeCliTests(unittest.TestCase):
             self.assertEqual(context_config["memory_policy"], "versioned-v1")
 
             trace_code, trace = self._invoke(["trace", str(event_log)])
+            trace_html = root / "trace.html"
+            html_code, _ = self._invoke(
+                ["trace", str(event_log), "--html", str(trace_html)]
+            )
 
             self.assertEqual(trace_code, 0)
+            self.assertEqual(html_code, 0)
             self.assertIn("0000 run.started status=running", trace)
             self.assertIn("model.responded turn=1 calls=1", trace)
             self.assertIn("model.requested turn=1 messages=2 policy=submodular", trace)
@@ -162,6 +167,10 @@ class RuntimeCliTests(unittest.TestCase):
                 "run.completed status=completed reason=model_stopped",
                 trace,
             )
+            html = trace_html.read_text(encoding="utf-8")
+            self.assertIn("ContextOpt run trace", html)
+            self.assertIn("context receipts", html)
+            self.assertIn("model.requested", html)
 
     def test_write_permission_denial_is_observable_and_recoverable(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

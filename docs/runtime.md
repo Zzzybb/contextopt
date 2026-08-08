@@ -295,6 +295,7 @@ python -m contextopt run `
   --event-log $events
 
 python -m contextopt trace $events
+python -m contextopt trace $events --html trace.html
 python examples\runtime_demo\hidden_oracle.py $workspace
 ```
 
@@ -319,6 +320,7 @@ python -m contextopt run \
   --event-log "$events"
 
 python -m contextopt trace "$events"
+python -m contextopt trace "$events" --html trace.html
 python examples/runtime_demo/hidden_oracle.py "$workspace"
 ```
 
@@ -345,6 +347,11 @@ timestamps and elapsed time are not:
 ...
 0029 run.completed status=completed reason=model_stopped
 ```
+
+The optional `--html PATH` output is a dependency-free local timeline. It summarizes event,
+model-request, tool-outcome, and context-receipt counts; each event can be expanded to inspect
+its original JSON payload. It is a read-only view over the JSONL log, not a replacement for
+hash-chain verification or the durable event source.
 
 The final oracle prints:
 

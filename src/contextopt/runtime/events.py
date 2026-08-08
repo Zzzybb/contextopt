@@ -9,6 +9,7 @@ from collections.abc import Mapping
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from html import escape
 from importlib import import_module
 from pathlib import Path
 from threading import Lock
@@ -464,45 +465,118 @@ class EventLog:
             self.close()
 
 
+def _trace_detail(event: Mapping[str, Any]) -> str:
+    event_type = str(event.get("type", "unknown"))
+    data = event.get("data")
+    payload = data if isinstance(data, Mapping) else {}
+    if event_type == "model.requested":
+        detail = f" turn={payload.get('turn')} messages={payload.get('message_count')}"
+        context = payload.get("context")
+        if isinstance(context, Mapping):
+            selected = context.get("selected_block_ids")
+            evicted = context.get("evicted_block_ids")
+            detail += (
+                f" policy={context.get('policy')}"
+                f" est_tokens={context.get('estimated_selected_tokens')}"
+                f"/{context.get('estimated_original_tokens')}"
+                f" blocks={len(selected) if isinstance(selected, list) else '?'}"
+                f" evicted={len(evicted) if isinstance(evicted, list) else '?'}"
+            )
+        return detail
+    if event_type == "model.responded":
+        tool_calls = payload.get("tool_calls", [])
+        return f" turn={payload.get('turn')} calls={len(tool_calls)}"
+    if event_type in {"tool.completed", "tool.failed", "tool.reused"}:
+        detail = (
+            f" tool={payload.get('tool_name')} call={payload.get('call_id')}"
+            f" ok={payload.get('ok')}"
+        )
+        metadata = payload.get("metadata")
+        if isinstance(metadata, Mapping) and "exit_code" in metadata:
+            detail += f" exit={metadata['exit_code']}"
+        return detail
+    if event_type.startswith("run."):
+        status = payload.get("status", "")
+        reason = payload.get("reason", "")
+        return f" status={status} reason={reason}"
+    return ""
+
+
 def render_trace(events: tuple[dict[str, Any], ...]) -> str:
     """Render a compact, deterministic human view of a run trace."""
 
-    lines: list[str] = []
+    lines = []
+    for event in events:
+        seq = int(event.get("seq", -1))
+        event_type = str(event.get("type", "unknown"))
+        lines.append(f"{seq:04d} {event_type}{_trace_detail(event)}".rstrip())
+    return "\n".join(lines) + ("\n" if lines else "")
+
+
+def render_trace_html(events: tuple[dict[str, Any], ...]) -> str:
+    """Render a dependency-free local timeline for an event-sourced run."""
+
+    event_count = len(events)
+    model_requests = sum(event.get("type") == "model.requested" for event in events)
+    tool_events = sum(
+        event.get("type") in {"tool.completed", "tool.failed", "tool.reused"}
+        for event in events
+    )
+    context_receipts = sum(
+        event.get("type") == "model.requested"
+        and isinstance(event.get("data"), Mapping)
+        and isinstance(event["data"].get("context"), Mapping)
+        for event in events
+    )
+    rows: list[str] = []
     for event in events:
         event_type = str(event.get("type", "unknown"))
         seq = int(event.get("seq", -1))
-        data = event.get("data")
-        payload = data if isinstance(data, dict) else {}
-        detail = ""
-        if event_type == "model.requested":
-            detail = (
-                f" turn={payload.get('turn')} messages={payload.get('message_count')}"
-            )
-            context = payload.get("context")
-            if isinstance(context, dict):
-                selected = context.get("selected_block_ids")
-                evicted = context.get("evicted_block_ids")
-                detail += (
-                    f" policy={context.get('policy')}"
-                    f" est_tokens={context.get('estimated_selected_tokens')}"
-                    f"/{context.get('estimated_original_tokens')}"
-                    f" blocks={len(selected) if isinstance(selected, list) else '?'}"
-                    f" evicted={len(evicted) if isinstance(evicted, list) else '?'}"
-                )
-        elif event_type == "model.responded":
-            tool_calls = payload.get("tool_calls", [])
-            detail = f" turn={payload.get('turn')} calls={len(tool_calls)}"
-        elif event_type in {"tool.completed", "tool.failed", "tool.reused"}:
-            detail = (
-                f" tool={payload.get('tool_name')} call={payload.get('call_id')}"
-                f" ok={payload.get('ok')}"
-            )
-            metadata = payload.get("metadata")
-            if isinstance(metadata, dict) and "exit_code" in metadata:
-                detail += f" exit={metadata['exit_code']}"
-        elif event_type.startswith("run."):
-            status = payload.get("status", "")
-            reason = payload.get("reason", "")
-            detail = f" status={status} reason={reason}"
-        lines.append(f"{seq:04d} {event_type}{detail}".rstrip())
-    return "\n".join(lines) + ("\n" if lines else "")
+        timestamp = str(event.get("timestamp", ""))
+        detail = _trace_detail(event)
+        detail_html = escape(detail) or '<span class="muted">no summary</span>'
+        raw = escape(json.dumps(event, ensure_ascii=False, sort_keys=True))
+        rows.append(
+            "<article class='event'>"
+            "<div class='event-head'>"
+            f"<span class='seq'>{seq:04d}</span>"
+            f"<span class='kind'>{escape(event_type)}</span>"
+            f"<time>{escape(timestamp)}</time>"
+            "</div>"
+            f"<div class='detail'>{detail_html}</div>"
+            f"<details><summary>event JSON</summary><code>{raw}</code></details>"
+            "</article>"
+        )
+    timeline_html = "".join(rows) or '<p class="muted">empty trace</p>'
+    return (
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>ContextOpt run trace</title>"
+        "<style>body{font:14px system-ui,sans-serif;margin:2rem;color:#172033;"
+        "max-width:1100px}h1{margin-bottom:.25rem}.muted{color:#718096}"
+        ".metrics{display:flex;flex-wrap:wrap;gap:.6rem;margin:1rem 0 1.4rem}"
+        ".metric{border:1px solid #d7dce8;border-radius:9px;padding:.65rem .8rem;"
+        "background:#fbfcff}.metric b{display:block;font-size:1.2rem}"
+        ".timeline{border-left:3px solid #dbe4f0;padding-left:1rem}"
+        ".event{border:1px solid #d7dce8;border-radius:9px;padding:.7rem .85rem;"
+        "margin:0 0 .8rem;background:white;box-shadow:0 1px 2px #17203312}"
+        ".event-head{display:flex;align-items:baseline;gap:.65rem}.seq{color:#64748b;"
+        "font-variant-numeric:tabular-nums}.kind{font-weight:650}.event time{"
+        "margin-left:auto;"
+        "color:#64748b;font-size:.82rem}.detail{margin:.45rem 0;color:#334155;"
+        "font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.88rem}"
+        "details{margin-top:.45rem}summary{cursor:pointer;color:#2563eb}"
+        "code{display:block;white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f7fb;"
+        "padding:.7rem;border-radius:6px;margin-top:.45rem}</style></head><body>"
+        "<h1>ContextOpt run trace</h1>"
+        "<p class='muted'>Local, read-only visualization of the durable event log. "
+        "The JSON remains the audit source.</p>"
+        "<section class='metrics'>"
+        f"<div class='metric'><b>{event_count}</b>events</div>"
+        f"<div class='metric'><b>{model_requests}</b>model requests</div>"
+        f"<div class='metric'><b>{tool_events}</b>tool outcomes</div>"
+        f"<div class='metric'><b>{context_receipts}</b>context receipts</div>"
+        "</section>"
+        f"<section class='timeline'>{timeline_html}</section>"
+        "</body></html>\n"
+    )

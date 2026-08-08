@@ -39,6 +39,13 @@ generation，因此 checkpoint 里能审计“本轮到底给了角色什么上�
 这些设计让演示可以回答“状态是什么、失败如何恢复、指标如何计算、谁有权
 接受结果”，而不是只展示一段角色扮演对话。
 
+`trace` 还可以生成本地自包含 HTML 时间线，展开查看每个事件 JSON，并汇总模型请求、
+工具结果和 ContextReceipt，适合排查长程运行或放入作品集：
+
+~~~text
+python -m contextopt trace events.jsonl --html trace.html
+~~~
+
 ## 离线验证
 
 项目需要 Python 3.11 或更高版本，没有运行时依赖：
@@ -146,6 +153,7 @@ python -m contextopt agent-eval \
 - v0.8 MCTS 调度补充：[docs/pr/0001-v0.8-mcts-addendum.zh-CN.md](docs/pr/0001-v0.8-mcts-addendum.zh-CN.md)
 - v0.8 评测 checkpoint 补充：[docs/pr/0001-v0.8-evaluation-checkpoint-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-checkpoint-addendum.zh-CN.md)
 - v0.8 评测统计补充：[docs/pr/0001-v0.8-evaluation-statistics-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-statistics-addendum.zh-CN.md)
+- v0.8 trace 可视化补充：[docs/pr/0001-v0.8-trace-dashboard-addendum.zh-CN.md](docs/pr/0001-v0.8-trace-dashboard-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、
 指标名称是权威定义。

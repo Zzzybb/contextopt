@@ -44,6 +44,7 @@ from contextopt.runtime import (
     WorkspaceTools,
     read_events,
     render_trace,
+    render_trace_html,
 )
 from contextopt.runtime.context import ContextCompiler, ContextCompilerConfig
 from contextopt.runtime.recovery import replay_events_with_checkpoint
@@ -764,6 +765,7 @@ def _status(args: argparse.Namespace) -> int:
 
 def _trace(args: argparse.Namespace) -> int:
     events = read_events(args.event_log)
+    _write(args.html, render_trace_html(events))
     print(render_trace(events), end="")
     return 0
 
@@ -1261,6 +1263,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     trace = subparsers.add_parser("trace", help="render a compact JSONL run trace")
     trace.add_argument("event_log")
+    trace.add_argument("--html", help="write a self-contained trace timeline")
     trace.set_defaults(handler=_trace)
     return parser
 

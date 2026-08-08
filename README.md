@@ -69,7 +69,8 @@ coding success without a controlled real-model benchmark.
   SHA-256 compare-and-swap replacement, and pre-registered visible-test commands.
 - Explicit write and command permissions; both are disabled unless enabled by the caller.
 - Schema-2 append-only JSONL events with a verifiable SHA-256 chain, strict sequence and
-  run-id validation, explicit truncated-tail repair, and a compact trace renderer.
+  run-id validation, explicit truncated-tail repair, a compact trace renderer, and a
+  dependency-free local HTML timeline with expandable event JSON and context metrics.
 - A strict event reducer that reconstructs messages, cumulative usage, pending model and
   tool work, completed-call cache, phase, and terminal result.
 - Atomic JSON projection checkpoints used only as disposable recovery caches; missing,
@@ -206,8 +207,8 @@ recompute the complete chain because there is no secret or external trust anchor
   trusted host processes.
 - A general shell tool, autonomous package installation, or unrestricted network access.
 - A claim that the scripted demo measures model reasoning or real-world issue resolution.
-- Learned or cross-run semantic memory, a trace UI, or a statistically powered real-model
-  coding benchmark. The v0.8 harness is a deterministic scripted comparison by default and
+- Learned or cross-run semantic memory, or a statistically powered real-model coding benchmark.
+  The v0.8 harness is a deterministic scripted comparison by default and
   does not pretend observed-memory receipts or protocol acceptance are model coding accuracy.
 - Exactly-once external side effects. Recovery is tool-specific and conservative;
   explicitly retrying a command can execute it again.
@@ -260,6 +261,7 @@ Render any completed or partial run:
 
 ```bash
 contextopt trace <events.jsonl>
+contextopt trace <events.jsonl> --html trace.html
 contextopt status <events.jsonl>
 ```
 
@@ -562,6 +564,8 @@ in [the checkpoint addendum](docs/pr/0001-v0.8-evaluation-checkpoint-addendum.md
 version](docs/pr/0001-v0.8-evaluation-checkpoint-addendum.zh-CN.md).
 The statistical rendering is documented in [the statistical report addendum](docs/pr/0001-v0.8-evaluation-statistics-addendum.md)
 and [Chinese version](docs/pr/0001-v0.8-evaluation-statistics-addendum.zh-CN.md).
+The runtime trace timeline is documented in [the trace dashboard addendum](docs/pr/0001-v0.8-trace-dashboard-addendum.md)
+and [Chinese version](docs/pr/0001-v0.8-trace-dashboard-addendum.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers.
 

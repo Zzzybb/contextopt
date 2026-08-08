@@ -21,6 +21,7 @@ from contextopt.runtime.events import (
     RunLease,
     read_events,
     render_trace,
+    render_trace_html,
     scan_events,
 )
 from contextopt.runtime.memory import EvidenceRecord, MemorySnapshot
@@ -89,6 +90,7 @@ __all__ = [
     "estimate_text_tokens",
     "read_events",
     "render_trace",
+    "render_trace_html",
     "replay_events",
     "replay_events_with_checkpoint",
     "scan_events",
