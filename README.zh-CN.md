@@ -18,8 +18,9 @@ generation，因此 checkpoint 里能审计“本轮到底给了角色什么上�
 `max_parallel_tests > 1`：每个候选使用独立临时工作区，逐个写入 requested/completed 事件，
 每个结果都更新 checkpoint；恢复时只重跑尚未落账的观察。现在固定候选树还支持
 `--search-policy mcts`：它把 visible-test 质量沿父链回传，用 UCT 选择下一条已生成分支，
-并把选择事件写入 hash-chain。merge-aware speculative calls、OS sandbox 和统计严谨的真实
-模型评测仍在后续计划中。
+并把选择事件写入 hash-chain。现在还支持可选的 disjoint 三方合并：只合并已经返回的
+独立候选快照，冲突路径写入证据，不会做部分写入；真正并发的 provider speculative call、
+OS sandbox 和统计严谨的真实模型评测仍在后续计划中。
 
 ## 为什么适合面试 Agent 开发岗
 
@@ -35,6 +36,9 @@ generation，因此 checkpoint 里能审计“本轮到底给了角色什么上�
 7. MCTS 调度：使用真实 oracle 质量而不是模型自报置信度选择后续候选，记录 UCT、访问次数和
    reward；
 8. 评测边界：reviewer 不能绕过可见测试，脚本 conformance 与模型能力明确分开。
+
+编排也可以使用 `merge_policy=disjoint`：对相同根快照下的独立 solver 候选做有界三方合并，
+合并候选仍必须经过可见测试；同一路径的不同修改只记录 conflict，不会猜测如何拼接。
 
 这些设计让演示可以回答“状态是什么、失败如何恢复、指标如何计算、谁有权
 接受结果”，而不是只展示一段角色扮演对话。
@@ -154,6 +158,7 @@ python -m contextopt agent-eval \
 - v0.8 评测 checkpoint 补充：[docs/pr/0001-v0.8-evaluation-checkpoint-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-checkpoint-addendum.zh-CN.md)
 - v0.8 评测统计补充：[docs/pr/0001-v0.8-evaluation-statistics-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-statistics-addendum.zh-CN.md)
 - v0.8 trace 可视化补充：[docs/pr/0001-v0.8-trace-dashboard-addendum.zh-CN.md](docs/pr/0001-v0.8-trace-dashboard-addendum.zh-CN.md)
+- v0.8 合并感知快照补充：[docs/pr/0001-v0.8-merge-aware-snapshots-addendum.zh-CN.md](docs/pr/0001-v0.8-merge-aware-snapshots-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、
 指标名称是权威定义。

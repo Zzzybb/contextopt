@@ -364,13 +364,19 @@ after every completed observation. A resume reuses observations already in the c
 reruns only candidates whose result was not durably recorded.
 
 The current implementation supports all four controls below at the bounded candidate-oracle
-level. MCTS traverses an already generated, parent-linked candidate tree; model generation on
-demand, speculative calls, and merge-aware workspaces remain outside this milestone:
+level. MCTS traverses an already generated, parent-linked candidate tree. An opt-in
+`merge_policy=disjoint` also performs bounded three-way reconciliation of independent solver
+snapshots before the oracle; model generation on demand and concurrent provider calls remain
+outside this milestone:
 
 - single-path Agent;
 - independent best-of-N;
 - fixed beam search;
 - adaptive branch scheduling.
+
+When enabled, merge evidence records every considered pair, merged candidate id, and conflicting
+path hashes. A conflict never produces a partial candidate, and merged snapshots still consume
+the shared candidate/test budgets.
 
 `BranchSearchConfig(search_policy="mcts")` uses a deterministic UCT score. An unobserved child
 is explored first; after a parent has an oracle result, its mean visible-test quality and the

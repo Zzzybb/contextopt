@@ -36,6 +36,14 @@ from contextopt.search.executor import (
     run_executable_search,
 )
 from contextopt.search.mcts import run_mcts_search
+from contextopt.search.merge import (
+    MERGE_POLICIES,
+    MergeConflict,
+    MergePolicy,
+    MergeReport,
+    merge_candidate_pairs,
+    three_way_merge,
+)
 from contextopt.search.orchestrator import (
     OrchestrationConfig,
     OrchestrationPhase,
@@ -87,6 +95,7 @@ from contextopt.search.session import (
 )
 
 __all__ = [
+    "MERGE_POLICIES",
     "SCHEDULER_POLICIES",
     "SEARCH_POLICIES",
     "ApplyReceipt",
@@ -97,6 +106,9 @@ __all__ = [
     "BranchSearchReport",
     "CandidatePatch",
     "ExecutableSearchConfig",
+    "MergeConflict",
+    "MergePolicy",
+    "MergeReport",
     "OrchestrationConfig",
     "OrchestrationPhase",
     "OrchestrationReport",
@@ -128,6 +140,7 @@ __all__ = [
     "demo_case",
     "evaluate_candidate",
     "evaluate_case",
+    "merge_candidate_pairs",
     "parse_planner_response",
     "parse_proposal_response",
     "parse_reviewer_response",
@@ -153,6 +166,7 @@ __all__ = [
     "select_candidate_batch",
     "snapshot_fingerprint",
     "solve_plan",
+    "three_way_merge",
     "validate_search_report",
     "verify_search_events",
     "write_apply_receipt",

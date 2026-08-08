@@ -34,7 +34,7 @@ Every boundary ──> durable schema-2 JSONL event log + verified state project
 > fingerprint into each checkpointed call.
 > Candidate evaluation now supports bounded parallel isolated workspaces with durable per-candidate
 > checkpoints and a deterministic, observation-driven MCTS traversal over fixed candidate trees.
-> Merge-aware speculative calls, an OS sandbox, learned semantic memory, and a statistically powered
+> Speculative provider calls, an OS sandbox, learned semantic memory, and a statistically powered
 > real-model coding benchmark remain outside the current claim boundary.
 
 ## Why this project exists
@@ -162,6 +162,10 @@ recompute the complete chain because there is no secret or external trust anchor
 - Candidate oracle work can run with `max_parallel_tests > 1`: every candidate is materialized
   in its own temporary workspace, requested/completed events are hash-chained, and the checkpoint
   is updated after each result so recovery reruns only observations that were not durably recorded.
+- An opt-in `merge_policy=disjoint` performs bounded three-way reconciliation of independent
+  solver snapshots before testing. Non-conflicting changes become a new auditable candidate;
+  same-path divergent edits are retained as explicit conflict evidence and are never partially
+  merged. This merges already returned snapshots; it does not claim concurrent provider calls.
 - The orchestrate CLI command plus console/Markdown/HTML reports make role calls and the
   oracle gate measurable instead of treating a multi-agent transcript as evidence.
 
@@ -198,9 +202,9 @@ recompute the complete chain because there is no secret or external trust anchor
 - Automatic workspace snapshots, migration to another workspace, or distributed
   coordination. `apply-best` and `rollback-best` are explicit local operator actions over
   the files named in the session baseline; they are not transparent workspace versioning.
-- Speculative model calls and merge-aware multi-agent scheduling remain planned. The current
-  parallel mode is bounded candidate-oracle execution; MCTS selects among already generated
-  immutable snapshots and does not generate patches itself.
+- Speculative model calls remain planned. The current parallel mode is bounded candidate-oracle
+  execution, while the opt-in merge policy reconciles already generated immutable snapshots;
+  MCTS selects among generated candidates and does not generate patches itself.
   role model calls remain sequential and share one explicit budget.
 - A container or virtual-machine security boundary. Workspace path checks and permission
   flags reduce accidental access, but are not an OS sandbox. Registered test commands are
@@ -550,7 +554,8 @@ docs/                     # architecture, runtime, and evaluation contract
 - **v0.8 — Context-aware strategy evaluation (implemented):** executable ACM/math fixtures,
   independent hidden graders, a paired single-pass/Best-of-N/orchestrated accounting harness,
   per-role ContextCompiler/observed-memory receipts, and bounded parallel isolated candidate
-  evaluation with durable scheduler events plus fixed-beam and observed-quality MCTS policies.
+  evaluation with durable scheduler events, fixed-beam/observed-quality MCTS policies, and
+  opt-in disjoint three-way merge evidence.
 
 The v0.8 follow-up is documented in [the role-context addendum](docs/pr/0001-v0.8-context-memory-addendum.md)
 and its [Chinese translation](docs/pr/0001-v0.8-context-memory-addendum.zh-CN.md). The parallel
@@ -566,6 +571,8 @@ The statistical rendering is documented in [the statistical report addendum](doc
 and [Chinese version](docs/pr/0001-v0.8-evaluation-statistics-addendum.zh-CN.md).
 The runtime trace timeline is documented in [the trace dashboard addendum](docs/pr/0001-v0.8-trace-dashboard-addendum.md)
 and [Chinese version](docs/pr/0001-v0.8-trace-dashboard-addendum.zh-CN.md).
+The bounded merge evidence is documented in [the merge-aware snapshot addendum](docs/pr/0001-v0.8-merge-aware-snapshots-addendum.md)
+and [Chinese version](docs/pr/0001-v0.8-merge-aware-snapshots-addendum.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers.
 

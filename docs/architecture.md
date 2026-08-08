@@ -370,8 +370,9 @@ reviewer awaits and after evaluation. A stopped planner request requires explici
 after a durable planner response, the solver can safely continue on resume. Parallel
 candidate oracle execution is now bounded by `max_parallel_tests`; adaptive branch scheduling,
 including parent-quality promotion and early-stop, is available as a bounded policy; the
-`mcts` search policy adds UCT traversal over already generated candidate trees. Speculative
-model calls and merge-aware workspaces remain future work. Each candidate is
+  `mcts` search policy adds UCT traversal over already generated candidate trees. The opt-in
+  `merge_policy=disjoint` reconciles already generated independent snapshots with conflict
+  evidence; speculative model calls remain future work. Each candidate is
 materialized in a fresh temporary workspace, and requested/completed events are recorded in
 candidate order so a checkpoint can resume without treating provider or subprocess effects as
 exactly once.

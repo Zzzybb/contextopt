@@ -614,12 +614,13 @@ Remaining milestones are:
 
 1. Add durable model-call idempotency hooks where providers expose them.
 2. Extend the bounded MCTS tree into merge-aware branch selection and model-on-demand expansion
-   under one shared compute budget.
+   under one shared compute budget; the current `merge_policy=disjoint` only reconciles already
+   returned snapshots and does not issue concurrent provider calls.
 3. Run the strategy harness against multiple real model versions and independent hidden
    tests, preserving paired budgets and full ledgers.
 4. Add container/VM isolation and a controlled real-model coding benchmark with fixed
    snapshots, versions, repetitions, and independent hidden tests.
 
-The repository still has no merge-aware speculative multi-agent scheduler, OS sandbox, or
-published real-model benchmark. The explicit apply/rollback adapter is a local filesystem
-safety boundary, not a security boundary.
+The repository still has no speculative provider-call scheduler, OS sandbox, or published
+real-model benchmark. The explicit apply/rollback adapter is a local filesystem safety boundary,
+not a security boundary.

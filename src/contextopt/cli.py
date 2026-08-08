@@ -499,6 +499,7 @@ def _orchestrate(args: argparse.Namespace) -> int:
             max_test_calls=args.max_test_calls,
             max_parallel_tests=args.max_parallel_tests,
             scheduler_policy=args.scheduler_policy,
+            merge_policy=args.merge_policy,
             max_total_tokens=args.max_total_tokens,
             context_config=ContextCompilerConfig(
                 policy=args.context_policy,
@@ -1033,6 +1034,12 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("fixed", "adaptive"),
         default="fixed",
         help="fixed candidate order or adaptive parent-quality scheduling",
+    )
+    orchestrate.add_argument(
+        "--merge-policy",
+        choices=("disabled", "disjoint"),
+        default="disabled",
+        help="disabled or bounded three-way merge of independent solver branches",
     )
     orchestrate.add_argument("--max-total-tokens", type=int, default=100_000)
     orchestrate.add_argument(

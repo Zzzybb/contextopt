@@ -11,6 +11,7 @@ from contextopt.runtime.model import ScriptedModel
 from contextopt.runtime.protocol import ModelResponse, ToolCall
 from contextopt.search import (
     BranchSearchConfig,
+    CandidatePatch,
     ExecutableSearchConfig,
     OrchestrationConfig,
     PlannerConfig,
@@ -20,6 +21,7 @@ from contextopt.search import (
     parse_reviewer_response,
     read_orchestration_checkpoint,
     run_orchestration,
+    three_way_merge,
 )
 
 ROOT_FILES = {
@@ -124,7 +126,114 @@ def _parallel_execution() -> ExecutableSearchConfig:
     )
 
 
+MERGE_ROOT_FILES = {
+    "one.py": "def one():\n    return 0\n",
+    "two.py": "def two():\n    return 0\n",
+    "test_merge.py": (
+        "import unittest\n"
+        "from one import one\n"
+        "from two import two\n\n\n"
+        "class MergeTests(unittest.TestCase):\n"
+        "    def test_both_branches(self):\n"
+        "        self.assertEqual(one(), 1)\n"
+        "        self.assertEqual(two(), 2)\n\n\n"
+        "if __name__ == '__main__':\n"
+        "    unittest.main()\n"
+    ),
+}
+
+
+def _merge_proposal() -> str:
+    candidates = []
+    for candidate_id, one, two in (
+        ("left", "def one():\n    return 1\n", MERGE_ROOT_FILES["two.py"]),
+        ("right", MERGE_ROOT_FILES["one.py"], "def two():\n    return 2\n"),
+    ):
+        candidates.append(
+            {
+                "id": candidate_id,
+                "parent_id": "root",
+                "hypothesis": f"change {candidate_id} file",
+                "files": {
+                    "one.py": one,
+                    "two.py": two,
+                    "test_merge.py": MERGE_ROOT_FILES["test_merge.py"],
+                },
+                "evidence": ["independent branch"],
+            }
+        )
+    return json.dumps({"candidates": candidates})
+
+
 class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
+    def test_three_way_merge_is_conflict_safe(self) -> None:
+        left = CandidatePatch(
+            id="left",
+            parent_id="root",
+            hypothesis="left",
+            files={"one.py": "left", "two.py": "base"},
+        )
+        right = CandidatePatch(
+            id="right",
+            parent_id="root",
+            hypothesis="right",
+            files={"one.py": "right", "two.py": "base"},
+        )
+        merged, conflicts = three_way_merge(
+            {"one.py": "base", "two.py": "base"}, left, right
+        )
+        self.assertIsNone(merged)
+        self.assertEqual([conflict.path for conflict in conflicts], ["one.py"])
+
+    async def test_disjoint_merge_adds_candidate_and_records_evidence(self) -> None:
+        report = await run_orchestration(
+            ScriptedModel([{"response": {"content": _plan()}}], name="merge-p:v1"),
+            ScriptedModel(
+                [{"response": {"content": _merge_proposal()}}], name="merge-s:v1"
+            ),
+            ScriptedModel(
+                [
+                    {
+                        "response": {
+                            "content": _review("accept", "round-0-merge-left--right")
+                        }
+                    }
+                ],
+                name="merge-r:v1",
+            ),
+            task="fix both independent modules",
+            root_files=MERGE_ROOT_FILES,
+            execution_config=_execution(),
+            config=OrchestrationConfig(
+                max_rounds=1,
+                max_model_calls=3,
+                max_planner_calls=1,
+                max_solver_calls=1,
+                max_reviewer_calls=1,
+                max_candidates=3,
+                max_test_calls=3,
+                max_parallel_tests=3,
+                merge_policy="disjoint",
+            ),
+            solver_config=ProposalConfig(max_candidates=2),
+            search_config=BranchSearchConfig(max_depth=1, beam_width=3),
+            run_id="merge-orchestration-test",
+        )
+        self.assertEqual(report.status, "accepted")
+        self.assertEqual(report.best_candidate_id, "round-0-merge-left--right")
+        self.assertEqual(report.test_calls, 3)
+        merge_events = [
+            event for event in report.events if event.type == "solver.merge"
+        ]
+        self.assertEqual(len(merge_events), 1)
+        self.assertEqual(
+            merge_events[0].data["merged_candidate_ids"], ["merge-left--right"]
+        )
+        self.assertEqual(
+            merge_events[0].data["namespaced_candidate_ids"],
+            ["round-0-merge-left--right"],
+        )
+
     async def test_parallel_candidate_scheduler_uses_isolated_workspaces(self) -> None:
         planner = ScriptedModel(
             [{"response": {"content": _plan()}}], name="parallel-planner:v1"

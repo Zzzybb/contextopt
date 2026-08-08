@@ -45,6 +45,11 @@ from contextopt.search.branching import (
     verify_search_events,
 )
 from contextopt.search.executor import ExecutableSearchConfig, evaluate_candidate
+from contextopt.search.merge import (
+    MERGE_POLICIES,
+    MergePolicy,
+    merge_candidate_pairs,
+)
 from contextopt.search.proposer import ProposalConfig, parse_proposal_response
 from contextopt.search.scheduler import SchedulerPolicy, select_candidate_batch
 
@@ -209,6 +214,7 @@ class OrchestrationConfig:
     max_test_calls: int = 16
     max_parallel_tests: int = 1
     scheduler_policy: SchedulerPolicy = "fixed"
+    merge_policy: MergePolicy = "disabled"
     max_total_tokens: int = 100_000
     context_config: ContextCompilerConfig = field(
         default_factory=lambda: ContextCompilerConfig(
@@ -240,6 +246,8 @@ class OrchestrationConfig:
                 continue
             if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
                 raise ValueError(f"{name} must be a positive integer")
+        if self.merge_policy not in MERGE_POLICIES:
+            raise ValueError(f"unsupported merge policy: {self.merge_policy!r}")
         if not isinstance(self.context_config, ContextCompilerConfig):
             raise ValueError("context_config must be a ContextCompilerConfig")
 
@@ -256,6 +264,7 @@ class OrchestrationConfig:
             "max_test_calls",
             "max_parallel_tests",
             "scheduler_policy",
+            "merge_policy",
             "max_total_tokens",
             "context_config",
         }
@@ -285,6 +294,7 @@ class OrchestrationConfig:
                 "max_test_calls",
                 "max_parallel_tests",
                 "scheduler_policy",
+                "merge_policy",
                 "max_total_tokens",
             )
         } | {"context_config": self.context_config.to_dict()}
@@ -2105,6 +2115,17 @@ class OrchestrationRunner:
             if checkpoint is not None:
                 write_orchestration_checkpoint(updated, checkpoint)
             return updated
+        merge_budget = max(
+            0,
+            state.config.max_candidates
+            - state.candidate_proposals
+            - len(case.candidates),
+        )
+        case, merge_report = merge_candidate_pairs(
+            case,
+            policy=state.config.merge_policy,
+            max_pairs=merge_budget,
+        )
         namespaced = _namespace(case, len(state.rounds))
         call = _call("solver", self.solver, turn, response, receipt)
         updated = _event(
@@ -2132,6 +2153,19 @@ class OrchestrationRunner:
                 **({} if receipt is None else _context_event_data(receipt)),
             },
         )
+        if merge_report.policy != "disabled":
+            updated = _event(
+                updated,
+                "solver.merge",
+                {
+                    "round": len(state.rounds),
+                    **merge_report.to_dict(),
+                    "namespaced_candidate_ids": [
+                        f"round-{len(state.rounds)}-{candidate_id}"
+                        for candidate_id in merge_report.merged_candidate_ids
+                    ],
+                },
+            )
         if checkpoint is not None:
             write_orchestration_checkpoint(updated, checkpoint)
         return updated
