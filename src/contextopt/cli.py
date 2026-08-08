@@ -23,14 +23,19 @@ from contextopt.benchmark import (
 from contextopt.evaluation import (
     AgentEvalConfig,
     ContextRoutingEvalConfig,
+    RecoveryEvalConfig,
     build_openai_model_factory,
     render_agent_evaluation_console,
     render_agent_evaluation_html,
     render_agent_evaluation_markdown,
     render_context_routing_console,
     render_context_routing_markdown,
+    render_recovery_console,
+    render_recovery_html,
+    render_recovery_markdown,
     run_agent_evaluation,
     run_context_routing_evaluation,
+    run_recovery_evaluation,
 )
 from contextopt.models import ContextItem, ObjectiveWeights, SelectionProblem
 from contextopt.policies import POLICIES, create_policy
@@ -258,6 +263,36 @@ def _agent_eval(args: argparse.Namespace) -> int:
     # A completed evaluation is useful even when an intentionally weak baseline
     # fails; callers should inspect the success-rate columns.
     return 0
+
+
+def _recovery_eval(args: argparse.Namespace) -> int:
+    raw = tuple(item.strip() for item in args.scenarios.split(",") if item.strip())
+    scenarios = RecoveryEvalConfig().scenarios if "all" in raw else raw
+    report = run_recovery_evaluation(RecoveryEvalConfig(scenarios=scenarios))
+    print(render_recovery_console(report), end="")
+    _write(args.output, json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n")
+    _write(args.markdown, render_recovery_markdown(report))
+    _write(args.html, render_recovery_html(report))
+    _write(
+        args.manifest,
+        json.dumps(
+            {
+                "schema_version": "1",
+                "kind": "contextopt.recovery-eval.manifest",
+                "config": report.config.to_dict(),
+                "fault_injection": {
+                    "adapter": "durable-event-hook-v1",
+                    "fresh_runner_on_resume": True,
+                    "model_adapter": "scripted",
+                },
+                "claim_boundary": report.claim_boundary,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+    )
+    return 0 if report.failed_count == 0 else 1
 
 
 def _load_branch_case(path: str) -> BranchCase:
@@ -949,6 +984,27 @@ def build_parser() -> argparse.ArgumentParser:
         "--resume", action="store_true", help="resume completed cells from --checkpoint"
     )
     agent_eval.set_defaults(handler=_agent_eval)
+
+    recovery_eval = subparsers.add_parser(
+        "recovery-eval",
+        help="inject durable-boundary stops and evaluate fresh-run recovery",
+    )
+    recovery_eval.add_argument(
+        "--scenarios",
+        default="all",
+        help="all or comma-separated deterministic recovery scenario ids",
+    )
+    recovery_eval.add_argument("--output", help="write the complete JSON report")
+    recovery_eval.add_argument(
+        "--markdown", help="write the recovery report as Markdown"
+    )
+    recovery_eval.add_argument(
+        "--html", help="write a self-contained recovery dashboard"
+    )
+    recovery_eval.add_argument(
+        "--manifest", help="write recovery protocol metadata without secrets"
+    )
+    recovery_eval.set_defaults(handler=_recovery_eval)
 
     propose = subparsers.add_parser(
         "propose-case",

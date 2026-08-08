@@ -341,23 +341,34 @@ Level 2c verifies that the runtime compiles policy outputs into otherwise identi
 requests. Level 3 remains necessary because compiler conformance and labelled retention do
 not establish real-model coding performance.
 
-## Level 4: extended long-horizon robustness — planned
+## Level 4: extended long-horizon robustness — bounded matrix implemented
 
-Inject controlled failures:
+The checked-in `recovery-eval` matrix now injects controlled process-like stops at the
+`model.requested`, `model.responded`, `tool.started`, and `tool.completed` boundaries. Each
+scenario closes the first runner and resumes with fresh runtime objects. It measures pending
+state reconstruction, extra provider calls after resume, write reconciliation, duplicate-write
+avoidance, and the operator-paused rate for a non-replayable test command.
 
-- process and machine termination at additional model/tool/filesystem boundaries;
-- forced context compaction;
-- stale or conflicting memory;
-- duplicated tool results;
-- provider timeouts and retryable failures;
-- repeated tool-call ids;
-- workspace changes between read and compare-and-swap edit.
+Reproduce it with:
 
-Measure replay recovery, extra steps after resume, stale-memory rejection, budget overage,
-duplicate work, operator-paused rate, and final hidden-test success. Distinguish automatic
-retry, state reconciliation, and explicit operator decisions rather than combining them
-under an unqualified “idempotent” or “exactly once” label. Event-log survival alone is not
-counted as recovery.
+```text
+python -m contextopt recovery-eval \
+  --output experiments/v0.9-recovery-matrix/report.json \
+  --markdown experiments/v0.9-recovery-matrix/report.md \
+  --html experiments/v0.9-recovery-matrix/report.html \
+  --manifest experiments/v0.9-recovery-matrix/manifest.json
+```
+
+The five deterministic scenarios pass in the committed [v0.9 recovery artifact](../experiments/v0.9-recovery-matrix/README.md).
+The matrix distinguishes automatic retry, state reconciliation, durable-result reuse, and
+explicit operator decisions rather than combining them under an unqualified “idempotent” or
+“exactly once” label. It is still a local ScriptedModel conformance result; event-log survival
+alone is not counted as recovery.
+
+Remaining Level 4 work is intentionally broader than this bounded matrix: machine-loss and
+filesystem crash testing, forced context compaction, stale/conflicting memory, duplicated tool
+results, provider timeouts/retryable failures, repeated tool-call ids, workspace changes between
+read and compare-and-swap edit, OS isolation, and final hidden-test success on real coding tasks.
 
 ## Level 5: bounded parallel candidate scheduling and adaptive tree selection — implemented
 

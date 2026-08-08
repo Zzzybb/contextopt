@@ -9,7 +9,7 @@
 - 多角色编排：planner 形成假设，solver 生成候选，reviewer 审计证据；
 - 安全边界：测试和 apply/rollback 都是显式操作，不能因为模型说成功就写盘。
 
-当前状态是 v0.8。已经实现单 Agent 运行时、上下文选择、分支搜索、可恢复的
+当前状态是 v0.9。已经实现单 Agent 运行时、上下文选择、分支搜索、可恢复的
 proposal/test session、顺序的 planner / solver / reviewer 编排，以及带独立隐藏测试的
 固定 ACM/数学题代码 Agent 策略评测。评测也可以接入 OpenAI-compatible 模型做探索性
 运行。现在三个角色还会把各自历史中的 assistant 摘要和当前请求交给同一个
@@ -25,6 +25,13 @@ generation，因此 checkpoint 里能审计“本轮到底给了角色什么上�
 并发度和已经落账的 lane response。恢复时复用已落账 lane，只重发没有 response 的 lane；
 planner 和 reviewer 仍然顺序调用，仍不声称 exactly-once。
 OS sandbox、跨运行语义记忆和统计严谨的真实模型评测仍在后续计划中。
+
+另外新增了 `recovery-eval` 长程恢复矩阵：在 `model.requested`、`model.responded`、
+`tool.started`、`tool.completed` 等 durable 边界注入 process-like stop，再用全新的
+runner/model/tools 恢复同一份日志。它覆盖 pending request 复用、已落账最终响应不重复
+调用、写操作 reconciliation、重复写入避免，以及 `run_tests` 的暂停和显式
+`mark_failed`。五个场景的 JSON、Markdown、HTML、manifest 产物在
+[`experiments/v0.9-recovery-matrix`](experiments/v0.9-recovery-matrix/README.zh-CN.md)。
 
 ## 为什么适合面试 Agent 开发岗
 
@@ -192,6 +199,8 @@ python -m contextopt agent-eval \
 协议、预算、隐藏测试和配对统计；它不是真实模型能力证据。
 本次对应的 [PR 变更说明](docs/pr/0001-v0.8-scripted-control-artifact.zh-CN.md) 和
 [英文版](docs/pr/0001-v0.8-scripted-control-artifact.md) 记录了复现命令与 claim boundary。
+- v0.9 长程恢复矩阵补充：[docs/pr/0001-v0.9-recovery-matrix.zh-CN.md](docs/pr/0001-v0.9-recovery-matrix.zh-CN.md)
+  和 [英文版](docs/pr/0001-v0.9-recovery-matrix.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、
 指标名称是权威定义。

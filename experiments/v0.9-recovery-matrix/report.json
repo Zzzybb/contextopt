@@ -1,0 +1,226 @@
+{
+  "claim_boundary": "This is a deterministic recovery-contract evaluation with injected process-like stops and ScriptedModel responses. It measures durable event boundaries, pending work reconstruction, conservative tool replay, pause/resolution semantics, and duplicate-effect accounting on one local fixture; it does not prove arbitrary machine-loss recovery, exactly-once provider effects, sandbox security, or model coding quality.",
+  "config": {
+    "scenarios": [
+      "pending-model-request",
+      "durable-final-response",
+      "reconcile-write-before-effect",
+      "durable-write-result",
+      "nonreplayable-test-pause"
+    ]
+  },
+  "kind": "contextopt.recovery-eval.report",
+  "results": [
+    {
+      "durable_model_requests": 1,
+      "event_types_after_resume": [
+        "run.interrupted",
+        "run.resumed",
+        "model.responded",
+        "budget.updated",
+        "run.completed"
+      ],
+      "event_types_before_resume": [
+        "run.started",
+        "model.requested"
+      ],
+      "expected_final_status": "completed",
+      "expected_first_resume": "completed",
+      "expected_workspace_digest": "5bb0aab14e3180181bbf507d452e3efa2a5fe85d5c54143a186da4ac358e7841",
+      "failure": null,
+      "fault_event": "model.requested",
+      "final_status": "completed",
+      "first_resume_status": "completed",
+      "model_calls_after_resume": 1,
+      "model_calls_before_crash": 0,
+      "passed": true,
+      "pending_before_resume": {
+        "model": {
+          "turn": 1
+        },
+        "phase": "running",
+        "tools": []
+      },
+      "scenario_id": "pending-model-request",
+      "tool_event_counts": {},
+      "tool_name": null,
+      "workspace_digest": "5bb0aab14e3180181bbf507d452e3efa2a5fe85d5c54143a186da4ac358e7841"
+    },
+    {
+      "durable_model_requests": 1,
+      "event_types_after_resume": [
+        "budget.updated",
+        "run.interrupted",
+        "run.resumed",
+        "run.completed"
+      ],
+      "event_types_before_resume": [
+        "run.started",
+        "model.requested",
+        "model.responded"
+      ],
+      "expected_final_status": "completed",
+      "expected_first_resume": "completed",
+      "expected_workspace_digest": "5bb0aab14e3180181bbf507d452e3efa2a5fe85d5c54143a186da4ac358e7841",
+      "failure": null,
+      "fault_event": "model.responded",
+      "final_status": "completed",
+      "first_resume_status": "completed",
+      "model_calls_after_resume": 0,
+      "model_calls_before_crash": 1,
+      "passed": true,
+      "pending_before_resume": {
+        "model": null,
+        "phase": "running",
+        "tools": []
+      },
+      "scenario_id": "durable-final-response",
+      "tool_event_counts": {},
+      "tool_name": null,
+      "workspace_digest": "5bb0aab14e3180181bbf507d452e3efa2a5fe85d5c54143a186da4ac358e7841"
+    },
+    {
+      "durable_model_requests": 2,
+      "event_types_after_resume": [
+        "run.interrupted",
+        "run.resumed",
+        "tool.completed",
+        "model.requested",
+        "model.responded",
+        "budget.updated",
+        "run.completed"
+      ],
+      "event_types_before_resume": [
+        "run.started",
+        "model.requested",
+        "model.responded",
+        "budget.updated",
+        "tool.started"
+      ],
+      "expected_final_status": "completed",
+      "expected_first_resume": "completed",
+      "expected_workspace_digest": "5ebb3aeed575363a6b8ea2086745ee54e1649578f9b32969567594035a3b1e22",
+      "failure": null,
+      "fault_event": "tool.started",
+      "final_status": "completed",
+      "first_resume_status": "completed",
+      "model_calls_after_resume": 1,
+      "model_calls_before_crash": 1,
+      "passed": true,
+      "pending_before_resume": {
+        "model": null,
+        "phase": "running",
+        "tools": [
+          {
+            "name": "replace_text",
+            "replay_policy": "reconcile",
+            "started": true
+          }
+        ]
+      },
+      "scenario_id": "reconcile-write-before-effect",
+      "tool_event_counts": {
+        "tool.completed": 1,
+        "tool.started": 1
+      },
+      "tool_name": "replace_text",
+      "workspace_digest": "5ebb3aeed575363a6b8ea2086745ee54e1649578f9b32969567594035a3b1e22"
+    },
+    {
+      "durable_model_requests": 2,
+      "event_types_after_resume": [
+        "run.interrupted",
+        "run.resumed",
+        "model.requested",
+        "model.responded",
+        "budget.updated",
+        "run.completed"
+      ],
+      "event_types_before_resume": [
+        "run.started",
+        "model.requested",
+        "model.responded",
+        "budget.updated",
+        "tool.started",
+        "tool.completed"
+      ],
+      "expected_final_status": "completed",
+      "expected_first_resume": "completed",
+      "expected_workspace_digest": "5ebb3aeed575363a6b8ea2086745ee54e1649578f9b32969567594035a3b1e22",
+      "failure": null,
+      "fault_event": "tool.completed",
+      "final_status": "completed",
+      "first_resume_status": "completed",
+      "model_calls_after_resume": 1,
+      "model_calls_before_crash": 1,
+      "passed": true,
+      "pending_before_resume": {
+        "model": null,
+        "phase": "running",
+        "tools": []
+      },
+      "scenario_id": "durable-write-result",
+      "tool_event_counts": {
+        "tool.completed": 1,
+        "tool.started": 1
+      },
+      "tool_name": "replace_text",
+      "workspace_digest": "5ebb3aeed575363a6b8ea2086745ee54e1649578f9b32969567594035a3b1e22"
+    },
+    {
+      "durable_model_requests": 2,
+      "event_types_after_resume": [
+        "run.interrupted",
+        "run.resumed",
+        "run.paused",
+        "run.resumed",
+        "tool.failed",
+        "model.requested",
+        "model.responded",
+        "budget.updated",
+        "run.completed"
+      ],
+      "event_types_before_resume": [
+        "run.started",
+        "model.requested",
+        "model.responded",
+        "budget.updated",
+        "tool.started"
+      ],
+      "expected_final_status": "completed",
+      "expected_first_resume": "paused",
+      "expected_workspace_digest": "5bb0aab14e3180181bbf507d452e3efa2a5fe85d5c54143a186da4ac358e7841",
+      "failure": null,
+      "fault_event": "tool.started",
+      "final_status": "completed",
+      "first_resume_status": "paused",
+      "model_calls_after_resume": 1,
+      "model_calls_before_crash": 1,
+      "passed": true,
+      "pending_before_resume": {
+        "model": null,
+        "phase": "running",
+        "tools": [
+          {
+            "name": "run_tests",
+            "replay_policy": "never",
+            "started": true
+          }
+        ]
+      },
+      "scenario_id": "nonreplayable-test-pause",
+      "tool_event_counts": {
+        "tool.failed": 1,
+        "tool.started": 1
+      },
+      "tool_name": "run_tests",
+      "workspace_digest": "5bb0aab14e3180181bbf507d452e3efa2a5fe85d5c54143a186da4ac358e7841"
+    }
+  ],
+  "schema_version": "1",
+  "summary": {
+    "failed_count": 0,
+    "passed_count": 5,
+    "scenario_count": 5
+  }
+}

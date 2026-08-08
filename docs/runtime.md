@@ -627,3 +627,7 @@ Remaining milestones are:
 
 The repository still has no OS sandbox or published real-model benchmark. The explicit
 apply/rollback adapter is a local filesystem safety boundary, not a security boundary.
+
+The deterministic long-horizon recovery matrix is available as `python -m contextopt
+recovery-eval`. It demonstrates the covered event boundaries and conservative tool policies,
+but remains a local conformance artifact rather than a machine-loss or exactly-once guarantee.

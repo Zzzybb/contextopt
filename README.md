@@ -19,7 +19,7 @@ Task ──> AgentRunner ──> ContextCompiler ──> ModelClient ──> too
 Every boundary ──> durable schema-2 JSONL event log + verified state projection
 ```
 
-> **Status — v0.8 context-aware coding-agent evaluation:** the repository now contains a real
+> **Status — v0.9 long-horizon recovery milestone:** the repository now contains a real
 > single-agent read/edit/test loop, recoverable event-sourced execution, a deterministic live
 > context compiler, an auditable beam/MCTS search over generated coding candidates, and a strict
 > model-to-candidate proposal boundary. A model can return bounded complete workspace
@@ -39,7 +39,9 @@ Every boundary ──> durable schema-2 JSONL event log + verified state project
 > records lane hashes, usage, failures, and observed provider concurrency. Planner and reviewer
 > calls remain sequential; this is still at-least-once provider execution, not exactly-once.
 > An OS sandbox, learned semantic memory, and a statistically powered real-model coding benchmark
-> remain outside the current claim boundary.
+> remain outside the current claim boundary. The bounded `recovery-eval` matrix now injects
+> process-like stops across durable model/tool boundaries and verifies fresh-run recovery,
+> reconciliation, duplicate-effect accounting, and explicit operator pauses.
 
 ## Why this project exists
 
@@ -194,6 +196,17 @@ recompute the complete chain because there is no secret or external trust anchor
 - The evaluator defaults to deterministic scripted responses, but accepts an OpenAI-compatible
   model factory for exploratory runs; either mode keeps the independent hidden grader outside
   the candidate snapshot.
+
+### Long-horizon recovery matrix — v0.9 bounded milestone
+
+- `recovery-eval` injects process-like stops after durable model and tool events, then resumes
+  the same event log with fresh runtime objects.
+- The five scenarios make pending-request reuse, durable final-response reuse, write
+  reconciliation, duplicate-write avoidance, and conservative `run_tests` pause/`mark_failed`
+  semantics visible in one ledger.
+- JSON, Markdown, self-contained HTML, and a protocol manifest are checked in under
+  [`experiments/v0.9-recovery-matrix`](experiments/v0.9-recovery-matrix/README.md), with a
+  Chinese explanation and a strict claim boundary.
 
 ### ContextOpt engine — v0.1 algorithms, v0.3 live integration
 
@@ -571,6 +584,9 @@ docs/                     # architecture, runtime, and evaluation contract
   per-role ContextCompiler/observed-memory receipts, and bounded parallel isolated candidate
   evaluation with durable scheduler events, fixed-beam/observed-quality MCTS policies, and
   opt-in disjoint three-way merge evidence.
+- **v0.9 — Long-horizon recovery matrix (implemented):** deterministic fault injection after
+  durable model/tool events, fresh-run resume, write reconciliation, duplicate-effect checks,
+  explicit non-replayable-tool pause/resolution, and JSON/Markdown/HTML/manifest artifacts.
 
 The v0.8 follow-up is documented in [the role-context addendum](docs/pr/0001-v0.8-context-memory-addendum.md)
 and its [Chinese translation](docs/pr/0001-v0.8-context-memory-addendum.zh-CN.md). The parallel
@@ -598,6 +614,8 @@ protocol/accounting baseline, not evidence about real-model quality.
 The corresponding [PR change note](docs/pr/0001-v0.8-scripted-control-artifact.md) and
 [Chinese version](docs/pr/0001-v0.8-scripted-control-artifact.zh-CN.md) record the exact
 regeneration command and claim boundary.
+The bounded long-horizon recovery matrix is documented in [the v0.9 PR change note](docs/pr/0001-v0.9-recovery-matrix.md)
+and [Chinese version](docs/pr/0001-v0.9-recovery-matrix.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers.
 

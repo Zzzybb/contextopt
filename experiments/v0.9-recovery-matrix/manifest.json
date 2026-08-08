@@ -1,0 +1,19 @@
+{
+  "claim_boundary": "This is a deterministic recovery-contract evaluation with injected process-like stops and ScriptedModel responses. It measures durable event boundaries, pending work reconstruction, conservative tool replay, pause/resolution semantics, and duplicate-effect accounting on one local fixture; it does not prove arbitrary machine-loss recovery, exactly-once provider effects, sandbox security, or model coding quality.",
+  "config": {
+    "scenarios": [
+      "pending-model-request",
+      "durable-final-response",
+      "reconcile-write-before-effect",
+      "durable-write-result",
+      "nonreplayable-test-pause"
+    ]
+  },
+  "fault_injection": {
+    "adapter": "durable-event-hook-v1",
+    "fresh_runner_on_resume": true,
+    "model_adapter": "scripted"
+  },
+  "kind": "contextopt.recovery-eval.manifest",
+  "schema_version": "1"
+}
