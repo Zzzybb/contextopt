@@ -187,6 +187,8 @@ def _agent_eval(args: argparse.Namespace) -> int:
         max_model_calls=args.max_model_calls,
         max_candidates=args.max_candidates,
         max_test_calls=args.max_test_calls,
+        search_policy=args.search_policy,
+        exploration_constant=args.exploration_constant,
         include_hidden_tests=not args.no_hidden_tests,
         model_adapter=model_adapter,
     )
@@ -241,6 +243,8 @@ def _branch_search(args: argparse.Namespace) -> int:
             max_candidates=args.max_candidates,
             test_environment_fingerprint=args.test_environment,
             stop_on_pass=not args.no_stop_on_pass,
+            search_policy=args.search_policy,
+            exploration_constant=args.exploration_constant,
         )
     ).run(case)
     print(render_branch_console(report))
@@ -322,6 +326,8 @@ def _search_session(args: argparse.Namespace) -> int:
             max_candidates=args.branch_max_candidates,
             test_environment_fingerprint=args.test_environment,
             stop_on_pass=not args.no_stop_on_pass,
+            search_policy=args.search_policy,
+            exploration_constant=args.exploration_constant,
         )
     report = asyncio.run(
         run_search_session(
@@ -521,6 +527,8 @@ def _orchestrate(args: argparse.Namespace) -> int:
             max_candidates=args.branch_max_candidates,
             test_environment_fingerprint=args.test_environment,
             stop_on_pass=not args.no_stop_on_pass,
+            search_policy=args.search_policy,
+            exploration_constant=args.exploration_constant,
         )
     report = asyncio.run(
         run_orchestration(
@@ -836,6 +844,13 @@ def build_parser() -> argparse.ArgumentParser:
     agent_eval.add_argument("--max-candidates", type=int, default=2)
     agent_eval.add_argument("--max-test-calls", type=int, default=2)
     agent_eval.add_argument(
+        "--search-policy",
+        choices=("beam", "mcts"),
+        default="beam",
+        help="branch selection policy used inside each strategy",
+    )
+    agent_eval.add_argument("--exploration-constant", type=float, default=1.0)
+    agent_eval.add_argument(
         "--no-hidden-tests",
         action="store_true",
         help=(
@@ -938,6 +953,13 @@ def build_parser() -> argparse.ArgumentParser:
     session.add_argument("--max-total-prompt-chars", type=int, default=400_000)
     session.add_argument("--proposal-output-tokens", type=int, default=8_192)
     session.add_argument("--beam-width", type=int, default=2)
+    session.add_argument(
+        "--search-policy",
+        choices=("beam", "mcts"),
+        default="beam",
+        help="beam baseline or observed-quality MCTS traversal",
+    )
+    session.add_argument("--exploration-constant", type=float, default=1.0)
     session.add_argument("--max-depth", type=int, default=4)
     session.add_argument("--branch-max-candidates", type=int, default=32)
     session.add_argument("--test-environment", default="visible-tests-v1")
@@ -1044,6 +1066,13 @@ def build_parser() -> argparse.ArgumentParser:
     orchestrate.add_argument("--reviewer-max-issue-items", type=int, default=8)
     orchestrate.add_argument("--reviewer-max-item-chars", type=int, default=600)
     orchestrate.add_argument("--beam-width", type=int, default=2)
+    orchestrate.add_argument(
+        "--search-policy",
+        choices=("beam", "mcts"),
+        default="beam",
+        help="beam baseline or observed-quality MCTS traversal",
+    )
+    orchestrate.add_argument("--exploration-constant", type=float, default=1.0)
     orchestrate.add_argument("--max-depth", type=int, default=4)
     orchestrate.add_argument("--branch-max-candidates", type=int, default=32)
     orchestrate.add_argument("--test-environment", default="visible-tests-v1")
@@ -1103,6 +1132,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="JSON branch case; omit it to run the built-in repair demo",
     )
     branch_search.add_argument("--beam-width", type=int, default=2)
+    branch_search.add_argument(
+        "--search-policy",
+        choices=("beam", "mcts"),
+        default="beam",
+        help="beam baseline or observed-quality MCTS traversal",
+    )
+    branch_search.add_argument("--exploration-constant", type=float, default=1.0)
     branch_search.add_argument("--max-depth", type=int, default=4)
     branch_search.add_argument("--max-candidates", type=int, default=32)
     branch_search.add_argument(

@@ -5,7 +5,7 @@
 
 - 上下文编译：在有限预算下选择任务、代码、测试、工具观察和记忆证据；
 - 长程运行：持久化事件、checkpoint、恢复、预算和 pending 请求；
-- 代码搜索：生成完整候选工作区，执行可见测试，去重和 beam search；
+- 代码搜索：生成完整候选工作区，执行可见测试，去重、beam search 和基于观测质量的 MCTS；
 - 多角色编排：planner 形成假设，solver 生成候选，reviewer 审计证据；
 - 安全边界：测试和 apply/rollback 都是显式操作，不能因为模型说成功就写盘。
 
@@ -16,8 +16,10 @@ proposal/test session、顺序的 planner / solver / reviewer 编排，以及带
 ContextCompiler，持久化 ContextReceipt、消息哈希、版本化观察记忆指纹和 workspace
 generation，因此 checkpoint 里能审计“本轮到底给了角色什么上下文”。候选 oracle 还支持
 `max_parallel_tests > 1`：每个候选使用独立临时工作区，逐个写入 requested/completed 事件，
-每个结果都更新 checkpoint；恢复时只重跑尚未落账的观察。自适应 PatchTree/MCTS、OS sandbox
-和统计严谨的真实模型评测仍在后续计划中。
+每个结果都更新 checkpoint；恢复时只重跑尚未落账的观察。现在固定候选树还支持
+`--search-policy mcts`：它把 visible-test 质量沿父链回传，用 UCT 选择下一条已生成分支，
+并把选择事件写入 hash-chain。merge-aware speculative calls、OS sandbox 和统计严谨的真实
+模型评测仍在后续计划中。
 
 ## 为什么适合面试 Agent 开发岗
 
@@ -30,7 +32,9 @@ generation，因此 checkpoint 里能审计“本轮到底给了角色什么上�
 5. 角色上下文与记忆：每个角色的历史摘要独立编译，receipt 记录选择块、消息哈希、
    memory fingerprint 和 workspace generation；
 6. 并行候选调度：限制 in-flight 数量，隔离临时工作区，并在每个测试结果后持久化；
-7. 评测边界：reviewer 不能绕过可见测试，脚本 conformance 与模型能力明确分开。
+7. MCTS 调度：使用真实 oracle 质量而不是模型自报置信度选择后续候选，记录 UCT、访问次数和
+   reward；
+8. 评测边界：reviewer 不能绕过可见测试，脚本 conformance 与模型能力明确分开。
 
 这些设计让演示可以回答“状态是什么、失败如何恢复、指标如何计算、谁有权
 接受结果”，而不是只展示一段角色扮演对话。
@@ -69,7 +73,8 @@ python -m contextopt search-session \
 每个候选都在独立临时工作区运行；`max_parallel_tests` 限制同时运行的 oracle 进程，
 每个结果落盘后才算进入账本。恢复时只会重新执行尚未持久化的候选，设为 `1` 即为
 串行基线。增加 `--scheduler-policy adaptive` 后，后续批次会根据已观测父分支质量动态
-排序，并在第一批通过后停止；`fixed` 则保持确定性顺序。
+排序，并在第一批通过后停止；`fixed` 则保持确定性顺序。分支树本身可以另用
+`--search-policy mcts` 做 UCT 选择；它不负责让模型生成新候选。
 
 完整的 orchestrate 命令需要三个 ScriptedModel JSON 文件、根目录快照和可信的
 可见测试命令。它会输出角色调用数、实际测试进程数、缓存复用数、分支状态、
@@ -133,6 +138,7 @@ python -m contextopt agent-eval \
 - v0.8 角色上下文补充：[docs/pr/0001-v0.8-context-memory-addendum.zh-CN.md](docs/pr/0001-v0.8-context-memory-addendum.zh-CN.md)
 - v0.8 并行调度补充：[docs/pr/0001-v0.8-parallel-scheduler-addendum.zh-CN.md](docs/pr/0001-v0.8-parallel-scheduler-addendum.zh-CN.md)
 - v0.8 评测面板补充：[docs/pr/0001-v0.8-evaluation-dashboard-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-dashboard-addendum.zh-CN.md)
+- v0.8 MCTS 调度补充：[docs/pr/0001-v0.8-mcts-addendum.zh-CN.md](docs/pr/0001-v0.8-mcts-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、
 指标名称是权威定义。

@@ -21,7 +21,7 @@ Every boundary ──> durable schema-2 JSONL event log + verified state project
 
 > **Status — v0.8 context-aware coding-agent evaluation:** the repository now contains a real
 > single-agent read/edit/test loop, recoverable event-sourced execution, a deterministic live
-> context compiler, an auditable beam search over generated coding candidates, and a strict
+> context compiler, an auditable beam/MCTS search over generated coding candidates, and a strict
 > model-to-candidate proposal boundary. A model can return bounded complete workspace
 > snapshots; the session feeds visible-test failures into later rounds, deduplicates test
 > work across rounds, persists pending phases and budgets atomically, and can be resumed
@@ -33,8 +33,9 @@ Every boundary ──> durable schema-2 JSONL event log + verified state project
 > ContextCompiler, persist a per-role ContextReceipt, and carry a versioned observed-memory
 > fingerprint into each checkpointed call.
 > Candidate evaluation now supports bounded parallel isolated workspaces with durable per-candidate
-> checkpoints. It does **not** yet implement adaptive PatchTree/MCTS scheduling, an OS sandbox,
-> learned semantic memory, or a statistically powered real-model coding benchmark.
+> checkpoints and a deterministic, observation-driven MCTS traversal over fixed candidate trees.
+> Merge-aware speculative calls, an OS sandbox, learned semantic memory, and a statistically powered
+> real-model coding benchmark remain outside the current claim boundary.
 
 ## Why this project exists
 
@@ -104,7 +105,8 @@ coding success without a controlled real-model benchmark.
 
 - Immutable candidate workspace snapshots with parent hypotheses and evidence references.
 - Deterministic beam search ordered by visible-test progress, with explicit candidate,
-  test-call, depth, and beam budgets.
+  test-call, depth, and beam budgets; `--search-policy mcts` adds bounded UCT traversal
+  whose parent values come only from observed visible-test quality.
 - Fixed-test-environment workspace fingerprints that avoid executing the same candidate
   state twice; duplicate and beam-prune decisions remain in the audit trace.
 - Hash-chained `search.started`, proposal, evaluation, duplicate, prune, and completed
@@ -192,8 +194,9 @@ recompute the complete chain because there is no secret or external trust anchor
 - Automatic workspace snapshots, migration to another workspace, or distributed
   coordination. `apply-best` and `rollback-best` are explicit local operator actions over
   the files named in the session baseline; they are not transparent workspace versioning.
-- Adaptive PatchTree/MCTS scheduling, speculative model calls, and merge-aware multi-agent
-  scheduling remain planned. The current parallel mode is bounded candidate-oracle execution;
+- Speculative model calls and merge-aware multi-agent scheduling remain planned. The current
+  parallel mode is bounded candidate-oracle execution; MCTS selects among already generated
+  immutable snapshots and does not generate patches itself.
   role model calls remain sequential and share one explicit budget.
 - A container or virtual-machine security boundary. Workspace path checks and permission
   flags reduce accidental access, but are not an OS sandbox. Registered test commands are
@@ -365,6 +368,15 @@ one beam-pruned branch, and one duplicate without a second test call:
 | Beam-pruned states | 1 |
 | Best branch | `iterative-fix` |
 
+For a fixed candidate tree, `--search-policy mcts` records `candidate.selected` events with
+the UCT score, parent visits, and propagated visible-test reward. It is a bounded scheduler
+experiment, not a learned planner or a claim that the model would have proposed the tree.
+
+```bash
+contextopt branch-search --search-policy mcts \
+  --output branch-search-mcts.json --html branch-search-mcts.html
+```
+
 For a real model adapter, convert each generated patch plus its isolated visible-test
 observation into the same JSON case shape. For a local executable experiment, pass a
 serialized case and explicitly opt into the trusted host command:
@@ -528,14 +540,16 @@ docs/                     # architecture, runtime, and evaluation contract
 - **v0.8 — Context-aware strategy evaluation (implemented):** executable ACM/math fixtures,
   independent hidden graders, a paired single-pass/Best-of-N/orchestrated accounting harness,
   per-role ContextCompiler/observed-memory receipts, and bounded parallel isolated candidate
-  evaluation with durable scheduler events.
+  evaluation with durable scheduler events plus fixed-beam and observed-quality MCTS policies.
 
 The v0.8 follow-up is documented in [the role-context addendum](docs/pr/0001-v0.8-context-memory-addendum.md)
 and its [Chinese translation](docs/pr/0001-v0.8-context-memory-addendum.zh-CN.md). The parallel
 scheduler details are in [the scheduler addendum](docs/pr/0001-v0.8-parallel-scheduler-addendum.md)
 and [Chinese version](docs/pr/0001-v0.8-parallel-scheduler-addendum.zh-CN.md). The evaluation
 dashboard is documented in [the dashboard addendum](docs/pr/0001-v0.8-evaluation-dashboard-addendum.md)
-and [Chinese version](docs/pr/0001-v0.8-evaluation-dashboard-addendum.zh-CN.md).
+and [Chinese version](docs/pr/0001-v0.8-evaluation-dashboard-addendum.zh-CN.md). The bounded MCTS
+policy is documented in [the MCTS addendum](docs/pr/0001-v0.8-mcts-addendum.md) and [Chinese
+version](docs/pr/0001-v0.8-mcts-addendum.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers.
 

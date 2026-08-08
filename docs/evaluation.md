@@ -140,7 +140,7 @@ the API, and reproduction command.
 
 The v0.4 search core evaluates a fixed candidate graph representing model-generated
 workspace snapshots and their visible-test observations. It runs a deterministic beam
-search under explicit candidate and depth budgets. The default fixture contains three
+baseline or bounded MCTS/UCT traversal under explicit candidate and depth budgets. The default fixture contains three
 first-pass hypotheses, two follow-up repairs, and one equivalent repair whose complete
 workspace snapshot is identical to an earlier passing state.
 
@@ -149,7 +149,7 @@ The report keeps these signals separate:
 - visible-test calls versus candidate proposals (duplicate states do not consume a
   second test call under the declared test-environment fingerprint);
 - test progress and best passing branch;
-- beam-pruned candidates and duplicate-state decisions;
+- beam-pruned candidates, MCTS selection rewards, and duplicate-state decisions;
 - hash-chain integrity and JSON round-trip determinism;
 - branch graph rendering in dependency-free SVG HTML.
 
@@ -160,11 +160,15 @@ python -m contextopt branch-search \
   --output branch-search.json \
   --markdown branch-search.md \
   --html branch-search.html
+
+python -m contextopt branch-search --search-policy mcts \
+  --output branch-search-mcts.json --html branch-search-mcts.html
 ```
 
 The checked-in fixture currently proposes 6 candidates, evaluates 5 unique workspace
 states, detects 1 duplicate, prunes 1 low-progress branch, and selects `iterative-fix`
-after all five visible tests pass. This is an algorithm and accounting conformance
+after all five visible tests pass. The MCTS output additionally records each UCT choice,
+parent visits, and propagated test-quality reward. This is an algorithm and accounting conformance
 result. Candidate snapshots and test results are fixed inputs; no model is called by the
 pure core and no patch command is executed by it. The repository also ships an explicit
 local executable adapter: it materializes each unique snapshot in a disposable
@@ -337,7 +341,7 @@ retry, state reconciliation, and explicit operator decisions rather than combini
 under an unqualified “idempotent” or “exactly once” label. Event-log survival alone is not
 counted as recovery.
 
-## Level 5: bounded parallel candidate scheduling — implemented; adaptive scheduling planned
+## Level 5: bounded parallel candidate scheduling and adaptive tree selection — implemented
 
 The session and role orchestrators now expose `max_parallel_tests`. Under one shared test
 budget they can launch bounded batches of candidates, each in a disposable isolated workspace,
@@ -346,13 +350,18 @@ after every completed observation. A resume reuses observations already in the c
 reruns only candidates whose result was not durably recorded.
 
 The current implementation supports all four controls below at the bounded candidate-oracle
-level. Full PatchTree/MCTS scheduling with model generation and merge-aware workspaces remains
-the next scheduler milestone:
+level. MCTS traverses an already generated, parent-linked candidate tree; model generation on
+demand, speculative calls, and merge-aware workspaces remain outside this milestone:
 
 - single-path Agent;
 - independent best-of-N;
 - fixed beam search;
 - adaptive branch scheduling.
+
+`BranchSearchConfig(search_policy="mcts")` uses a deterministic UCT score. An unobserved child
+is explored first; after a parent has an oracle result, its mean visible-test quality and the
+configured exploration constant determine which descendant is selected. Every selection and
+rollout is hash-chained, and no hidden grader result is used for scheduling.
 
 Each branch needs an isolated workspace and the same executable oracle. Candidate metrics
 include issue resolved rate, tokens per solved task, time to first valid patch, test-progress

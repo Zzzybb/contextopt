@@ -37,6 +37,7 @@ from contextopt.search import (
     PlannerConfig,
     ProposalConfig,
     ReviewerConfig,
+    SearchPolicy,
     SearchSessionConfig,
     evaluate_candidate,
     run_orchestration,
@@ -425,6 +426,8 @@ class AgentEvalConfig:
     max_model_calls: int = 6
     max_candidates: int = 2
     max_test_calls: int = 2
+    search_policy: SearchPolicy = "beam"
+    exploration_constant: float = 1.0
     include_hidden_tests: bool = True
     model_adapter: str = "scripted"
 
@@ -455,6 +458,17 @@ class AgentEvalConfig:
             "max_test_calls",
         ):
             _positive_int(getattr(self, name), name)
+        if not isinstance(self.search_policy, str) or self.search_policy not in {
+            "beam",
+            "mcts",
+        }:
+            raise ValueError(f"unsupported search policy: {self.search_policy!r}")
+        if not isinstance(self.exploration_constant, (int, float)) or isinstance(
+            self.exploration_constant, bool
+        ):
+            raise ValueError("exploration_constant must be a number")
+        if self.exploration_constant <= 0:
+            raise ValueError("exploration_constant must be positive")
         if not isinstance(self.include_hidden_tests, bool):
             raise ValueError("include_hidden_tests must be a boolean")
         if self.model_adapter not in {"scripted", "openai-compatible", "custom"}:
@@ -471,6 +485,8 @@ class AgentEvalConfig:
             "max_model_calls",
             "max_candidates",
             "max_test_calls",
+            "search_policy",
+            "exploration_constant",
             "include_hidden_tests",
             "model_adapter",
         }
@@ -497,6 +513,8 @@ class AgentEvalConfig:
             max_test_calls=_positive_int(
                 value.get("max_test_calls", 2), "max_test_calls"
             ),
+            search_policy=cast(SearchPolicy, value.get("search_policy", "beam")),
+            exploration_constant=float(value.get("exploration_constant", 1.0)),
             include_hidden_tests=_boolean(
                 value.get("include_hidden_tests", True), "include_hidden_tests"
             ),
@@ -514,6 +532,8 @@ class AgentEvalConfig:
             "max_model_calls": self.max_model_calls,
             "max_candidates": self.max_candidates,
             "max_test_calls": self.max_test_calls,
+            "search_policy": self.search_policy,
+            "exploration_constant": self.exploration_constant,
             "include_hidden_tests": self.include_hidden_tests,
             "model_adapter": self.model_adapter,
         }
@@ -1209,7 +1229,11 @@ def _run_strategy(
             )
         execution = fixture.execution_config
         branch = BranchSearchConfig(
-            beam_width=2, max_depth=1, max_candidates=config.max_candidates
+            beam_width=2,
+            max_depth=1,
+            max_candidates=config.max_candidates,
+            search_policy=config.search_policy,
+            exploration_constant=config.exploration_constant,
         )
         proposal = ProposalConfig(max_candidates=config.max_candidates)
         if strategy == "single_pass":
@@ -1227,7 +1251,11 @@ def _run_strategy(
                     ),
                     proposal_config=ProposalConfig(max_candidates=1),
                     search_config=BranchSearchConfig(
-                        beam_width=1, max_depth=1, max_candidates=1
+                        beam_width=1,
+                        max_depth=1,
+                        max_candidates=1,
+                        search_policy=config.search_policy,
+                        exploration_constant=config.exploration_constant,
                     ),
                     run_id=f"agent-eval-{fixture.fixture_id}-single-{repetition}",
                 )

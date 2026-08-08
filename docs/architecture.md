@@ -235,7 +235,7 @@ candidate snapshots + visible-test observations
       fixed-environment dedup key
                  │
                  v
-       test-progress beam ordering
+       beam ordering or observed-quality UCT
                  │
                  ├── duplicate state ──> audit and skip another test call
                  ├── low-progress      ──> beam-pruned event
@@ -245,8 +245,10 @@ candidate snapshots + visible-test observations
 `BranchCase` stores the task, root snapshot, parent-linked `CandidatePatch` objects, and
 their `TestResult` observations. `BranchSearch` assigns each snapshot a stable workspace
 fingerprint and combines it with a declared test-environment fingerprint. The search
-evaluates a state once, orders failing candidates by a bounded test-progress score, keeps
-the configured beam, and stops at the first passing depth unless configured to continue.
+evaluates a state once, orders failing candidates by a bounded test-progress score for the
+beam baseline, or propagates visible-test quality through a deterministic UCT tree when
+`search_policy="mcts"`. Both policies respect the candidate/depth/test budgets and stop at
+the first passing result unless configured to continue.
 The optional `ExecutableSearchConfig` adapter materializes a candidate in a disposable
 temporary workspace and runs a trusted argv without a shell; it is deliberately not an
 OS sandbox and does not replace the runtime's recovery/tool lease.
@@ -367,8 +369,9 @@ event type used by branch search. Checkpoints are written before planner, solver
 reviewer awaits and after evaluation. A stopped planner request requires explicit retry;
 after a durable planner response, the solver can safely continue on resume. Parallel
 candidate oracle execution is now bounded by `max_parallel_tests`; adaptive branch scheduling,
-including parent-quality promotion and early-stop, is available as a bounded policy;
-PatchTree/MCTS, speculative model calls, and merge-aware workspaces remain future work. Each candidate is
+including parent-quality promotion and early-stop, is available as a bounded policy; the
+`mcts` search policy adds UCT traversal over already generated candidate trees. Speculative
+model calls and merge-aware workspaces remain future work. Each candidate is
 materialized in a fresh temporary workspace, and requested/completed events are recorded in
 candidate order so a checkpoint can resume without treating provider or subprocess effects as
 exactly once.

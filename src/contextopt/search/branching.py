@@ -33,6 +33,8 @@ CandidateStatus = Literal[
     "root", "frontier", "accepted", "duplicate", "pruned", "failed"
 ]
 SearchStatus = Literal["accepted", "exhausted", "budget_exhausted"]
+SearchPolicy = Literal["beam", "mcts"]
+SEARCH_POLICIES: tuple[SearchPolicy, ...] = ("beam", "mcts")
 
 
 def _non_empty(value: Any, label: str) -> str:
@@ -451,13 +453,20 @@ class BranchCase:
 
 @dataclass(frozen=True, slots=True)
 class BranchSearchConfig:
-    """Limits and deterministic tie-breaking rules for branch search."""
+    """Limits and deterministic tie-breaking rules for branch search.
+
+    ``beam`` is the historical breadth-first baseline. ``mcts`` uses observed
+    test quality as a bounded UCT signal while traversing the same immutable
+    candidate tree; it never invents an unobserved reward.
+    """
 
     beam_width: int = 2
     max_depth: int = 4
     max_candidates: int = 32
     test_environment_fingerprint: str = "visible-tests-v1"
     stop_on_pass: bool = True
+    search_policy: SearchPolicy = "beam"
+    exploration_constant: float = 1.0
 
     def __post_init__(self) -> None:
         for name in ("beam_width", "max_depth", "max_candidates"):
@@ -473,6 +482,12 @@ class BranchSearchConfig:
         )
         if not isinstance(self.stop_on_pass, bool):
             raise ValueError("stop_on_pass must be a boolean")
+        if not isinstance(self.search_policy, str) or (
+            self.search_policy not in SEARCH_POLICIES
+        ):
+            raise ValueError(f"unsupported search policy: {self.search_policy!r}")
+        if not isfinite(self.exploration_constant) or self.exploration_constant <= 0:
+            raise ValueError("exploration_constant must be finite and positive")
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> BranchSearchConfig:
@@ -484,6 +499,8 @@ class BranchSearchConfig:
             "max_candidates",
             "test_environment_fingerprint",
             "stop_on_pass",
+            "search_policy",
+            "exploration_constant",
         }
         unknown = set(data) - allowed
         if unknown:
@@ -497,6 +514,8 @@ class BranchSearchConfig:
             "max_candidates": self.max_candidates,
             "test_environment_fingerprint": self.test_environment_fingerprint,
             "stop_on_pass": self.stop_on_pass,
+            "search_policy": self.search_policy,
+            "exploration_constant": self.exploration_constant,
         }
 
 
@@ -838,6 +857,10 @@ class BranchSearch:
         return (-node.score, -quality, node.depth, node.id)
 
     def run(self, case: BranchCase) -> BranchSearchReport:
+        if self.config.search_policy == "mcts":
+            from contextopt.search.mcts import run_mcts_search
+
+            return run_mcts_search(case, self.config)
         builder = _EventBuilder()
         root_dedup = self._dedup_key(case.root_fingerprint)
         root = BranchNode(
@@ -1151,6 +1174,7 @@ def render_branch_console(report: BranchSearchReport) -> str:
     rendered.append("")
     rendered.append(
         f"status={report.status} best={report.best_node_id or '—'} "
+        f"policy={report.config.search_policy} "
         f"proposed={report.metrics['proposed']} "
         f"evaluated={report.metrics['evaluated']} "
         f"test_calls={report.metrics['test_calls']} "
@@ -1169,6 +1193,7 @@ def render_branch_markdown(report: BranchSearchReport) -> str:
         (
             f"Status: **{report.status}**; best candidate: "
             f"**{report.best_node_id or 'none'}**. "
+            f"Selection policy: **{report.config.search_policy}**. "
             "The fixed test environment is "
             f"`{report.config.test_environment_fingerprint}`."
         ),
@@ -1198,7 +1223,7 @@ def render_branch_markdown(report: BranchSearchReport) -> str:
                 f"Proposed **{report.metrics['proposed']}**, evaluated with tests "
                 f"**{report.metrics['test_calls']}**, "
                 f"deduplicated **{report.metrics['duplicates']}**, "
-                f"beam-pruned **{report.metrics['pruned']}**."
+                f"pruned **{report.metrics['pruned']}**."
             ),
             "",
             "A duplicate is the same complete workspace snapshot under the declared "
@@ -1288,6 +1313,7 @@ th,td{text-align:left;border-bottom:1px solid #e2e8f0;padding:.45rem}
 <p><b>Task:</b> __TASK__</p>
 <p><b>Status:</b> <span class="__STATUS_CLASS__">__STATUS__</span>
 · <b>Best:</b> __BEST__</p>
+<p><b>Selection policy:</b> __POLICY__</p>
 <div class="metrics">__METRICS__</div><div class="graph">__SVG__</div>
 <table><thead><tr><th>Branch</th><th>Status</th><th>Score</th><th>Decision</th></tr></thead>
 <tbody>__ROWS__</tbody></table>
@@ -1296,6 +1322,7 @@ th,td{text-align:left;border-bottom:1px solid #e2e8f0;padding:.45rem}
         .replace("__STATUS_CLASS__", "accepted" if report.status == "accepted" else "")
         .replace("__STATUS__", escape(report.status))
         .replace("__BEST__", escape(report.best_node_id or "none"))
+        .replace("__POLICY__", escape(report.config.search_policy))
         .replace(
             "__METRICS__",
             "".join(

@@ -12,6 +12,7 @@ from contextopt.search.apply import (
     write_apply_receipt,
 )
 from contextopt.search.branching import (
+    SEARCH_POLICIES,
     BranchCase,
     BranchNode,
     BranchSearch,
@@ -19,6 +20,7 @@ from contextopt.search.branching import (
     BranchSearchReport,
     CandidatePatch,
     SearchEvent,
+    SearchPolicy,
     TestResult,
     demo_case,
     render_branch_console,
@@ -33,6 +35,7 @@ from contextopt.search.executor import (
     evaluate_case,
     run_executable_search,
 )
+from contextopt.search.mcts import run_mcts_search
 from contextopt.search.orchestrator import (
     OrchestrationConfig,
     OrchestrationPhase,
@@ -85,6 +88,7 @@ from contextopt.search.session import (
 
 __all__ = [
     "SCHEDULER_POLICIES",
+    "SEARCH_POLICIES",
     "ApplyReceipt",
     "BranchCase",
     "BranchNode",
@@ -107,6 +111,7 @@ __all__ = [
     "RoleCall",
     "SchedulerPolicy",
     "SearchEvent",
+    "SearchPolicy",
     "SearchSessionConfig",
     "SearchSessionReport",
     "SearchSessionRound",
@@ -142,6 +147,7 @@ __all__ = [
     "review_branch",
     "rollback_best_snapshot",
     "run_executable_search",
+    "run_mcts_search",
     "run_orchestration",
     "run_search_session",
     "select_candidate_batch",

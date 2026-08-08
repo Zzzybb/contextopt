@@ -8,6 +8,7 @@ from pathlib import Path
 
 from contextopt.cli import main
 from contextopt.search import (
+    BranchCase,
     BranchSearch,
     BranchSearchConfig,
     BranchSearchReport,
@@ -18,6 +19,50 @@ from contextopt.search import (
     validate_search_report,
     verify_search_events,
 )
+
+
+def _mcts_case() -> BranchCase:
+    def files(candidate_id: str) -> dict[str, str]:
+        return {"src/solver.py": f"def solve(): return {candidate_id!r}\n"}
+
+    candidates = tuple(
+        CandidatePatch(
+            id=candidate_id,
+            parent_id=parent_id,
+            hypothesis=f"try {candidate_id}",
+            files=files(candidate_id),
+        )
+        for candidate_id, parent_id in (
+            ("a-low", "root"),
+            ("b-mid", "root"),
+            ("c-high", "root"),
+            ("a-low-fix", "a-low"),
+            ("b-mid-fix", "b-mid"),
+            ("c-high-fix", "c-high"),
+        )
+    )
+    tests = {
+        "a-low": TestResult(
+            suite="mcts",
+            passed_tests=("t1",),
+            failed_tests=("t2", "t3", "t4"),
+        ),
+        "b-mid": TestResult(
+            suite="mcts", passed_tests=("t1", "t2"), failed_tests=("t3", "t4")
+        ),
+        "c-high": TestResult(
+            suite="mcts", passed_tests=("t1", "t2", "t3"), failed_tests=("t4",)
+        ),
+        "a-low-fix": TestResult(suite="mcts", error="not reached"),
+        "b-mid-fix": TestResult(suite="mcts", error="not reached"),
+        "c-high-fix": TestResult(suite="mcts", passed_tests=("t1", "t2")),
+    }
+    return BranchCase(
+        task="follow the highest-quality observed parent",
+        root_files={"src/solver.py": "def solve(): return 'root'\n"},
+        candidates=candidates,
+        tests=tests,
+    )
 
 
 class BranchSearchTests(unittest.TestCase):
@@ -45,6 +90,34 @@ class BranchSearchTests(unittest.TestCase):
         verify_search_events(report.events)
         self.assertEqual(report.events[0].type, "search.started")
         self.assertEqual(report.events[-1].type, "search.completed")
+
+    def test_mcts_propagates_observed_quality_to_the_next_patch(self) -> None:
+        config = BranchSearchConfig(search_policy="mcts", max_candidates=4, max_depth=2)
+        first = BranchSearch(config).run(_mcts_case())
+        second = BranchSearch(config).run(_mcts_case())
+        self.assertEqual(first.to_dict(), second.to_dict())
+        self.assertEqual(
+            first.to_dict(), BranchSearchReport.from_dict(first.to_dict()).to_dict()
+        )
+        self.assertEqual(first.status, "accepted")
+        self.assertEqual(first.best_node_id, "c-high-fix")
+        selected = [
+            event.data["candidate_id"]
+            for event in first.events
+            if event.type == "candidate.selected"
+        ]
+        self.assertEqual(selected, ["a-low", "b-mid", "c-high", "c-high-fix"])
+        choice = next(
+            event
+            for event in first.events
+            if event.type == "candidate.selected"
+            and event.data["candidate_id"] == "c-high-fix"
+        )
+        self.assertEqual(choice.data["parent_id"], "c-high")
+        self.assertEqual(choice.data["parent_visits"], 1)
+        self.assertGreater(choice.data["parent_mean_quality"], 0.5)
+        self.assertEqual(choice.data["selection_policy"], "mcts")
+        verify_search_events(first.events)
 
     def test_report_round_trip_and_html_are_reproducible(self) -> None:
         report = BranchSearch().run(demo_case())
@@ -92,6 +165,8 @@ class BranchSearchTests(unittest.TestCase):
             exit_code = main(
                 [
                     "branch-search",
+                    "--search-policy",
+                    "mcts",
                     "--output",
                     str(json_path),
                     "--markdown",
