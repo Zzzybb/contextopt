@@ -260,6 +260,28 @@ class SearchSessionTests(unittest.IsolatedAsyncioTestCase):
                 read_session_checkpoint(checkpoint).to_dict(), report.to_dict()
             )
 
+    async def test_adaptive_scheduler_stops_after_first_passing_batch(self) -> None:
+        report = await run_search_session(
+            _multi_candidate_model(),
+            task="find a correct sorting implementation",
+            root_files=ROOT_FILES,
+            execution_config=_parallel_execution(),
+            config=SearchSessionConfig(
+                max_rounds=1,
+                max_model_calls=1,
+                max_candidates=4,
+                max_test_calls=4,
+                max_parallel_tests=2,
+                scheduler_policy="adaptive",
+            ),
+            proposal_config=ProposalConfig(max_candidates=4),
+            search_config=BranchSearchConfig(max_depth=1, beam_width=4),
+            run_id="adaptive-session-test",
+        )
+        self.assertEqual(report.status, "accepted")
+        self.assertEqual(report.test_calls, 2)
+        self.assertEqual(report.max_in_flight, 2)
+
     async def test_iterative_session_feeds_failures_into_next_round(self) -> None:
         model = _scripted_model()
         with tempfile.TemporaryDirectory() as temp_dir:

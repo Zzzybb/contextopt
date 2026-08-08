@@ -66,6 +66,11 @@ from contextopt.search.proposer import (
     parse_proposal_response,
     propose_case,
 )
+from contextopt.search.scheduler import (
+    SCHEDULER_POLICIES,
+    SchedulerPolicy,
+    select_candidate_batch,
+)
 from contextopt.search.session import (
     SearchSessionConfig,
     SearchSessionReport,
@@ -79,6 +84,7 @@ from contextopt.search.session import (
 )
 
 __all__ = [
+    "SCHEDULER_POLICIES",
     "ApplyReceipt",
     "BranchCase",
     "BranchNode",
@@ -99,6 +105,7 @@ __all__ = [
     "ReviewDecision",
     "ReviewerConfig",
     "RoleCall",
+    "SchedulerPolicy",
     "SearchEvent",
     "SearchSessionConfig",
     "SearchSessionReport",
@@ -137,6 +144,7 @@ __all__ = [
     "run_executable_search",
     "run_orchestration",
     "run_search_session",
+    "select_candidate_batch",
     "snapshot_fingerprint",
     "solve_plan",
     "validate_search_report",

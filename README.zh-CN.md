@@ -68,7 +68,8 @@ python -m contextopt search-session \
 
 每个候选都在独立临时工作区运行；`max_parallel_tests` 限制同时运行的 oracle 进程，
 每个结果落盘后才算进入账本。恢复时只会重新执行尚未持久化的候选，设为 `1` 即为
-串行基线。
+串行基线。增加 `--scheduler-policy adaptive` 后，后续批次会根据已观测父分支质量动态
+排序，并在第一批通过后停止；`fixed` 则保持确定性顺序。
 
 完整的 orchestrate 命令需要三个 ScriptedModel JSON 文件、根目录快照和可信的
 可见测试命令。它会输出角色调用数、实际测试进程数、缓存复用数、分支状态、

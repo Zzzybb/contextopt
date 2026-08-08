@@ -14,7 +14,7 @@ import asyncio
 import json
 import os
 import tempfile
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -37,6 +37,7 @@ from contextopt.search.proposer import (
     ProposalConfig,
     propose_case,
 )
+from contextopt.search.scheduler import SchedulerPolicy, select_candidate_batch
 
 SessionStatus = Literal[
     "running",
@@ -91,6 +92,7 @@ class SearchSessionConfig:
     max_candidates: int = 16
     max_test_calls: int = 16
     max_parallel_tests: int = 1
+    scheduler_policy: SchedulerPolicy = "fixed"
 
     def __post_init__(self) -> None:
         for name in (
@@ -103,6 +105,8 @@ class SearchSessionConfig:
             value = getattr(self, name)
             if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
                 raise ValueError(f"{name} must be a positive integer")
+        if self.scheduler_policy not in {"fixed", "adaptive"}:
+            raise ValueError(f"unsupported scheduler policy: {self.scheduler_policy!r}")
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> SearchSessionConfig:
@@ -113,19 +117,21 @@ class SearchSessionConfig:
             "max_candidates",
             "max_test_calls",
             "max_parallel_tests",
+            "scheduler_policy",
         }
         unknown = set(value) - allowed
         if unknown:
             raise ValueError(f"session config has unknown fields: {sorted(unknown)!r}")
         return cls(**dict(value))
 
-    def to_dict(self) -> dict[str, int]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "max_rounds": self.max_rounds,
             "max_model_calls": self.max_model_calls,
             "max_candidates": self.max_candidates,
             "max_test_calls": self.max_test_calls,
             "max_parallel_tests": self.max_parallel_tests,
+            "scheduler_policy": self.scheduler_policy,
         }
 
 
@@ -854,89 +860,117 @@ class SearchSessionRunner:
         observations = dict(state.observations)
         reuses = 0
         candidates = tuple(state.pending_case.candidates)
-        scheduled: list[CandidatePatch] = []
-        scheduled_fingerprints: set[str] = set()
         remaining_budget = max(0, config.max_test_calls - state.test_calls)
-        for candidate in candidates:
-            fingerprint = candidate.workspace_fingerprint
-            if fingerprint in observations:
-                results[candidate.id] = observations[fingerprint]
-                reuses += 1
-                continue
-            if (
-                fingerprint not in scheduled_fingerprints
-                and len(scheduled) < remaining_budget
-            ):
-                scheduled.append(candidate)
-                scheduled_fingerprints.add(fingerprint)
-
         working_state = state
-        for candidate in scheduled:
-            working_state = _append_event(
-                working_state,
-                "candidate.requested",
-                {
-                    "candidate_id": candidate.id,
-                    "workspace_fingerprint": candidate.workspace_fingerprint,
-                    "max_parallel_tests": config.max_parallel_tests,
-                },
-            )
-        if scheduled and checkpoint is not None:
-            checkpoint(working_state)
-
-        semaphore = asyncio.Semaphore(config.max_parallel_tests)
-        in_flight = 0
         max_in_flight = working_state.max_in_flight
-
-        async def evaluate_one(candidate: CandidatePatch) -> TestResult:
-            nonlocal in_flight, max_in_flight
-            async with semaphore:
-                in_flight += 1
-                max_in_flight = max(max_in_flight, in_flight)
-                try:
-                    return await asyncio.to_thread(
-                        evaluate_candidate,
-                        candidate,
-                        execution_config,
-                    )
-                finally:
-                    in_flight -= 1
-
-        tasks = [
-            asyncio.create_task(evaluate_one(candidate)) for candidate in scheduled
-        ]
         actual_calls = 0
-        try:
-            for candidate, task in zip(scheduled, tasks, strict=True):
-                result = await task
-                fingerprint = candidate.workspace_fingerprint
-                observations[fingerprint] = result
-                results[candidate.id] = result
-                actual_calls += 1
+
+        async def evaluate_batch(batch: Sequence[CandidatePatch]) -> bool:
+            nonlocal actual_calls, max_in_flight, working_state
+            for candidate in batch:
                 working_state = _append_event(
-                    replace(
-                        working_state,
-                        observations=observations,
-                        test_calls=state.test_calls + actual_calls,
-                        max_in_flight=max_in_flight,
-                    ),
-                    "candidate.completed",
+                    working_state,
+                    "candidate.requested",
                     {
                         "candidate_id": candidate.id,
-                        "workspace_fingerprint": fingerprint,
-                        "behavior_fingerprint": result.behavior_fingerprint,
-                        "test_calls": state.test_calls + actual_calls,
-                        "max_in_flight": max_in_flight,
+                        "workspace_fingerprint": candidate.workspace_fingerprint,
+                        "max_parallel_tests": config.max_parallel_tests,
+                        "scheduler_policy": config.scheduler_policy,
                     },
                 )
-                if checkpoint is not None:
-                    checkpoint(working_state)
-        except BaseException:
-            for task in tasks:
-                if not task.done():
-                    task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
-            raise
+            if checkpoint is not None:
+                checkpoint(working_state)
+            semaphore = asyncio.Semaphore(config.max_parallel_tests)
+            in_flight = 0
+
+            async def evaluate_one(candidate: CandidatePatch) -> TestResult:
+                nonlocal in_flight, max_in_flight
+                async with semaphore:
+                    in_flight += 1
+                    max_in_flight = max(max_in_flight, in_flight)
+                    try:
+                        return await asyncio.to_thread(
+                            evaluate_candidate,
+                            candidate,
+                            execution_config,
+                        )
+                    finally:
+                        in_flight -= 1
+
+            tasks = [
+                asyncio.create_task(evaluate_one(candidate)) for candidate in batch
+            ]
+            found_success = False
+            try:
+                for candidate, task in zip(batch, tasks, strict=True):
+                    result = await task
+                    fingerprint = candidate.workspace_fingerprint
+                    observations[fingerprint] = result
+                    results[candidate.id] = result
+                    actual_calls += 1
+                    found_success = found_success or result.is_success
+                    working_state = _append_event(
+                        replace(
+                            working_state,
+                            observations=observations,
+                            test_calls=state.test_calls + actual_calls,
+                            max_in_flight=max_in_flight,
+                        ),
+                        "candidate.completed",
+                        {
+                            "candidate_id": candidate.id,
+                            "workspace_fingerprint": fingerprint,
+                            "behavior_fingerprint": result.behavior_fingerprint,
+                            "test_calls": state.test_calls + actual_calls,
+                            "max_in_flight": max_in_flight,
+                            "scheduler_policy": config.scheduler_policy,
+                        },
+                    )
+                    if checkpoint is not None:
+                        checkpoint(working_state)
+            except BaseException:
+                for task in tasks:
+                    if not task.done():
+                        task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+                raise
+            return found_success
+
+        pending = [
+            candidate
+            for candidate in candidates
+            if candidate.workspace_fingerprint not in observations
+        ]
+        while pending and actual_calls < remaining_budget:
+            batch = select_candidate_batch(
+                pending,
+                observations,
+                limit=(
+                    remaining_budget - actual_calls
+                    if config.scheduler_policy == "fixed"
+                    else min(
+                        config.max_parallel_tests,
+                        remaining_budget - actual_calls,
+                    )
+                ),
+                policy=config.scheduler_policy,
+            )
+            if not batch:
+                break
+            found_success = await evaluate_batch(batch)
+            pending = [
+                candidate
+                for candidate in pending
+                if candidate.workspace_fingerprint not in observations
+            ]
+            if config.scheduler_policy == "adaptive" and found_success:
+                break
+
+        for candidate in candidates:
+            fingerprint = candidate.workspace_fingerprint
+            if fingerprint in observations and candidate.id not in results:
+                results[candidate.id] = observations[fingerprint]
+                reuses += 1
 
         budget_result = TestResult(
             suite=execution_config.suite,

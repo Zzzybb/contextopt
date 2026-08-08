@@ -345,8 +345,9 @@ while recording requested/completed events in deterministic candidate order and 
 after every completed observation. A resume reuses observations already in the checkpoint and
 reruns only candidates whose result was not durably recorded.
 
-The current implementation supports the first three controls below; adaptive branch
-scheduling remains the next scheduler milestone:
+The current implementation supports all four controls below at the bounded candidate-oracle
+level. Full PatchTree/MCTS scheduling with model generation and merge-aware workspaces remains
+the next scheduler milestone:
 
 - single-path Agent;
 - independent best-of-N;

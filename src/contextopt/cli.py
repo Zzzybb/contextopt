@@ -305,6 +305,7 @@ def _search_session(args: argparse.Namespace) -> int:
             max_candidates=args.session_max_candidates,
             max_test_calls=args.session_max_test_calls,
             max_parallel_tests=args.max_parallel_tests,
+            scheduler_policy=args.scheduler_policy,
         )
         proposal_config = ProposalConfig(
             max_candidates=args.proposal_max_candidates,
@@ -483,6 +484,7 @@ def _orchestrate(args: argparse.Namespace) -> int:
             max_candidates=args.max_candidates,
             max_test_calls=args.max_test_calls,
             max_parallel_tests=args.max_parallel_tests,
+            scheduler_policy=args.scheduler_policy,
             max_total_tokens=args.max_total_tokens,
             context_config=ContextCompilerConfig(
                 policy=args.context_policy,
@@ -919,6 +921,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=1,
         help="maximum number of isolated candidate test workspaces in flight",
     )
+    session.add_argument(
+        "--scheduler-policy",
+        choices=("fixed", "adaptive"),
+        default="fixed",
+        help="fixed candidate order or adaptive parent-quality scheduling",
+    )
     session.add_argument("--proposal-max-candidates", type=int, default=4)
     session.add_argument("--max-files-per-candidate", type=int, default=32)
     session.add_argument("--max-file-chars", type=int, default=200_000)
@@ -979,6 +987,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=1,
         help="maximum number of isolated candidate test workspaces in flight",
+    )
+    orchestrate.add_argument(
+        "--scheduler-policy",
+        choices=("fixed", "adaptive"),
+        default="fixed",
+        help="fixed candidate order or adaptive parent-quality scheduling",
     )
     orchestrate.add_argument("--max-total-tokens", type=int, default=100_000)
     orchestrate.add_argument(

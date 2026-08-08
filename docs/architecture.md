@@ -367,7 +367,8 @@ event type used by branch search. Checkpoints are written before planner, solver
 reviewer awaits and after evaluation. A stopped planner request requires explicit retry;
 after a durable planner response, the solver can safely continue on resume. Parallel
 candidate oracle execution is now bounded by `max_parallel_tests`; adaptive branch scheduling,
-speculative model calls, and merge-aware workspaces remain future work. Each candidate is
+including parent-quality promotion and early-stop, is available as a bounded policy;
+PatchTree/MCTS, speculative model calls, and merge-aware workspaces remain future work. Each candidate is
 materialized in a fresh temporary workspace, and requested/completed events are recorded in
 candidate order so a checkpoint can resume without treating provider or subprocess effects as
 exactly once.

@@ -176,6 +176,39 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
                 read_orchestration_checkpoint(checkpoint).to_dict(), report.to_dict()
             )
 
+    async def test_adaptive_scheduler_stops_after_first_passing_batch(self) -> None:
+        report = await run_orchestration(
+            ScriptedModel([{"response": {"content": _plan()}}], name="adaptive-p:v1"),
+            ScriptedModel(
+                [{"response": {"content": _multi_proposal()}}],
+                name="adaptive-s:v1",
+            ),
+            ScriptedModel(
+                [{"response": {"content": _review("accept", "round-0-candidate-0")}}],
+                name="adaptive-r:v1",
+            ),
+            task="find a correct sorting implementation",
+            root_files=ROOT_FILES,
+            execution_config=_parallel_execution(),
+            config=OrchestrationConfig(
+                max_rounds=1,
+                max_model_calls=3,
+                max_planner_calls=1,
+                max_solver_calls=1,
+                max_reviewer_calls=1,
+                max_candidates=4,
+                max_test_calls=4,
+                max_parallel_tests=2,
+                scheduler_policy="adaptive",
+            ),
+            solver_config=ProposalConfig(max_candidates=4),
+            search_config=BranchSearchConfig(max_depth=1, beam_width=4),
+            run_id="adaptive-orchestration-test",
+        )
+        self.assertEqual(report.status, "accepted")
+        self.assertEqual(report.test_calls, 2)
+        self.assertEqual(report.max_in_flight, 2)
+
     async def test_roles_share_budget_and_reviewer_acceptance_is_oracle_gated(
         self,
     ) -> None:

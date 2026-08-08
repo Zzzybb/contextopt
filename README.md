@@ -415,7 +415,8 @@ contextopt search-session \
 `--max-parallel-tests` bounds concurrent disposable oracle processes. Each candidate gets a
 fresh temporary workspace; requested/completed scheduler events and the observation map are
 checkpointed in deterministic candidate order, so a resume only reruns results that were not
-durably recorded. Use `1` for the serial baseline.
+durably recorded. Add `--scheduler-policy adaptive` to rank later batches by observed parent
+quality and stop after the first passing batch; `fixed` with `1` is the serial baseline.
 
 If the process stops while a provider request is pending, the checkpoint is intentionally
 left in `proposing` rather than claiming exactly-once delivery. Resume with a fresh model

@@ -602,8 +602,8 @@ the observed maximum in-flight count.
 Remaining milestones are:
 
 1. Add durable model-call idempotency hooks where providers expose them.
-2. Add adaptive PatchTree/MCTS scheduling and merge-aware branch selection under one shared
-   compute budget; the current parallel mode is bounded candidate-oracle execution.
+2. Extend the bounded parent-quality scheduler into adaptive PatchTree/MCTS scheduling and
+   merge-aware branch selection under one shared compute budget.
 3. Run the strategy harness against multiple real model versions and independent hidden
    tests, preserving paired budgets and full ledgers.
 4. Add container/VM isolation and a controlled real-model coding benchmark with fixed
