@@ -594,20 +594,21 @@ runtime workspace or claim that provider calls are exactly once.
 
 The v0.7 package now also provides a sequential planner/solver/reviewer orchestrator with
 strict role protocols, shared budgets, cross-round feedback, and an oracle-gated decision.
-It is intentionally separate from the single-agent runtime event log and does not provide
-parallel workspace execution.
+It is intentionally separate from the single-agent runtime event log. Its candidate oracle
+can now use bounded parallel isolated workspaces while role model calls remain sequential.
+Both session and orchestration checkpoints persist requested/completed candidate events and
+the observed maximum in-flight count.
 
 Remaining milestones are:
 
 1. Add durable model-call idempotency hooks where providers expose them.
-2. Connect session events to runtime context receipts and richer recovery metadata.
-3. Connect role events to runtime context receipts and richer role-specific recovery
-   metadata.
-4. Run the strategy harness against multiple real model versions and independent hidden
+2. Add adaptive PatchTree/MCTS scheduling and merge-aware branch selection under one shared
+   compute budget; the current parallel mode is bounded candidate-oracle execution.
+3. Run the strategy harness against multiple real model versions and independent hidden
    tests, preserving paired budgets and full ledgers.
-5. Add container/VM isolation and a controlled real-model coding benchmark with fixed
+4. Add container/VM isolation and a controlled real-model coding benchmark with fixed
    snapshots, versions, repetitions, and independent hidden tests.
 
-The repository still has no parallel multi-agent scheduling, OS sandbox, or published
-real-model benchmark. The explicit apply/rollback adapter is a local filesystem safety
-boundary, not a security boundary.
+The repository still has no adaptive parallel multi-agent scheduler, OS sandbox, or published
+real-model benchmark. The explicit apply/rollback adapter is a local filesystem safety boundary,
+not a security boundary.

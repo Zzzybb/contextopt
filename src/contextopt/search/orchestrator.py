@@ -206,6 +206,7 @@ class OrchestrationConfig:
     max_reviewer_calls: int = 3
     max_candidates: int = 16
     max_test_calls: int = 16
+    max_parallel_tests: int = 1
     max_total_tokens: int = 100_000
     context_config: ContextCompilerConfig = field(
         default_factory=lambda: ContextCompilerConfig(
@@ -226,6 +227,7 @@ class OrchestrationConfig:
             "max_reviewer_calls",
             "max_candidates",
             "max_test_calls",
+            "max_parallel_tests",
             "max_total_tokens",
         ):
             value = getattr(self, name)
@@ -245,6 +247,7 @@ class OrchestrationConfig:
             "max_reviewer_calls",
             "max_candidates",
             "max_test_calls",
+            "max_parallel_tests",
             "max_total_tokens",
             "context_config",
         }
@@ -272,6 +275,7 @@ class OrchestrationConfig:
                 "max_reviewer_calls",
                 "max_candidates",
                 "max_test_calls",
+                "max_parallel_tests",
                 "max_total_tokens",
             )
         } | {"context_config": self.context_config.to_dict()}
@@ -928,6 +932,7 @@ class OrchestrationReport:
     usage: TokenUsage
     best_candidate_id: str | None
     best_files: Mapping[str, str] | None
+    max_in_flight: int = 1
     reason: str | None = None
     pending_plan: PlannerPlan | None = None
     pending_planner_call: RoleCall | None = None
@@ -974,6 +979,12 @@ class OrchestrationReport:
             value = getattr(self, name)
             if not isinstance(value, int) or isinstance(value, bool) or value < 0:
                 raise ValueError(f"{name} must be a non-negative integer")
+        if (
+            not isinstance(self.max_in_flight, int)
+            or isinstance(self.max_in_flight, bool)
+            or self.max_in_flight <= 0
+        ):
+            raise ValueError("max_in_flight must be a positive integer")
         object.__setattr__(self, "root_files", _files(self.root_files, "root_files"))
         object.__setattr__(self, "base_files", _files(self.base_files, "base_files"))
         if self.best_files is not None:
@@ -1100,6 +1111,7 @@ class OrchestrationReport:
             "metrics",
             "best_candidate_id",
             "best_files",
+            "max_in_flight",
             "reason",
             "pending_plan",
             "pending_planner_call",
@@ -1207,6 +1219,7 @@ class OrchestrationReport:
                 if value.get("best_files") is None
                 else _m(value.get("best_files"), "best_files")
             ),
+            max_in_flight=int(value.get("max_in_flight", 1)),
             reason=None if value.get("reason") is None else str(value["reason"]),
             pending_plan=(
                 None
@@ -1275,6 +1288,7 @@ class OrchestrationReport:
             "metrics": dict(self.metrics),
             "best_candidate_id": self.best_candidate_id,
             "best_files": None if self.best_files is None else dict(self.best_files),
+            "max_in_flight": self.max_in_flight,
             "reason": self.reason,
             "pending_plan": (
                 None if self.pending_plan is None else self.pending_plan.to_dict()
@@ -1659,7 +1673,11 @@ class OrchestrationRunner:
             },
         )
 
-    async def _evaluate(self, state: OrchestrationReport) -> OrchestrationReport:
+    async def _evaluate(
+        self,
+        state: OrchestrationReport,
+        checkpoint: Path | None = None,
+    ) -> OrchestrationReport:
         if (
             state.pending_case is None
             or state.pending_plan is None
@@ -1670,45 +1688,131 @@ class OrchestrationRunner:
         ):
             raise ValueError("evaluating state is incomplete")
         case = state.pending_case
+        execution_config = self.execution_config
+        search_config = self.search_config
+        config = state.config
         observations = dict(state.observations)
         results: dict[str, TestResult] = {}
-        actual = reuses = 0
-        for candidate in case.candidates:
+        reuses = 0
+        candidates = tuple(case.candidates)
+        scheduled: list[CandidatePatch] = []
+        scheduled_fingerprints: set[str] = set()
+        remaining_budget = max(0, config.max_test_calls - state.test_calls)
+        for candidate in candidates:
             fingerprint = candidate.workspace_fingerprint
             if fingerprint in observations:
                 results[candidate.id] = observations[fingerprint]
                 reuses += 1
                 continue
-            if state.test_calls + actual >= state.config.max_test_calls:
-                results[candidate.id] = TestResult(
-                    suite=self.execution_config.suite,
-                    error=(
-                        "orchestration test budget exhausted before this candidate ran"
-                    ),
-                )
-                continue
-            result = await asyncio.to_thread(
-                evaluate_candidate, candidate, self.execution_config
+            if (
+                fingerprint not in scheduled_fingerprints
+                and len(scheduled) < remaining_budget
+            ):
+                scheduled.append(candidate)
+                scheduled_fingerprints.add(fingerprint)
+
+        working_state = state
+        for candidate in scheduled:
+            working_state = _event(
+                working_state,
+                "candidate.requested",
+                {
+                    "round": len(state.rounds),
+                    "candidate_id": candidate.id,
+                    "workspace_fingerprint": candidate.workspace_fingerprint,
+                    "max_parallel_tests": config.max_parallel_tests,
+                },
             )
-            observations[fingerprint] = result
-            results[candidate.id] = result
-            actual += 1
+        if scheduled and checkpoint is not None:
+            write_orchestration_checkpoint(working_state, checkpoint)
+
+        semaphore = asyncio.Semaphore(config.max_parallel_tests)
+        in_flight = 0
+        max_in_flight = working_state.max_in_flight
+
+        async def evaluate_one(candidate: CandidatePatch) -> TestResult:
+            nonlocal in_flight, max_in_flight
+            async with semaphore:
+                in_flight += 1
+                max_in_flight = max(max_in_flight, in_flight)
+                try:
+                    return await asyncio.to_thread(
+                        evaluate_candidate,
+                        candidate,
+                        execution_config,
+                    )
+                finally:
+                    in_flight -= 1
+
+        tasks = [
+            asyncio.create_task(evaluate_one(candidate)) for candidate in scheduled
+        ]
+        actual = 0
+        try:
+            for candidate, task in zip(scheduled, tasks, strict=True):
+                result = await task
+                fingerprint = candidate.workspace_fingerprint
+                observations[fingerprint] = result
+                results[candidate.id] = result
+                actual += 1
+                working_state = _event(
+                    replace(
+                        working_state,
+                        observations=observations,
+                        test_calls=state.test_calls + actual,
+                        max_in_flight=max_in_flight,
+                    ),
+                    "candidate.completed",
+                    {
+                        "round": len(state.rounds),
+                        "candidate_id": candidate.id,
+                        "workspace_fingerprint": fingerprint,
+                        "behavior_fingerprint": result.behavior_fingerprint,
+                        "test_calls": state.test_calls + actual,
+                        "max_in_flight": max_in_flight,
+                    },
+                )
+                if checkpoint is not None:
+                    write_orchestration_checkpoint(working_state, checkpoint)
+        except BaseException:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
+
+        budget_result = TestResult(
+            suite=execution_config.suite,
+            error="orchestration test budget exhausted before this candidate ran",
+        )
+        for candidate in candidates:
+            if candidate.id in results:
+                continue
+            fingerprint = candidate.workspace_fingerprint
+            if fingerprint in observations:
+                results[candidate.id] = observations[fingerprint]
+                reuses += 1
+            else:
+                results[candidate.id] = budget_result
         observed = BranchCase(
             task=case.task,
             root_files=case.root_files,
             candidates=case.candidates,
             tests=results,
         )
-        report = BranchSearch(self.search_config).run(observed)
+        report = BranchSearch(search_config).run(observed)
         updated = replace(
-            state,
+            working_state,
             phase="reviewing",
             pending_case=observed,
             pending_branch_report=report,
             observations=observations,
-            test_calls=state.test_calls + actual,
-            test_reuses=state.test_reuses + reuses,
+            test_calls=working_state.test_calls,
+            test_reuses=working_state.test_reuses + reuses,
+            max_in_flight=max_in_flight,
         )
+        if checkpoint is not None:
+            write_orchestration_checkpoint(updated, checkpoint)
         return _event(
             updated,
             "evaluation.completed",
@@ -1719,6 +1823,7 @@ class OrchestrationRunner:
                 "metrics": dict(report.metrics),
                 "actual_test_calls": actual,
                 "test_reuses": reuses,
+                "max_in_flight": max_in_flight,
             },
         )
 
@@ -2202,7 +2307,7 @@ class OrchestrationRunner:
             raise ValueError("orchestration configuration is incomplete")
         while state.status == "running":
             if state.phase == "evaluating":
-                state = await self._evaluate(state)
+                state = await self._evaluate(state, checkpoint)
                 if checkpoint is not None:
                     write_orchestration_checkpoint(state, checkpoint)
                 continue
@@ -2335,7 +2440,7 @@ def render_orchestration_console(report: OrchestrationReport) -> str:
         f"model_calls={report.model_calls} planner={report.planner_calls} "
         f"solver={report.solver_calls} reviewer={report.reviewer_calls} "
         f"test_calls={report.test_calls} reuses={report.test_reuses} "
-        f"context_receipts={context_receipts}"
+        f"max_in_flight={report.max_in_flight} context_receipts={context_receipts}"
     ]
     if report.best_candidate_id:
         lines.append(f"best_candidate={report.best_candidate_id}")
@@ -2368,6 +2473,9 @@ def render_orchestration_markdown(report: OrchestrationReport) -> str:
         f"reviewer {report.reviewer_calls})",
         f"- Actual test calls: {report.test_calls}; "
         f"cached reuses: {report.test_reuses}",
+        f"- Scheduler: max configured parallel tests "
+        f"`{report.config.max_parallel_tests}`; "
+        f"observed max in-flight `{report.max_in_flight}`",
         f"- Context receipts: {context_receipts}/{len(completed_calls)} "
         "(selected message blocks and observed-memory fingerprints)",
         f"- Best candidate: {report.best_candidate_id or 'none'}",

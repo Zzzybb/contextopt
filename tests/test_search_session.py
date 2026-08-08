@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from contextopt.runtime.model import ScriptedModel
 from contextopt.runtime.protocol import ModelRequest, ModelResponse
@@ -96,11 +97,49 @@ def _repeating_model() -> ScriptedModel:
     )
 
 
+def _multi_candidate_model(count: int = 4) -> ScriptedModel:
+    candidates = []
+    for index in range(count):
+        candidates.append(
+            {
+                "id": f"candidate-{index}",
+                "parent_id": "root",
+                "hypothesis": f"parallel candidate {index}",
+                "files": {
+                    "solver.py": (
+                        "def solve(values):\n"
+                        "    return sorted(values)\n"
+                        f"# candidate {index}\n"
+                    ),
+                    "test_solver.py": ROOT_FILES["test_solver.py"],
+                },
+                "evidence": ["candidate is independently testable"],
+            }
+        )
+    return ScriptedModel(
+        [
+            {
+                "expect": {"turn": 1},
+                "response": {"content": json.dumps({"candidates": candidates})},
+            }
+        ],
+        name="parallel-session-script:v1",
+    )
+
+
 def _execution() -> ExecutableSearchConfig:
     return ExecutableSearchConfig(
         command=(sys.executable, "-m", "unittest", "discover", "-s", "."),
         suite="session-visible-tests",
         test_name="solver-order",
+    )
+
+
+def _parallel_execution() -> ExecutableSearchConfig:
+    return ExecutableSearchConfig(
+        command=(sys.executable, "-c", "import time; time.sleep(0.15)"),
+        suite="parallel-visible-tests",
+        test_name="parallel-smoke",
     )
 
 
@@ -126,6 +165,101 @@ class _BlockingModel:
 
 
 class SearchSessionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_parallel_resume_reuses_durable_observations(self) -> None:
+        class StopAfterFirstCheckpoint(Exception):
+            pass
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint = Path(temp_dir) / "parallel-resume.json"
+            original_writer = __import__(
+                "contextopt.search.session", fromlist=["write_session_checkpoint"]
+            ).write_session_checkpoint
+            writes = 0
+
+            def interrupt_after_first_result(
+                report: SearchSessionReport, path: Path
+            ) -> None:
+                nonlocal writes
+                original_writer(report, path)
+                if any(event.type == "candidate.completed" for event in report.events):
+                    writes += 1
+                    if writes == 1:
+                        raise StopAfterFirstCheckpoint()
+
+            with (
+                patch(
+                    "contextopt.search.session.write_session_checkpoint",
+                    side_effect=interrupt_after_first_result,
+                ),
+                self.assertRaises(StopAfterFirstCheckpoint),
+            ):
+                await run_search_session(
+                    _multi_candidate_model(),
+                    task="find a correct sorting implementation",
+                    root_files=ROOT_FILES,
+                    execution_config=_parallel_execution(),
+                    config=SearchSessionConfig(
+                        max_rounds=1,
+                        max_model_calls=1,
+                        max_candidates=4,
+                        max_test_calls=4,
+                        max_parallel_tests=2,
+                    ),
+                    proposal_config=ProposalConfig(max_candidates=4),
+                    search_config=BranchSearchConfig(max_depth=1, beam_width=4),
+                    run_id="parallel-resume-test",
+                    checkpoint_path=checkpoint,
+                )
+            partial = read_session_checkpoint(checkpoint)
+            self.assertEqual(partial.phase, "evaluating")
+            self.assertEqual(partial.test_calls, 1)
+            self.assertEqual(len(partial.observations), 1)
+
+            resumed = await run_search_session(
+                _multi_candidate_model(),
+                execution_config=None,
+                checkpoint_path=checkpoint,
+                resume=True,
+            )
+            self.assertEqual(resumed.status, "accepted")
+            self.assertEqual(resumed.test_calls, 4)
+            self.assertEqual(len(resumed.observations), 4)
+
+    async def test_parallel_isolated_candidate_scheduler_is_durable(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint = Path(temp_dir) / "parallel.json"
+            report = await run_search_session(
+                _multi_candidate_model(),
+                task="find a correct sorting implementation",
+                root_files=ROOT_FILES,
+                execution_config=_parallel_execution(),
+                config=SearchSessionConfig(
+                    max_rounds=1,
+                    max_model_calls=1,
+                    max_candidates=4,
+                    max_test_calls=4,
+                    max_parallel_tests=2,
+                ),
+                proposal_config=ProposalConfig(max_candidates=4),
+                search_config=BranchSearchConfig(max_depth=1, beam_width=4),
+                run_id="parallel-session-test",
+                checkpoint_path=checkpoint,
+            )
+            self.assertEqual(report.status, "accepted")
+            self.assertEqual(report.test_calls, 4)
+            self.assertEqual(report.max_in_flight, 2)
+            self.assertEqual(
+                sum(event.type == "candidate.requested" for event in report.events),
+                4,
+            )
+            self.assertEqual(
+                sum(event.type == "candidate.completed" for event in report.events),
+                4,
+            )
+            self.assertEqual(
+                read_session_checkpoint(checkpoint).to_dict(), report.to_dict()
+            )
+
     async def test_iterative_session_feeds_failures_into_next_round(self) -> None:
         model = _scripted_model()
         with tempfile.TemporaryDirectory() as temp_dir:

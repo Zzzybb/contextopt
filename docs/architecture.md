@@ -366,7 +366,11 @@ response hashes, cross-round feedback, cached test observations, and the same ha
 event type used by branch search. Checkpoints are written before planner, solver, and
 reviewer awaits and after evaluation. A stopped planner request requires explicit retry;
 after a durable planner response, the solver can safely continue on resume. Parallel
-workspace execution and adaptive branch scheduling remain future work.
+candidate oracle execution is now bounded by `max_parallel_tests`; adaptive branch scheduling,
+speculative model calls, and merge-aware workspaces remain future work. Each candidate is
+materialized in a fresh temporary workspace, and requested/completed events are recorded in
+candidate order so a checkpoint can resume without treating provider or subprocess effects as
+exactly once.
 
 Role context is now a first-class part of this report. Each role retains only its prior
 assistant responses, combines them with the next fresh request, and runs the transcript through

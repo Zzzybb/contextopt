@@ -14,7 +14,7 @@ import asyncio
 import json
 import os
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -90,6 +90,7 @@ class SearchSessionConfig:
     max_model_calls: int = 4
     max_candidates: int = 16
     max_test_calls: int = 16
+    max_parallel_tests: int = 1
 
     def __post_init__(self) -> None:
         for name in (
@@ -97,6 +98,7 @@ class SearchSessionConfig:
             "max_model_calls",
             "max_candidates",
             "max_test_calls",
+            "max_parallel_tests",
         ):
             value = getattr(self, name)
             if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
@@ -110,6 +112,7 @@ class SearchSessionConfig:
             "max_model_calls",
             "max_candidates",
             "max_test_calls",
+            "max_parallel_tests",
         }
         unknown = set(value) - allowed
         if unknown:
@@ -122,6 +125,7 @@ class SearchSessionConfig:
             "max_model_calls": self.max_model_calls,
             "max_candidates": self.max_candidates,
             "max_test_calls": self.max_test_calls,
+            "max_parallel_tests": self.max_parallel_tests,
         }
 
 
@@ -235,6 +239,7 @@ class SearchSessionReport:
     usage: TokenUsage
     best_candidate_id: str | None
     best_files: Mapping[str, str] | None
+    max_in_flight: int = 1
     reason: str | None = None
     pending_case: BranchCase | None = None
     pending_model_turn: int | None = None
@@ -277,6 +282,12 @@ class SearchSessionReport:
             value = getattr(self, name)
             if not isinstance(value, int) or isinstance(value, bool) or value < 0:
                 raise ValueError(f"{name} must be a non-negative integer")
+        if (
+            not isinstance(self.max_in_flight, int)
+            or isinstance(self.max_in_flight, bool)
+            or self.max_in_flight <= 0
+        ):
+            raise ValueError("max_in_flight must be a positive integer")
         if self.best_candidate_id is not None:
             object.__setattr__(
                 self,
@@ -369,6 +380,7 @@ class SearchSessionReport:
             "metrics",
             "best_candidate_id",
             "best_files",
+            "max_in_flight",
             "reason",
             "pending_case",
             "pending_model_turn",
@@ -489,6 +501,7 @@ class SearchSessionReport:
                 else str(value["best_candidate_id"])
             ),
             best_files=best_files,
+            max_in_flight=int(value.get("max_in_flight", 1)),
             reason=(None if value.get("reason") is None else str(value["reason"])),
             pending_case=(
                 None if pending_case is None else BranchCase.from_dict(pending_case)
@@ -555,6 +568,7 @@ class SearchSessionReport:
             "metrics": dict(self.metrics),
             "best_candidate_id": self.best_candidate_id,
             "best_files": None if self.best_files is None else dict(self.best_files),
+            "max_in_flight": self.max_in_flight,
             "reason": self.reason,
             "pending_case": None
             if self.pending_case is None
@@ -819,7 +833,9 @@ class SearchSessionRunner:
         )
 
     async def _evaluate_pending(
-        self, state: SearchSessionReport
+        self,
+        state: SearchSessionReport,
+        checkpoint: Callable[[SearchSessionReport], None] | None = None,
     ) -> SearchSessionReport:
         if (
             state.pending_case is None
@@ -832,30 +848,109 @@ class SearchSessionRunner:
             or self.config is None
         ):
             raise ValueError("session has an incomplete evaluating checkpoint")
+        execution_config = self.execution_config
+        config = self.config
         results: dict[str, TestResult] = {}
         observations = dict(state.observations)
-        actual_calls = 0
         reuses = 0
-        for candidate in state.pending_case.candidates:
+        candidates = tuple(state.pending_case.candidates)
+        scheduled: list[CandidatePatch] = []
+        scheduled_fingerprints: set[str] = set()
+        remaining_budget = max(0, config.max_test_calls - state.test_calls)
+        for candidate in candidates:
             fingerprint = candidate.workspace_fingerprint
             if fingerprint in observations:
                 results[candidate.id] = observations[fingerprint]
                 reuses += 1
                 continue
-            if state.test_calls + actual_calls >= self.config.max_test_calls:
-                results[candidate.id] = TestResult(
-                    suite=self.execution_config.suite,
-                    error="session test budget exhausted before this candidate ran",
-                )
-                continue
-            result = await asyncio.to_thread(
-                evaluate_candidate,
-                candidate,
-                self.execution_config,
+            if (
+                fingerprint not in scheduled_fingerprints
+                and len(scheduled) < remaining_budget
+            ):
+                scheduled.append(candidate)
+                scheduled_fingerprints.add(fingerprint)
+
+        working_state = state
+        for candidate in scheduled:
+            working_state = _append_event(
+                working_state,
+                "candidate.requested",
+                {
+                    "candidate_id": candidate.id,
+                    "workspace_fingerprint": candidate.workspace_fingerprint,
+                    "max_parallel_tests": config.max_parallel_tests,
+                },
             )
-            observations[fingerprint] = result
-            results[candidate.id] = result
-            actual_calls += 1
+        if scheduled and checkpoint is not None:
+            checkpoint(working_state)
+
+        semaphore = asyncio.Semaphore(config.max_parallel_tests)
+        in_flight = 0
+        max_in_flight = working_state.max_in_flight
+
+        async def evaluate_one(candidate: CandidatePatch) -> TestResult:
+            nonlocal in_flight, max_in_flight
+            async with semaphore:
+                in_flight += 1
+                max_in_flight = max(max_in_flight, in_flight)
+                try:
+                    return await asyncio.to_thread(
+                        evaluate_candidate,
+                        candidate,
+                        execution_config,
+                    )
+                finally:
+                    in_flight -= 1
+
+        tasks = [
+            asyncio.create_task(evaluate_one(candidate)) for candidate in scheduled
+        ]
+        actual_calls = 0
+        try:
+            for candidate, task in zip(scheduled, tasks, strict=True):
+                result = await task
+                fingerprint = candidate.workspace_fingerprint
+                observations[fingerprint] = result
+                results[candidate.id] = result
+                actual_calls += 1
+                working_state = _append_event(
+                    replace(
+                        working_state,
+                        observations=observations,
+                        test_calls=state.test_calls + actual_calls,
+                        max_in_flight=max_in_flight,
+                    ),
+                    "candidate.completed",
+                    {
+                        "candidate_id": candidate.id,
+                        "workspace_fingerprint": fingerprint,
+                        "behavior_fingerprint": result.behavior_fingerprint,
+                        "test_calls": state.test_calls + actual_calls,
+                        "max_in_flight": max_in_flight,
+                    },
+                )
+                if checkpoint is not None:
+                    checkpoint(working_state)
+        except BaseException:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
+
+        budget_result = TestResult(
+            suite=execution_config.suite,
+            error="session test budget exhausted before this candidate ran",
+        )
+        for candidate in candidates:
+            if candidate.id in results:
+                continue
+            fingerprint = candidate.workspace_fingerprint
+            if fingerprint in observations:
+                results[candidate.id] = observations[fingerprint]
+                reuses += 1
+            else:
+                results[candidate.id] = budget_result
         observed_case = BranchCase(
             task=state.pending_case.task,
             root_files=state.pending_case.root_files,
@@ -891,7 +986,7 @@ class SearchSessionRunner:
                 best_id = best.id
                 best_files = dict(candidate.files)
         candidate_total = state.candidate_proposals + len(observed_case.candidates)
-        test_total = state.test_calls + actual_calls
+        test_total = working_state.test_calls
         feedback = tuple(
             [*state.feedback[-8:], *_feedback_from_report(branch_report)][-16:]
         )
@@ -924,14 +1019,15 @@ class SearchSessionRunner:
             )
             reason = "session budget exhausted before a passing candidate was found"
         updated = replace(
-            state,
+            working_state,
             status=status,
             phase="idle",
             rounds=all_rounds,
             observations=observations,
             test_calls=test_total,
             candidate_proposals=candidate_total,
-            test_reuses=state.test_reuses + reuses,
+            test_reuses=working_state.test_reuses + reuses,
+            max_in_flight=max_in_flight,
             best_candidate_id=best_id,
             best_files=best_files,
             base_files=_next_base_files(branch_report, state.base_files),
@@ -954,6 +1050,7 @@ class SearchSessionRunner:
                 "best_node_id": branch_report.best_node_id,
                 "actual_test_calls": actual_calls,
                 "test_reuses": reuses,
+                "max_in_flight": max_in_flight,
                 "metrics": dict(branch_report.metrics),
             },
         )
@@ -989,7 +1086,7 @@ class SearchSessionRunner:
 
         while state.status == "running":
             if state.phase == "evaluating":
-                state = await self._evaluate_pending(state)
+                state = await self._evaluate_pending(state, checkpoint)
                 checkpoint(state)
                 continue
             if state.phase == "proposing" and not retry_pending:
@@ -1195,7 +1292,7 @@ def render_session_console(report: SearchSessionReport) -> str:
     lines = [
         f"status={report.status} phase={report.phase} rounds={len(report.rounds)} "
         f"model_calls={report.model_calls} test_calls={report.test_calls} "
-        f"reuses={report.test_reuses}",
+        f"reuses={report.test_reuses} max_in_flight={report.max_in_flight}",
     ]
     if report.best_candidate_id:
         lines.append(f"best_candidate={report.best_candidate_id}")
@@ -1221,6 +1318,9 @@ def render_session_markdown(report: SearchSessionReport) -> str:
         f"- Model calls: `{report.model_calls}`",
         f"- Actual test calls: `{report.test_calls}`",
         f"- Cached test reuses: `{report.test_reuses}`",
+        f"- Scheduler: max configured parallel tests "
+        f"`{report.config.max_parallel_tests}`; "
+        f"observed max in-flight `{report.max_in_flight}`",
         f"- Best candidate: `{report.best_candidate_id or 'none'}`",
         "",
         "| Round | Search status | Best branch | Proposals | Test calls | Duplicates |",

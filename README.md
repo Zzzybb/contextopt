@@ -32,8 +32,9 @@ Every boundary ──> durable schema-2 JSONL event log + verified state project
 > solver, and reviewer now compile their prior assistant summaries through the same
 > ContextCompiler, persist a per-role ContextReceipt, and carry a versioned observed-memory
 > fingerprint into each checkpointed call.
-> It does **not** yet implement parallel workspace execution, an OS sandbox, learned semantic memory,
-> or a statistically powered real-model coding benchmark.
+> Candidate evaluation now supports bounded parallel isolated workspaces with durable per-candidate
+> checkpoints. It does **not** yet implement adaptive PatchTree/MCTS scheduling, an OS sandbox,
+> learned semantic memory, or a statistically powered real-model coding benchmark.
 
 ## Why this project exists
 
@@ -155,6 +156,9 @@ recompute the complete chain because there is no secret or external trust anchor
 - Each role request is compiled from its prior assistant summaries plus the fresh mandatory
   system/user request. The checkpoint stores the selected block ids, message hash, memory
   fingerprint, and workspace generation, making context selection inspectable and replayable.
+- Candidate oracle work can run with `max_parallel_tests > 1`: every candidate is materialized
+  in its own temporary workspace, requested/completed events are hash-chained, and the checkpoint
+  is updated after each result so recovery reruns only observations that were not durably recorded.
 - The orchestrate CLI command plus console/Markdown/HTML reports make role calls and the
   oracle gate measurable instead of treating a multi-agent transcript as evidence.
 
@@ -188,9 +192,9 @@ recompute the complete chain because there is no secret or external trust anchor
 - Automatic workspace snapshots, migration to another workspace, or distributed
   coordination. `apply-best` and `rollback-best` are explicit local operator actions over
   the files named in the session baseline; they are not transparent workspace versioning.
-- Parallel agents, PatchTree/MCTS scheduling, or adaptive multi-agent scheduling. The v0.7
-  orchestrator is sequential and bounded;
-  parallel isolated workspaces and adaptive schedulers remain planned.
+- Adaptive PatchTree/MCTS scheduling, speculative model calls, and merge-aware multi-agent
+  scheduling remain planned. The current parallel mode is bounded candidate-oracle execution;
+  role model calls remain sequential and share one explicit budget.
 - A container or virtual-machine security boundary. Workspace path checks and permission
   flags reduce accidental access, but are not an OS sandbox. Registered test commands are
   trusted host processes.
@@ -403,9 +407,15 @@ contextopt search-session \
   --script examples/branch_demo/proposal.json \
   --test-command "python -m unittest discover -s ." \
   --allow-command \
+  --max-parallel-tests 4 \
   --output session-report.json \
   --markdown session-report.md
 ```
+
+`--max-parallel-tests` bounds concurrent disposable oracle processes. Each candidate gets a
+fresh temporary workspace; requested/completed scheduler events and the observation map are
+checkpointed in deterministic candidate order, so a resume only reruns results that were not
+durably recorded. Use `1` for the serial baseline.
 
 If the process stops while a provider request is pending, the checkpoint is intentionally
 left in `proposing` rather than claiming exactly-once delivery. Resume with a fresh model
@@ -513,10 +523,13 @@ docs/                     # architecture, runtime, and evaluation contract
   shared budgets, cross-round feedback, checkpointed role events, and an oracle gate.
 - **v0.8 — Context-aware strategy evaluation (implemented):** executable ACM/math fixtures,
   independent hidden graders, a paired single-pass/Best-of-N/orchestrated accounting harness,
-  and per-role ContextCompiler/observed-memory receipts.
+  per-role ContextCompiler/observed-memory receipts, and bounded parallel isolated candidate
+  evaluation with durable scheduler events.
 
 The v0.8 follow-up is documented in [the role-context addendum](docs/pr/0001-v0.8-context-memory-addendum.md)
-and its [Chinese translation](docs/pr/0001-v0.8-context-memory-addendum.zh-CN.md).
+and its [Chinese translation](docs/pr/0001-v0.8-context-memory-addendum.zh-CN.md). The parallel
+scheduler details are in [the scheduler addendum](docs/pr/0001-v0.8-parallel-scheduler-addendum.md)
+and [Chinese version](docs/pr/0001-v0.8-parallel-scheduler-addendum.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers.
 

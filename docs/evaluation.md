@@ -337,10 +337,16 @@ retry, state reconciliation, and explicit operator decisions rather than combini
 under an unqualified “idempotent” or “exactly once” label. Event-log survival alone is not
 counted as recovery.
 
-## Level 5: multi-agent scheduling — planned
+## Level 5: bounded parallel candidate scheduling — implemented; adaptive scheduling planned
 
-After the single-process branch core is connected to real isolated workspaces, compare
-under one shared compute budget:
+The session and role orchestrators now expose `max_parallel_tests`. Under one shared test
+budget they can launch bounded batches of candidates, each in a disposable isolated workspace,
+while recording requested/completed events in deterministic candidate order and checkpointing
+after every completed observation. A resume reuses observations already in the checkpoint and
+reruns only candidates whose result was not durably recorded.
+
+The current implementation supports the first three controls below; adaptive branch
+scheduling remains the next scheduler milestone:
 
 - single-path Agent;
 - independent best-of-N;
@@ -351,9 +357,10 @@ Each branch needs an isolated workspace and the same executable oracle. Candidat
 include issue resolved rate, tokens per solved task, time to first valid patch, test-progress
 area, repeated-state ratio, branch pruning precision, and merge-conflict rate.
 
-Role-playing transcripts are not evidence of multi-agent value. Each additional Agent or
-branch must perform a measurable state transformation or evaluation and be included in the
-shared budget.
+The scheduler reports actual test calls, cache reuses, configured parallelism, observed maximum
+in-flight work, per-candidate event history, and recovery-visible observation state. Role-playing
+transcripts are not evidence of multi-agent value. Each additional Agent or branch must perform
+a measurable state transformation or evaluation and be included in the shared budget.
 
 ## Reproduction rules
 

@@ -84,6 +84,30 @@ def _review(decision: str, candidate_id: str | None) -> str:
     )
 
 
+def _multi_proposal(count: int = 4) -> str:
+    return json.dumps(
+        {
+            "candidates": [
+                {
+                    "id": f"candidate-{index}",
+                    "parent_id": "root",
+                    "hypothesis": f"parallel candidate {index}",
+                    "files": {
+                        "solver.py": (
+                            "def solve(values):\n"
+                            "    return sorted(values)\n"
+                            f"# candidate {index}\n"
+                        ),
+                        "test_solver.py": ROOT_FILES["test_solver.py"],
+                    },
+                    "evidence": ["candidate is independently testable"],
+                }
+                for index in range(count)
+            ]
+        }
+    )
+
+
 def _execution() -> ExecutableSearchConfig:
     return ExecutableSearchConfig(
         command=(sys.executable, "-m", "unittest", "discover", "-s", "."),
@@ -92,7 +116,66 @@ def _execution() -> ExecutableSearchConfig:
     )
 
 
+def _parallel_execution() -> ExecutableSearchConfig:
+    return ExecutableSearchConfig(
+        command=(sys.executable, "-c", "import time; time.sleep(0.15)"),
+        suite="orchestrator-parallel-tests",
+        test_name="parallel-smoke",
+    )
+
+
 class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
+    async def test_parallel_candidate_scheduler_uses_isolated_workspaces(self) -> None:
+        planner = ScriptedModel(
+            [{"response": {"content": _plan()}}], name="parallel-planner:v1"
+        )
+        solver = ScriptedModel(
+            [{"response": {"content": _multi_proposal()}}],
+            name="parallel-solver:v1",
+        )
+        reviewer = ScriptedModel(
+            [{"response": {"content": _review("accept", "round-0-candidate-0")}}],
+            name="parallel-reviewer:v1",
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint = Path(temp_dir) / "parallel-orchestration.json"
+            report = await run_orchestration(
+                planner,
+                solver,
+                reviewer,
+                task="find a correct sorting implementation",
+                root_files=ROOT_FILES,
+                execution_config=_parallel_execution(),
+                config=OrchestrationConfig(
+                    max_rounds=1,
+                    max_model_calls=3,
+                    max_planner_calls=1,
+                    max_solver_calls=1,
+                    max_reviewer_calls=1,
+                    max_candidates=4,
+                    max_test_calls=4,
+                    max_parallel_tests=2,
+                ),
+                solver_config=ProposalConfig(max_candidates=4),
+                search_config=BranchSearchConfig(max_depth=1, beam_width=4),
+                run_id="parallel-orchestration-test",
+                checkpoint_path=checkpoint,
+            )
+            self.assertEqual(report.status, "accepted")
+            self.assertEqual(report.test_calls, 4)
+            self.assertEqual(report.max_in_flight, 2)
+            self.assertEqual(
+                sum(event.type == "candidate.requested" for event in report.events),
+                4,
+            )
+            self.assertEqual(
+                sum(event.type == "candidate.completed" for event in report.events),
+                4,
+            )
+            self.assertEqual(
+                read_orchestration_checkpoint(checkpoint).to_dict(), report.to_dict()
+            )
+
     async def test_roles_share_budget_and_reviewer_acceptance_is_oracle_gated(
         self,
     ) -> None:
@@ -217,6 +300,8 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
             )
             legacy = report.to_dict()
             legacy["config"].pop("context_config")
+            legacy["config"].pop("max_parallel_tests")
+            legacy.pop("max_in_flight")
             legacy.pop("role_histories")
             for round_payload in legacy["rounds"]:
                 for role in ("planner_call", "solver_call", "reviewer_call"):

@@ -14,8 +14,10 @@ proposal/test session、顺序的 planner / solver / reviewer 编排，以及带
 固定 ACM/数学题代码 Agent 策略评测。评测也可以接入 OpenAI-compatible 模型做探索性
 运行。现在三个角色还会把各自历史中的 assistant 摘要和当前请求交给同一个
 ContextCompiler，持久化 ContextReceipt、消息哈希、版本化观察记忆指纹和 workspace
-generation，因此 checkpoint 里能审计“本轮到底给了角色什么上下文”。并行工作区、
-PatchTree/MCTS 和统计严谨的真实模型评测仍在后续计划中。
+generation，因此 checkpoint 里能审计“本轮到底给了角色什么上下文”。候选 oracle 还支持
+`max_parallel_tests > 1`：每个候选使用独立临时工作区，逐个写入 requested/completed 事件，
+每个结果都更新 checkpoint；恢复时只重跑尚未落账的观察。自适应 PatchTree/MCTS、OS sandbox
+和统计严谨的真实模型评测仍在后续计划中。
 
 ## 为什么适合面试 Agent 开发岗
 
@@ -27,7 +29,8 @@ PatchTree/MCTS 和统计严谨的真实模型评测仍在后续计划中。
 4. 多 Agent 协作：三个角色使用独立模型指纹，但共享 token、候选和测试预算；
 5. 角色上下文与记忆：每个角色的历史摘要独立编译，receipt 记录选择块、消息哈希、
    memory fingerprint 和 workspace generation；
-6. 评测边界：reviewer 不能绕过可见测试，脚本 conformance 与模型能力明确分开。
+6. 并行候选调度：限制 in-flight 数量，隔离临时工作区，并在每个测试结果后持久化；
+7. 评测边界：reviewer 不能绕过可见测试，脚本 conformance 与模型能力明确分开。
 
 这些设计让演示可以回答“状态是什么、失败如何恢复、指标如何计算、谁有权
 接受结果”，而不是只展示一段角色扮演对话。
@@ -49,6 +52,23 @@ planner / solver / reviewer 的协议测试：
 ~~~text
 python -m unittest tests.test_orchestrator -v
 ~~~
+
+候选搜索 session 也支持可恢复的并行 oracle：
+
+~~~text
+python -m contextopt search-session \
+  --task "Implement solve so it returns ascending values" \
+  --root-files examples/branch_demo/root-files.json \
+  --checkpoint session.json \
+  --script examples/branch_demo/proposal.json \
+  --test-command "python -m unittest discover -s ." \
+  --allow-command --max-parallel-tests 4 \
+  --output session-report.json --markdown session-report.md
+~~~
+
+每个候选都在独立临时工作区运行；`max_parallel_tests` 限制同时运行的 oracle 进程，
+每个结果落盘后才算进入账本。恢复时只会重新执行尚未持久化的候选，设为 `1` 即为
+串行基线。
 
 完整的 orchestrate 命令需要三个 ScriptedModel JSON 文件、根目录快照和可信的
 可见测试命令。它会输出角色调用数、实际测试进程数、缓存复用数、分支状态、
@@ -108,6 +128,7 @@ python -m contextopt agent-eval \
 - PR #1 中文回顾：[docs/pr/0001-contextopt-evolution.zh-CN.md](docs/pr/0001-contextopt-evolution.zh-CN.md)
 - v0.8 中文变更说明：[docs/pr/0001-v0.8-evaluation-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-addendum.zh-CN.md)
 - v0.8 角色上下文补充：[docs/pr/0001-v0.8-context-memory-addendum.zh-CN.md](docs/pr/0001-v0.8-context-memory-addendum.zh-CN.md)
+- v0.8 并行调度补充：[docs/pr/0001-v0.8-parallel-scheduler-addendum.zh-CN.md](docs/pr/0001-v0.8-parallel-scheduler-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、
 指标名称是权威定义。
