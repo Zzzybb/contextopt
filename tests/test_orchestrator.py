@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
 import tempfile
@@ -124,6 +125,14 @@ def _parallel_execution() -> ExecutableSearchConfig:
         suite="orchestrator-parallel-tests",
         test_name="parallel-smoke",
     )
+
+
+class DelayedScriptedModel(ScriptedModel):
+    """Make overlapping provider awaits observable without network access."""
+
+    async def complete(self, request):  # type: ignore[no-untyped-def]
+        await asyncio.sleep(0.05)
+        return await super().complete(request)
 
 
 MERGE_ROOT_FILES = {
@@ -284,6 +293,78 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 read_orchestration_checkpoint(checkpoint).to_dict(), report.to_dict()
             )
+
+    async def test_speculative_solver_lanes_run_concurrently_and_are_audited(
+        self,
+    ) -> None:
+        planner = DelayedScriptedModel(
+            [{"response": {"content": _plan()}}], name="speculative-planner:v1"
+        )
+        solver = DelayedScriptedModel(
+            [
+                {
+                    "response": {
+                        "content": _proposal(
+                            "same", "def solve(values):\n    return sorted(values)\n"
+                        )
+                    }
+                },
+                {
+                    "response": {
+                        "content": _proposal(
+                            "same", "def solve(values):\n    return sorted(values)\n"
+                        )
+                    }
+                },
+            ],
+            name="speculative-solver:v1",
+        )
+        reviewer = DelayedScriptedModel(
+            [{"response": {"content": _review("accept", "round-0-spec-0-same")}}],
+            name="speculative-reviewer:v1",
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint = Path(temp_dir) / "speculative-orchestration.json"
+            report = await run_orchestration(
+                planner,
+                solver,
+                reviewer,
+                task="find a correct sorting implementation",
+                root_files=ROOT_FILES,
+                execution_config=_execution(),
+                config=OrchestrationConfig(
+                    max_rounds=1,
+                    max_model_calls=4,
+                    max_planner_calls=1,
+                    max_solver_calls=2,
+                    max_reviewer_calls=1,
+                    max_candidates=2,
+                    max_test_calls=2,
+                    speculative_solver_width=2,
+                ),
+                solver_config=ProposalConfig(max_candidates=1),
+                search_config=BranchSearchConfig(max_depth=1, beam_width=2),
+                run_id="speculative-orchestration-test",
+                checkpoint_path=checkpoint,
+            )
+            checkpoint_report = read_orchestration_checkpoint(checkpoint)
+        self.assertEqual(report.status, "accepted")
+        self.assertEqual(report.solver_calls, 2)
+        self.assertEqual(report.model_calls, 4)
+        self.assertEqual(report.max_provider_in_flight, 2)
+        self.assertEqual(len(report.rounds[0].solver_variants), 2)
+        self.assertEqual(
+            [call.response_id for call in report.rounds[0].solver_variants],
+            [None, None],
+        )
+        self.assertEqual(
+            sum(event.type == "solver.speculative.received" for event in report.events),
+            2,
+        )
+        received = [event for event in report.events if event.type == "solver.received"]
+        self.assertEqual(received[0].data["speculative_width"], 2)
+        self.assertEqual(received[0].data["valid_lanes"], [0, 1])
+        self.assertEqual(checkpoint_report.to_dict(), report.to_dict())
 
     async def test_adaptive_scheduler_stops_after_first_passing_batch(self) -> None:
         report = await run_orchestration(

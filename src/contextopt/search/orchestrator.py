@@ -213,6 +213,7 @@ class OrchestrationConfig:
     max_candidates: int = 16
     max_test_calls: int = 16
     max_parallel_tests: int = 1
+    speculative_solver_width: int = 1
     scheduler_policy: SchedulerPolicy = "fixed"
     merge_policy: MergePolicy = "disabled"
     max_total_tokens: int = 100_000
@@ -236,6 +237,7 @@ class OrchestrationConfig:
             "max_candidates",
             "max_test_calls",
             "max_parallel_tests",
+            "speculative_solver_width",
             "scheduler_policy",
             "max_total_tokens",
         ):
@@ -263,6 +265,7 @@ class OrchestrationConfig:
             "max_candidates",
             "max_test_calls",
             "max_parallel_tests",
+            "speculative_solver_width",
             "scheduler_policy",
             "merge_policy",
             "max_total_tokens",
@@ -293,6 +296,7 @@ class OrchestrationConfig:
                 "max_candidates",
                 "max_test_calls",
                 "max_parallel_tests",
+                "speculative_solver_width",
                 "scheduler_policy",
                 "merge_policy",
                 "max_total_tokens",
@@ -487,8 +491,23 @@ def build_solver_request(
     run_id: str = "multi-agent-orchestration",
     turn: int = 1,
     feedback: Sequence[Mapping[str, Any]] = (),
+    speculation_index: int = 0,
+    speculation_count: int = 1,
 ) -> ModelRequest:
     cfg = config or ProposalConfig()
+    if (
+        not isinstance(speculation_index, int)
+        or isinstance(speculation_index, bool)
+        or speculation_index < 0
+    ):
+        raise ValueError("speculation_index must be a non-negative integer")
+    if (
+        not isinstance(speculation_count, int)
+        or isinstance(speculation_count, bool)
+        or speculation_count <= 0
+        or speculation_index >= speculation_count
+    ):
+        raise ValueError("speculation_count must exceed speculation_index")
     snapshot = json.dumps(
         _files(root_files, "root_files"), ensure_ascii=False, sort_keys=True, indent=2
     )
@@ -504,6 +523,14 @@ def build_solver_request(
         if feedback
         else ""
     )
+    lane = (
+        "\n\nSpeculative lane instructions:\n"
+        f"You are lane {speculation_index + 1} of {speculation_count}. "
+        "Pursue a meaningfully different implementation hypothesis from the "
+        "other lanes; return complete snapshots and do not assume their output."
+        if speculation_count > 1
+        else ""
+    )
     content = (
         f"Task:\n{_s(task, 'task')}\n\nPlanner plan:\n~~~json\n{plan_text}\n~~~\n\n"
         f"Current complete workspace snapshot:\n~~~json\n{snapshot}\n~~~\n\n"
@@ -513,7 +540,7 @@ def build_solver_request(
         '"evidence":["..."]}]}\n'
         f"Propose at most {cfg.max_candidates} complete snapshots. "
         "Do not return diffs, tool calls, or claims that tests passed."
-        f"{suffix}"
+        f"{lane}{suffix}"
     )
     if len(content) > cfg.max_total_prompt_chars:
         raise ValueError("solver prompt exceeds max_total_prompt_chars")
@@ -545,6 +572,8 @@ async def solve_plan(
     run_id: str = "multi-agent-orchestration",
     turn: int = 1,
     feedback: Sequence[Mapping[str, Any]] = (),
+    speculation_index: int = 0,
+    speculation_count: int = 1,
 ) -> tuple[BranchCase, ModelResponse]:
     cfg = config or ProposalConfig()
     response = await model.complete(
@@ -556,6 +585,8 @@ async def solve_plan(
             run_id=run_id,
             turn=turn,
             feedback=feedback,
+            speculation_index=speculation_index,
+            speculation_count=speculation_count,
         )
     )
     return parse_proposal_response(response, task, root_files, cfg), response
@@ -853,6 +884,7 @@ class OrchestrationRound:
     solver_call: RoleCall
     reviewer_call: RoleCall
     review: ReviewDecision
+    solver_variants: tuple[RoleCall, ...] = ()
 
     def __post_init__(self) -> None:
         if (
@@ -870,6 +902,34 @@ class OrchestrationRound:
             self.reviewer_call.role,
         ) != ("planner", "solver", "reviewer"):
             raise ValueError("round role calls have incorrect roles")
+        variants = tuple(self.solver_variants) or (self.solver_call,)
+        if any(call.role != "solver" for call in variants):
+            raise ValueError("round solver_variants must contain solver calls")
+        if self.solver_call not in variants:
+            match = next(
+                (
+                    index
+                    for index, call in enumerate(variants)
+                    if (
+                        call.turn,
+                        call.response_sha256,
+                        call.response_id,
+                    )
+                    == (
+                        self.solver_call.turn,
+                        self.solver_call.response_sha256,
+                        self.solver_call.response_id,
+                    )
+                ),
+                None,
+            )
+            if match is None:
+                raise ValueError("round solver_call must be one of solver_variants")
+            variants = tuple(
+                self.solver_call if index == match else call
+                for index, call in enumerate(variants)
+            )
+        object.__setattr__(self, "solver_variants", variants)
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> OrchestrationRound:
@@ -883,6 +943,7 @@ class OrchestrationRound:
             "solver_call",
             "reviewer_call",
             "review",
+            "solver_variants",
         }
         unknown = set(value) - allowed
         if unknown:
@@ -899,6 +960,11 @@ class OrchestrationRound:
         )
         if any(not isinstance(value.get(name), Mapping) for name in nested):
             raise ValueError("orchestration round nested values must be objects")
+        raw_variants = value.get("solver_variants", [value["solver_call"]])
+        if not isinstance(raw_variants, list) or any(
+            not isinstance(item, Mapping) for item in raw_variants
+        ):
+            raise ValueError("orchestration round solver_variants must be an array")
         return cls(
             index=int(value.get("index", -1)),
             base_fingerprint=_s(value.get("base_fingerprint"), "base_fingerprint"),
@@ -908,6 +974,7 @@ class OrchestrationRound:
             solver_call=RoleCall.from_dict(value["solver_call"]),
             reviewer_call=RoleCall.from_dict(value["reviewer_call"]),
             review=ReviewDecision.from_dict(value["review"]),
+            solver_variants=tuple(RoleCall.from_dict(item) for item in raw_variants),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -920,6 +987,7 @@ class OrchestrationRound:
             "solver_call": self.solver_call.to_dict(),
             "reviewer_call": self.reviewer_call.to_dict(),
             "review": self.review.to_dict(),
+            "solver_variants": [item.to_dict() for item in self.solver_variants],
         }
 
 
@@ -952,11 +1020,13 @@ class OrchestrationReport:
     best_candidate_id: str | None
     best_files: Mapping[str, str] | None
     max_in_flight: int = 1
+    max_provider_in_flight: int = 1
     reason: str | None = None
     pending_plan: PlannerPlan | None = None
     pending_planner_call: RoleCall | None = None
     pending_case: BranchCase | None = None
     pending_solver_call: RoleCall | None = None
+    pending_solver_variants: tuple[RoleCall, ...] | None = None
     pending_branch_report: BranchSearchReport | None = None
     role_histories: Mapping[str, tuple[AgentMessage, ...]] = field(default_factory=dict)
     feedback: tuple[Mapping[str, Any], ...] = ()
@@ -1004,6 +1074,12 @@ class OrchestrationReport:
             or self.max_in_flight <= 0
         ):
             raise ValueError("max_in_flight must be a positive integer")
+        if (
+            not isinstance(self.max_provider_in_flight, int)
+            or isinstance(self.max_provider_in_flight, bool)
+            or self.max_provider_in_flight <= 0
+        ):
+            raise ValueError("max_provider_in_flight must be a positive integer")
         object.__setattr__(self, "root_files", _files(self.root_files, "root_files"))
         object.__setattr__(self, "base_files", _files(self.base_files, "base_files"))
         if self.best_files is not None:
@@ -1042,6 +1118,18 @@ class OrchestrationReport:
                 )
             normalized_histories[role] = normalized
         object.__setattr__(self, "role_histories", normalized_histories)
+        variants = self.pending_solver_variants
+        if variants is None and self.pending_solver_call is not None:
+            variants = (self.pending_solver_call,)
+        if variants is not None:
+            variants = tuple(variants)
+            if not variants or any(call.role != "solver" for call in variants):
+                raise ValueError("pending_solver_variants must contain solver calls")
+            if self.pending_solver_call not in variants:
+                raise ValueError(
+                    "pending_solver_call must be one of pending_solver_variants"
+                )
+        object.__setattr__(self, "pending_solver_variants", variants)
         verify_search_events(self.events)
         feedback = tuple(dict(item) for item in self.feedback)
         try:
@@ -1054,6 +1142,7 @@ class OrchestrationReport:
             self.pending_planner_call,
             self.pending_case,
             self.pending_solver_call,
+            self.pending_solver_variants,
             self.pending_branch_report,
         )
         if self.phase == "idle" and any(item is not None for item in pending):
@@ -1065,6 +1154,7 @@ class OrchestrationReport:
             or self.pending_planner_call is None
             or self.pending_case is not None
             or self.pending_solver_call is not None
+            or self.pending_solver_variants is not None
             or self.pending_branch_report is not None
         ):
             raise ValueError("solving phase requires only the planner result")
@@ -1073,6 +1163,7 @@ class OrchestrationReport:
             or self.pending_planner_call is None
             or self.pending_case is None
             or self.pending_solver_call is None
+            or self.pending_solver_variants is None
             or self.pending_branch_report is not None
         ):
             raise ValueError("evaluating phase requires a solver case")
@@ -1095,6 +1186,7 @@ class OrchestrationReport:
             "test_calls": self.test_calls,
             "test_reuses": self.test_reuses,
             "cached_observations": len(self.observations),
+            "max_provider_in_flight": self.max_provider_in_flight,
             "total_tokens": self.usage.total_tokens,
         }
 
@@ -1131,11 +1223,13 @@ class OrchestrationReport:
             "best_candidate_id",
             "best_files",
             "max_in_flight",
+            "max_provider_in_flight",
             "reason",
             "pending_plan",
             "pending_planner_call",
             "pending_case",
             "pending_solver_call",
+            "pending_solver_variants",
             "pending_branch_report",
             "role_histories",
             "feedback",
@@ -1182,6 +1276,12 @@ class OrchestrationReport:
                 raise ValueError(f"{name} must be an object or null")
             return raw
 
+        def optional_array(name: str) -> list[Any] | None:
+            raw = value.get(name)
+            if raw is not None and not isinstance(raw, list):
+                raise ValueError(f"{name} must be an array or null")
+            return raw
+
         feedback = value.get("feedback", [])
         if not isinstance(feedback, list) or any(
             not isinstance(item, Mapping) for item in feedback
@@ -1200,6 +1300,7 @@ class OrchestrationReport:
                 AgentMessage.from_dict(_m(item, f"{role} role history message"))
                 for item in raw_messages
             )
+        raw_pending_solver_variants = optional_array("pending_solver_variants")
         report = cls(
             schema_version=str(value.get("schema_version", "")),
             run_id=_s(value.get("run_id"), "run_id"),
@@ -1239,6 +1340,7 @@ class OrchestrationReport:
                 else _m(value.get("best_files"), "best_files")
             ),
             max_in_flight=int(value.get("max_in_flight", 1)),
+            max_provider_in_flight=int(value.get("max_provider_in_flight", 1)),
             reason=None if value.get("reason") is None else str(value["reason"]),
             pending_plan=(
                 None
@@ -1259,6 +1361,13 @@ class OrchestrationReport:
                 None
                 if optional("pending_solver_call") is None
                 else RoleCall.from_dict(optional("pending_solver_call"))
+            ),
+            pending_solver_variants=(
+                None
+                if raw_pending_solver_variants is None
+                else tuple(
+                    RoleCall.from_dict(item) for item in raw_pending_solver_variants
+                )
             ),
             pending_branch_report=(
                 None
@@ -1308,6 +1417,7 @@ class OrchestrationReport:
             "best_candidate_id": self.best_candidate_id,
             "best_files": None if self.best_files is None else dict(self.best_files),
             "max_in_flight": self.max_in_flight,
+            "max_provider_in_flight": self.max_provider_in_flight,
             "reason": self.reason,
             "pending_plan": (
                 None if self.pending_plan is None else self.pending_plan.to_dict()
@@ -1324,6 +1434,11 @@ class OrchestrationReport:
                 None
                 if self.pending_solver_call is None
                 else self.pending_solver_call.to_dict()
+            ),
+            "pending_solver_variants": (
+                None
+                if self.pending_solver_variants is None
+                else [item.to_dict() for item in self.pending_solver_variants]
             ),
             "pending_branch_report": (
                 None
@@ -1412,6 +1527,45 @@ def _namespace(case: BranchCase, round_index: int) -> BranchCase:
         root_files=case.root_files,
         candidates=candidates,
         tests={ids[key]: value for key, value in case.tests.items()},
+    )
+
+
+def _namespace_case(case: BranchCase, prefix: str) -> BranchCase:
+    """Namespace one speculative lane without changing its parent topology."""
+
+    normalized = prefix.strip()
+    if not normalized:
+        raise ValueError("speculative namespace prefix must not be empty")
+    if not normalized.endswith("-"):
+        normalized += "-"
+    ids = {item.id: normalized + item.id for item in case.candidates}
+    candidates = tuple(
+        CandidatePatch(
+            id=ids[item.id],
+            parent_id="root" if item.parent_id == "root" else ids[item.parent_id],
+            hypothesis=item.hypothesis,
+            files=item.files,
+            evidence=item.evidence,
+        )
+        for item in case.candidates
+    )
+    return BranchCase(
+        task=case.task,
+        root_files=case.root_files,
+        candidates=candidates,
+        tests={ids[key]: value for key, value in case.tests.items()},
+    )
+
+
+def _request_fingerprint(request: ModelRequest) -> str:
+    return stable_hash(
+        {
+            "run_id": request.run_id,
+            "turn": request.turn,
+            "messages": [message.to_dict() for message in request.messages],
+            "tools": [tool.to_dict() for tool in request.tools],
+            "max_output_tokens": request.max_output_tokens,
+        }
     )
 
 
@@ -2014,23 +2168,36 @@ class OrchestrationRunner:
                 state, "budget_exhausted", "candidate proposal budget exhausted"
             )
         config = replace(config, max_candidates=min(config.max_candidates, remaining))
-        turn = state.solver_calls + 1
-        receipt: ContextReceipt | None = None
-        try:
-            request, receipt = _compile_role_request(
-                state.config.context_config,
-                state.role_histories["solver"],
-                build_solver_request(
-                    state.task,
-                    state.base_files,
-                    plan,
-                    config,
-                    run_id=state.run_id,
-                    turn=turn,
-                    feedback=state.feedback,
-                ),
-                task=state.task,
+        width = min(
+            state.config.speculative_solver_width,
+            state.config.max_solver_calls - state.solver_calls,
+            state.config.max_model_calls - state.model_calls,
+        )
+        if width <= 0:
+            return _finish(
+                state, "budget_exhausted", "solver model-call budget exhausted"
             )
+        turn = state.solver_calls + 1
+        prepared: list[tuple[int, ModelRequest, ContextReceipt]] = []
+        try:
+            for lane in range(width):
+                request, receipt = _compile_role_request(
+                    state.config.context_config,
+                    state.role_histories["solver"],
+                    build_solver_request(
+                        state.task,
+                        state.base_files,
+                        plan,
+                        config,
+                        run_id=state.run_id,
+                        turn=turn,
+                        feedback=state.feedback,
+                        speculation_index=lane,
+                        speculation_count=width,
+                    ),
+                    task=state.task,
+                )
+                prepared.append((lane, request, receipt))
         except (RuntimeContractError, ValueError) as exc:
             message = f"{type(exc).__name__}: {str(exc)[:800]}"
             updated = _event(
@@ -2063,6 +2230,16 @@ class OrchestrationRunner:
             if checkpoint is not None:
                 write_orchestration_checkpoint(updated, checkpoint)
             return updated
+
+        lane_payloads = [
+            {
+                "lane": lane,
+                "model_name": self.solver.name,
+                "request_sha256": _request_fingerprint(request),
+                **_context_event_data(receipt),
+            }
+            for lane, request, receipt in prepared
+        ]
         state = _event(
             replace(state, phase="solving", reason=None),
             "solver.requested",
@@ -2072,36 +2249,150 @@ class OrchestrationRunner:
                 "base_fingerprint": stable_hash(state.base_files),
                 "proposal_config": config.to_dict(),
                 "plan_fingerprint": stable_hash(plan.to_dict()),
-                **({} if receipt is None else _context_event_data(receipt)),
+                "speculative_width": width,
+                "max_parallel_solver_calls": width,
+                "speculative_lanes": lane_payloads,
             },
         )
         if checkpoint is not None:
             write_orchestration_checkpoint(state, checkpoint)
+
+        semaphore = asyncio.Semaphore(width)
+        in_flight = 0
+        max_provider_in_flight = state.max_provider_in_flight
+
+        async def call_lane(
+            lane: int, request: ModelRequest
+        ) -> tuple[int, ModelResponse | None, Exception | None]:
+            nonlocal in_flight, max_provider_in_flight
+            async with semaphore:
+                in_flight += 1
+                max_provider_in_flight = max(max_provider_in_flight, in_flight)
+                try:
+                    return lane, await self.solver.complete(request), None
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:  # provider failures are lane-local
+                    return lane, None, exc
+                finally:
+                    in_flight -= 1
+
+        tasks = [
+            asyncio.create_task(call_lane(lane, request))
+            for lane, request, _receipt in prepared
+        ]
         try:
-            response = await self.solver.complete(request)
-            state = _append_role_response(state, "solver", response)
-            case = parse_proposal_response(
-                response, state.task, state.base_files, config
-            )
-        except (ModelError, RuntimeContractError, ValueError) as exc:
-            message = f"{type(exc).__name__}: {str(exc)[:800]}"
+            lane_results = await asyncio.gather(*tasks)
+        except BaseException:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
+
+        receipts = {lane: receipt for lane, _request, receipt in prepared}
+        working = replace(state, max_provider_in_flight=max_provider_in_flight)
+        lane_cases: list[tuple[int, BranchCase]] = []
+        lane_calls: list[RoleCall] = []
+        lane_errors: list[dict[str, Any]] = []
+        response_usage = TokenUsage()
+        for lane, response, error in sorted(lane_results, key=lambda item: item[0]):
+            receipt = receipts[lane]
+            if error is not None:
+                message = f"{type(error).__name__}: {str(error)[:800]}"
+                call = _error_call("solver", self.solver, turn, message, receipt)
+                lane_calls.append(call)
+                lane_errors.append({"lane": lane, "error": message})
+                working = _event(
+                    working,
+                    "solver.speculative.rejected",
+                    {"lane": lane, "turn": turn, "error": message},
+                )
+                continue
+            if response is None:
+                message = "provider returned no response"
+                call = _error_call("solver", self.solver, turn, message, receipt)
+                lane_calls.append(call)
+                lane_errors.append({"lane": lane, "error": message})
+                working = _event(
+                    working,
+                    "solver.speculative.rejected",
+                    {"lane": lane, "turn": turn, "error": message},
+                )
+                continue
+            response_usage += response.usage
+            working = _append_role_response(working, "solver", response)
+            call = _call("solver", self.solver, turn, response, receipt)
+            lane_calls.append(call)
+            try:
+                lane_case = parse_proposal_response(
+                    response, working.task, working.base_files, config
+                )
+            except (RuntimeContractError, ValueError) as exc:
+                message = f"{type(exc).__name__}: {str(exc)[:800]}"
+                lane_errors.append({"lane": lane, "error": message})
+                working = _event(
+                    working,
+                    "solver.speculative.rejected",
+                    {
+                        "lane": lane,
+                        "turn": turn,
+                        "error": message,
+                        "response_sha256": call.response_sha256,
+                        "usage": response.usage.to_dict(),
+                    },
+                )
+            else:
+                namespaced_lane = (
+                    lane_case
+                    if width == 1
+                    else _namespace_case(lane_case, f"spec-{lane}")
+                )
+                lane_cases.append((lane, namespaced_lane))
+                working = _event(
+                    working,
+                    "solver.speculative.received",
+                    {
+                        "lane": lane,
+                        "turn": turn,
+                        "model_name": self.solver.name,
+                        "response_sha256": call.response_sha256,
+                        "response_id": call.response_id,
+                        "usage": response.usage.to_dict(),
+                        "candidate_count": len(namespaced_lane.candidates),
+                        "case_fingerprint": namespaced_lane.fingerprint,
+                    },
+                )
+
+        if not lane_cases:
             updated = _event(
                 replace(
-                    state,
+                    working,
                     phase="idle",
-                    model_calls=state.model_calls + 1,
-                    solver_calls=state.solver_calls + 1,
+                    model_calls=state.model_calls + width,
+                    solver_calls=state.solver_calls + width,
                     pending_plan=None,
                     pending_planner_call=None,
+                    usage=state.usage + response_usage,
+                    max_provider_in_flight=max_provider_in_flight,
                     feedback=tuple(
                         [
-                            *state.feedback,
-                            {"solver_rejected": message, "round": len(state.rounds)},
+                            *working.feedback,
+                            {
+                                "solver_rejected": lane_errors
+                                or [{"error": "all speculative lanes failed"}],
+                                "round": len(state.rounds),
+                            },
                         ][-16:]
                     ),
                 ),
                 "solver.rejected",
-                {"round": len(state.rounds), "turn": turn, "error": message},
+                {
+                    "round": len(state.rounds),
+                    "turn": turn,
+                    "speculative_width": width,
+                    "errors": lane_errors,
+                },
             )
             if (
                 updated.model_calls >= updated.config.max_model_calls
@@ -2115,6 +2406,23 @@ class OrchestrationRunner:
             if checkpoint is not None:
                 write_orchestration_checkpoint(updated, checkpoint)
             return updated
+
+        combined_candidates = tuple(
+            candidate
+            for _lane, lane_case in lane_cases
+            for candidate in lane_case.candidates
+        )
+        combined_tests = {
+            candidate_id: result
+            for _lane, lane_case in lane_cases
+            for candidate_id, result in lane_case.tests.items()
+        }
+        case = BranchCase(
+            task=state.task,
+            root_files=state.base_files,
+            candidates=combined_candidates,
+            tests=combined_tests,
+        )
         merge_budget = max(
             0,
             state.config.max_candidates
@@ -2127,18 +2435,20 @@ class OrchestrationRunner:
             max_pairs=merge_budget,
         )
         namespaced = _namespace(case, len(state.rounds))
-        call = _call("solver", self.solver, turn, response, receipt)
+        call = lane_calls[0]
         updated = _event(
             replace(
-                state,
+                working,
                 phase="evaluating",
-                model_calls=state.model_calls + 1,
-                solver_calls=state.solver_calls + 1,
+                model_calls=state.model_calls + width,
+                solver_calls=state.solver_calls + width,
                 candidate_proposals=state.candidate_proposals
                 + len(namespaced.candidates),
-                usage=state.usage + response.usage,
+                usage=state.usage + response_usage,
                 pending_case=namespaced,
                 pending_solver_call=call,
+                pending_solver_variants=tuple(lane_calls),
+                max_provider_in_flight=max_provider_in_flight,
             ),
             "solver.received",
             {
@@ -2147,10 +2457,14 @@ class OrchestrationRunner:
                 "model_name": self.solver.name,
                 "response_sha256": call.response_sha256,
                 "response_id": call.response_id,
-                "usage": response.usage.to_dict(),
+                "usage": response_usage.to_dict(),
                 "case_fingerprint": namespaced.fingerprint,
                 "candidate_count": len(namespaced.candidates),
-                **({} if receipt is None else _context_event_data(receipt)),
+                "speculative_width": width,
+                "valid_lanes": [lane for lane, _case in lane_cases],
+                "rejected_lanes": lane_errors,
+                "speculative_variants": [item.to_dict() for item in lane_calls],
+                "max_provider_in_flight": max_provider_in_flight,
             },
         )
         if merge_report.policy != "disabled":
@@ -2296,6 +2610,11 @@ class OrchestrationRunner:
             solver_call=cast(RoleCall, state.pending_solver_call),
             reviewer_call=call,
             review=decision,
+            solver_variants=(
+                tuple(state.pending_solver_variants)
+                if state.pending_solver_variants is not None
+                else (cast(RoleCall, state.pending_solver_call),)
+            ),
         )
         updated = _event(
             replace(
@@ -2316,6 +2635,7 @@ class OrchestrationRunner:
                 pending_planner_call=None,
                 pending_case=None,
                 pending_solver_call=None,
+                pending_solver_variants=None,
                 pending_branch_report=None,
                 model_calls=state.model_calls + 1,
                 reviewer_calls=state.reviewer_calls + 1,
@@ -2500,7 +2820,11 @@ def render_orchestration_console(report: OrchestrationReport) -> str:
     completed_calls = tuple(
         call
         for item in report.rounds
-        for call in (item.planner_call, item.solver_call, item.reviewer_call)
+        for call in (
+            item.planner_call,
+            *item.solver_variants,
+            item.reviewer_call,
+        )
     )
     context_receipts = sum(call.context_receipt is not None for call in completed_calls)
     lines = [
@@ -2508,7 +2832,9 @@ def render_orchestration_console(report: OrchestrationReport) -> str:
         f"model_calls={report.model_calls} planner={report.planner_calls} "
         f"solver={report.solver_calls} reviewer={report.reviewer_calls} "
         f"test_calls={report.test_calls} reuses={report.test_reuses} "
-        f"max_in_flight={report.max_in_flight} context_receipts={context_receipts}"
+        f"max_in_flight={report.max_in_flight} "
+        f"max_provider_in_flight={report.max_provider_in_flight} "
+        f"context_receipts={context_receipts}"
     ]
     if report.best_candidate_id:
         lines.append(f"best_candidate={report.best_candidate_id}")
@@ -2527,7 +2853,11 @@ def render_orchestration_markdown(report: OrchestrationReport) -> str:
     completed_calls = tuple(
         call
         for item in report.rounds
-        for call in (item.planner_call, item.solver_call, item.reviewer_call)
+        for call in (
+            item.planner_call,
+            *item.solver_variants,
+            item.reviewer_call,
+        )
     )
     context_receipts = sum(call.context_receipt is not None for call in completed_calls)
     lines = [
@@ -2544,15 +2874,19 @@ def render_orchestration_markdown(report: OrchestrationReport) -> str:
         f"- Scheduler: max configured parallel tests "
         f"`{report.config.max_parallel_tests}`; "
         f"observed max in-flight `{report.max_in_flight}`",
+        f"- Speculative solver width: `{report.config.speculative_solver_width}`; "
+        f"observed provider max in-flight `{report.max_provider_in_flight}`",
         f"- Context receipts: {context_receipts}/{len(completed_calls)} "
         "(selected message blocks and observed-memory fingerprints)",
         f"- Best candidate: {report.best_candidate_id or 'none'}",
         "",
-        "| Round | Branch | Reviewer | Confidence | Candidate | Test calls |",
-        "|---:|---|---|---:|---|---:|",
+        "| Round | Solver lanes | Branch | Reviewer | Confidence | Candidate | "
+        "Test calls |",
+        "|---:|---:|---|---|---:|---|---:|",
     ]
     lines.extend(
-        f"| {item.index} | {item.branch_report.status} | {item.review.decision} | "
+        f"| {item.index} | {len(item.solver_variants)} | "
+        f"{item.branch_report.status} | {item.review.decision} | "
         f"{item.review.confidence:.2f} | {item.review.candidate_id or 'none'} | "
         f"{item.branch_report.metrics.get('test_calls', 0)} |"
         for item in report.rounds
@@ -2575,16 +2909,31 @@ def render_orchestration_html(report: OrchestrationReport) -> str:
     rows: list[str] = []
     for item in report.rounds:
         context_blocks = [
-            len(call.context_receipt.selected_block_ids)
-            if call.context_receipt is not None
-            else 0
-            for call in (item.planner_call, item.solver_call, item.reviewer_call)
+            (
+                len(item.planner_call.context_receipt.selected_block_ids)
+                if item.planner_call.context_receipt is not None
+                else 0
+            ),
+            "/".join(
+                str(
+                    len(call.context_receipt.selected_block_ids)
+                    if call.context_receipt is not None
+                    else 0
+                )
+                for call in item.solver_variants
+            ),
+            (
+                len(item.reviewer_call.context_receipt.selected_block_ids)
+                if item.reviewer_call.context_receipt is not None
+                else 0
+            ),
         ]
         rows.append(
             "<tr>"
             f"<td>{item.index}</td>"
             f"<td>{escape(item.planner_call.model_name)}</td>"
             f"<td>{escape(item.solver_call.model_name)}</td>"
+            f"<td>{len(item.solver_variants)}</td>"
             f"<td>{escape(item.reviewer_call.model_name)}</td>"
             f"<td>{escape(item.branch_report.status)}</td>"
             f"<td>{escape(item.review.decision)}</td>"
@@ -2594,7 +2943,7 @@ def render_orchestration_html(report: OrchestrationReport) -> str:
             "</tr>"
         )
     if not rows:
-        rows.append("<tr><td colspan='9'>no completed rounds</td></tr>")
+        rows.append("<tr><td colspan='10'>no completed rounds</td></tr>")
     payload = escape(json.dumps(report.to_dict(), ensure_ascii=False, sort_keys=True))
     return (
         "<!doctype html><html><head><meta charset='utf-8'>"
@@ -2612,9 +2961,12 @@ def render_orchestration_html(report: OrchestrationReport) -> str:
         f"<div class='metric'>model calls: {report.model_calls}</div>"
         f"<div class='metric'>tests: {report.test_calls}</div>"
         f"<div class='metric'>reuses: {report.test_reuses}</div>"
+        f"<div class='metric'>provider max in-flight: "
+        f"{report.max_provider_in_flight}</div>"
         f"<div class='metric'>best: {escape(report.best_candidate_id or 'none')}</div>"
         "</div><table><thead><tr><th>round</th><th>planner</th><th>solver</th>"
-        "<th>reviewer</th><th>branch</th><th>review</th><th>confidence</th>"
+        "<th>solver lanes</th><th>reviewer</th><th>branch</th><th>review</th>"
+        "<th>confidence</th>"
         f"<th>test calls</th><th>context blocks (p/s/r)</th></tr></thead>"
         f"<tbody>{''.join(rows)}</tbody></table>"
         "<details><summary>durable report JSON</summary><code>"

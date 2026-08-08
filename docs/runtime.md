@@ -603,24 +603,26 @@ can be explicitly applied or rolled back with a stale-baseline guard. That outer
 deliberately separate from the v0.3 `AgentRunner` event log; it does not silently mutate the
 runtime workspace or claim that provider calls are exactly once.
 
-The v0.7 package now also provides a sequential planner/solver/reviewer orchestrator with
-strict role protocols, shared budgets, cross-round feedback, and an oracle-gated decision.
+The v0.7 package now also provides a planner/solver/reviewer orchestrator with strict role
+protocols, shared budgets, cross-round feedback, and an oracle-gated decision. Planner and
+reviewer calls remain sequential; the solver has an opt-in bounded speculative fan-out.
 It is intentionally separate from the single-agent runtime event log. Its candidate oracle
-can now use bounded parallel isolated workspaces while role model calls remain sequential.
-Both session and orchestration checkpoints persist requested/completed candidate events and
-the observed maximum in-flight count.
+can use bounded parallel isolated workspaces, and `speculative_solver_width > 1` can issue
+independent solver provider calls concurrently under the shared model/candidate budget. Every
+lane stores its request/response hash, context receipt, usage, validation error, and provider
+in-flight observation; valid snapshots are namespaced before the common oracle. Both session
+and orchestration checkpoints persist requested/completed candidate events and the observed
+maximum in-flight counts.
 
 Remaining milestones are:
 
 1. Add durable model-call idempotency hooks where providers expose them.
-2. Extend the bounded MCTS tree into merge-aware branch selection and model-on-demand expansion
-   under one shared compute budget; the current `merge_policy=disjoint` only reconciles already
-   returned snapshots and does not issue concurrent provider calls.
+2. Add provider-aware cancellation/winner selection and idempotency hooks around the current
+   bounded solver fan-out; a crash can still retry the complete lane group.
 3. Run the strategy harness against multiple real model versions and independent hidden
    tests, preserving paired budgets and full ledgers.
 4. Add container/VM isolation and a controlled real-model coding benchmark with fixed
    snapshots, versions, repetitions, and independent hidden tests.
 
-The repository still has no speculative provider-call scheduler, OS sandbox, or published
-real-model benchmark. The explicit apply/rollback adapter is a local filesystem safety boundary,
-not a security boundary.
+The repository still has no OS sandbox or published real-model benchmark. The explicit
+apply/rollback adapter is a local filesystem safety boundary, not a security boundary.

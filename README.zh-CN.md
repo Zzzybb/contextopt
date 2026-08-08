@@ -19,8 +19,11 @@ generation，因此 checkpoint 里能审计“本轮到底给了角色什么上�
 每个结果都更新 checkpoint；恢复时只重跑尚未落账的观察。现在固定候选树还支持
 `--search-policy mcts`：它把 visible-test 质量沿父链回传，用 UCT 选择下一条已生成分支，
 并把选择事件写入 hash-chain。现在还支持可选的 disjoint 三方合并：只合并已经返回的
-独立候选快照，冲突路径写入证据，不会做部分写入；真正并发的 provider speculative call、
-OS sandbox 和统计严谨的真实模型评测仍在后续计划中。
+独立候选快照，冲突路径写入证据，不会做部分写入。`speculative_solver_width > 1` 还会在
+共享模型/候选预算内并发调用多个 solver lane：每个 lane 有独立多样性指令，响应先分别
+校验、记录哈希/用量/失败，再 namespace 后进入 oracle；checkpoint 记录观察到的 provider
+并发度。planner 和 reviewer 仍然顺序调用，崩溃恢复仍是 at-least-once，不声称 exactly-once。
+OS sandbox、跨运行语义记忆和统计严谨的真实模型评测仍在后续计划中。
 
 ## 为什么适合面试 Agent 开发岗
 
@@ -33,9 +36,11 @@ OS sandbox 和统计严谨的真实模型评测仍在后续计划中。
 5. 角色上下文与记忆：每个角色的历史摘要独立编译，receipt 记录选择块、消息哈希、
    memory fingerprint 和 workspace generation；
 6. 并行候选调度：限制 in-flight 数量，隔离临时工作区，并在每个测试结果后持久化；
-7. MCTS 调度：使用真实 oracle 质量而不是模型自报置信度选择后续候选，记录 UCT、访问次数和
+7. speculative solver：在共享预算内并发发起独立 solver 请求，记录 lane 级上下文收据、
+   响应哈希、token 用量、失败和 `max_provider_in_flight`，再合并进入同一个可见 oracle；
+8. MCTS 调度：使用真实 oracle 质量而不是模型自报置信度选择后续候选，记录 UCT、访问次数和
    reward；
-8. 评测边界：reviewer 不能绕过可见测试，脚本 conformance 与模型能力明确分开。
+9. 评测边界：reviewer 不能绕过可见测试，脚本 conformance 与模型能力明确分开。
 
 编排也可以使用 `merge_policy=disjoint`：对相同根快照下的独立 solver 候选做有界三方合并，
 合并候选仍必须经过可见测试；同一路径的不同修改只记录 conflict，不会猜测如何拼接。
@@ -90,6 +95,22 @@ python -m contextopt search-session \
 完整的 orchestrate 命令需要三个 ScriptedModel JSON 文件、根目录快照和可信的
 可见测试命令。它会输出角色调用数、实际测试进程数、缓存复用数、分支状态、
 reviewer 决策、oracle gate 和 checkpoint。
+
+接入真实 OpenAI-compatible solver 时，可以用 `--speculative-solver-width 3` 并发发起
+三个独立 solver lane；总调用仍受 `--max-solver-calls` 和 `--max-model-calls` 约束，
+每个返回快照都会经过同一套路径/大小/可见测试门禁：
+
+~~~text
+python -m contextopt orchestrate \
+  --task "修复算法实现" --root-files root.json --checkpoint run.json \
+  --solver-model <model-name> --base-url <endpoint> \
+  --speculative-solver-width 3 --max-solver-calls 3 \
+  --test-command "python -m unittest discover -s ." --allow-command
+~~~
+
+离线 ScriptedModel 也支持该开关，只需为 solver script 准备足够多的 response；
+报告里的 `solver_variants`、`solver.speculative.*` 事件和 `max_provider_in_flight`
+可以直接检查并发是否真的发生。
 
 代码 Agent 策略评测可以直接离线运行：
 
@@ -163,6 +184,7 @@ python -m contextopt agent-eval \
 - v0.8 trace 可视化补充：[docs/pr/0001-v0.8-trace-dashboard-addendum.zh-CN.md](docs/pr/0001-v0.8-trace-dashboard-addendum.zh-CN.md)
 - v0.8 合并感知快照补充：[docs/pr/0001-v0.8-merge-aware-snapshots-addendum.zh-CN.md](docs/pr/0001-v0.8-merge-aware-snapshots-addendum.zh-CN.md)
 - v0.8 评测 manifest 补充：[docs/pr/0001-v0.8-evaluation-manifest-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-manifest-addendum.zh-CN.md)
+- v0.8 speculative solver 并发补充：[docs/pr/0001-v0.8-speculative-solver-addendum.zh-CN.md](docs/pr/0001-v0.8-speculative-solver-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、
 指标名称是权威定义。

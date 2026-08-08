@@ -550,6 +550,7 @@ def _orchestrate(args: argparse.Namespace) -> int:
             max_candidates=args.max_candidates,
             max_test_calls=args.max_test_calls,
             max_parallel_tests=args.max_parallel_tests,
+            speculative_solver_width=args.speculative_solver_width,
             scheduler_policy=args.scheduler_policy,
             merge_policy=args.merge_policy,
             max_total_tokens=args.max_total_tokens,
@@ -1083,6 +1084,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=1,
         help="maximum number of isolated candidate test workspaces in flight",
+    )
+    orchestrate.add_argument(
+        "--speculative-solver-width",
+        type=int,
+        default=1,
+        help="number of independent solver provider calls to run concurrently",
     )
     orchestrate.add_argument(
         "--scheduler-policy",

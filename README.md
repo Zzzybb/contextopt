@@ -34,8 +34,12 @@ Every boundary ──> durable schema-2 JSONL event log + verified state project
 > fingerprint into each checkpointed call.
 > Candidate evaluation now supports bounded parallel isolated workspaces with durable per-candidate
 > checkpoints and a deterministic, observation-driven MCTS traversal over fixed candidate trees.
-> Speculative provider calls, an OS sandbox, learned semantic memory, and a statistically powered
-> real-model coding benchmark remain outside the current claim boundary.
+> The solver can also run a bounded speculative provider fan-out: each lane receives a distinct
+> diversity instruction, responses are namespaced and validated independently, and the checkpoint
+> records lane hashes, usage, failures, and observed provider concurrency. Planner and reviewer
+> calls remain sequential; this is still at-least-once provider execution, not exactly-once.
+> An OS sandbox, learned semantic memory, and a statistically powered real-model coding benchmark
+> remain outside the current claim boundary.
 
 ## Why this project exists
 
@@ -165,7 +169,12 @@ recompute the complete chain because there is no secret or external trust anchor
 - An opt-in `merge_policy=disjoint` performs bounded three-way reconciliation of independent
   solver snapshots before testing. Non-conflicting changes become a new auditable candidate;
   same-path divergent edits are retained as explicit conflict evidence and are never partially
-  merged. This merges already returned snapshots; it does not claim concurrent provider calls.
+  merged. This runs after speculative lanes return; it does not hide lane failures or provider
+  usage.
+- An opt-in `speculative_solver_width > 1` fans out independent solver calls under the shared
+  model/candidate budget. Lane request/response hashes, context receipts, token usage, validation
+  failures, and `max_provider_in_flight` are persisted; valid snapshots are namespaced before
+  oracle evaluation. Width `1` is the deterministic sequential baseline.
 - The orchestrate CLI command plus console/Markdown/HTML reports make role calls and the
   oracle gate measurable instead of treating a multi-agent transcript as evidence.
 
@@ -202,10 +211,11 @@ recompute the complete chain because there is no secret or external trust anchor
 - Automatic workspace snapshots, migration to another workspace, or distributed
   coordination. `apply-best` and `rollback-best` are explicit local operator actions over
   the files named in the session baseline; they are not transparent workspace versioning.
-- Speculative model calls remain planned. The current parallel mode is bounded candidate-oracle
-  execution, while the opt-in merge policy reconciles already generated immutable snapshots;
-  MCTS selects among generated candidates and does not generate patches itself.
-  role model calls remain sequential and share one explicit budget.
+- A general speculative role graph, cancellation-aware winner-takes-all policy, and provider-side
+  idempotency are not claimed. The current `speculative_solver_width` fan-out is limited to the
+  solver role; planner/reviewer calls remain sequential, and a crash may retry the whole lane
+  group under the documented at-least-once semantics. MCTS selects among generated candidates
+  and does not generate patches itself.
 - A container or virtual-machine security boundary. Workspace path checks and permission
   flags reduce accidental access, but are not an OS sandbox. Registered test commands are
   trusted host processes.
@@ -579,6 +589,8 @@ The bounded merge evidence is documented in [the merge-aware snapshot addendum](
 and [Chinese version](docs/pr/0001-v0.8-merge-aware-snapshots-addendum.zh-CN.md).
 The reproducibility sidecar is documented in [the evaluation manifest addendum](docs/pr/0001-v0.8-evaluation-manifest-addendum.md)
 and [Chinese version](docs/pr/0001-v0.8-evaluation-manifest-addendum.zh-CN.md).
+The speculative solver fan-out is documented in [the speculative solver addendum](docs/pr/0001-v0.8-speculative-solver-addendum.md)
+and [Chinese version](docs/pr/0001-v0.8-speculative-solver-addendum.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers.
 

@@ -372,7 +372,10 @@ candidate oracle execution is now bounded by `max_parallel_tests`; adaptive bran
 including parent-quality promotion and early-stop, is available as a bounded policy; the
   `mcts` search policy adds UCT traversal over already generated candidate trees. The opt-in
   `merge_policy=disjoint` reconciles already generated independent snapshots with conflict
-  evidence; speculative model calls remain future work. Each candidate is
+  evidence. The opt-in `speculative_solver_width > 1` now fans out bounded solver calls with
+  lane-specific diversity instructions. Each response is validated independently, namespaced
+  before branch evaluation, and recorded with a response hash, context receipt, token usage,
+  and lane-local failure. Each candidate is
 materialized in a fresh temporary workspace, and requested/completed events are recorded in
 candidate order so a checkpoint can resume without treating provider or subprocess effects as
 exactly once.
