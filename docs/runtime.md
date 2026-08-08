@@ -46,6 +46,27 @@ The observation includes the exit code and captured output so the model can reac
 violation, malformed argument, denied permission, launch failure, or timeout is instead a
 tool failure.
 
+## Role orchestration boundary
+
+The orchestrate command composes three no-tool model clients above the branch-search
+adapter:
+
+1. planner emits a bounded goal, constraints, hypotheses, test focus, and risks;
+2. solver consumes that plan and emits complete candidate workspace snapshots;
+3. the disposable visible-test oracle produces the only authoritative candidate result;
+4. reviewer emits accept, retry, or reject plus confidence and blocking checks.
+
+The reviewer is deliberately advisory but auditable. Acceptance requires both an explicit
+accept decision naming a candidate and a visible-test-passing result for that candidate.
+Role calls, response hashes, per-role counts, shared token/candidate/test budgets, feedback,
+and cached observations are persisted in an orchestration checkpoint. A pending planner
+request pauses unless the operator resumes with an explicit retry; solver and reviewer
+boundaries are checkpointed so evaluation evidence is never treated as model confidence.
+
+For a deterministic local run, give orchestrate three ScriptedModel JSON files and the same
+trusted visible-test command used by search-session. Real-model experiments should keep
+provider, prompt, tool, budget, and repository versions fixed across role ablations.
+
 ## Live context compilation
 
 Every new CLI run constructs a deterministic `ContextCompiler`. Before a model call, the
@@ -534,15 +555,20 @@ can be explicitly applied or rolled back with a stale-baseline guard. That outer
 deliberately separate from the v0.3 `AgentRunner` event log; it does not silently mutate the
 runtime workspace or claim that provider calls are exactly once.
 
+The v0.7 package now also provides a sequential planner/solver/reviewer orchestrator with
+strict role protocols, shared budgets, cross-round feedback, and an oracle-gated decision.
+It is intentionally separate from the single-agent runtime event log and does not provide
+parallel workspace execution.
+
 Remaining milestones are:
 
 1. Add durable model-call idempotency hooks where providers expose them.
 2. Connect session events to runtime context receipts and richer recovery metadata.
-3. Add planner/coder/reviewer scheduling only after each role performs a measurable state
-   transformation under one shared budget.
+3. Connect role events to runtime context receipts and richer role-specific recovery
+   metadata.
 4. Add container/VM isolation and a controlled real-model coding benchmark with fixed
    snapshots, versions, repetitions, and independent hidden tests.
 
-The repository still has no multi-agent orchestration, OS sandbox, or published real-model
-benchmark. The explicit apply/rollback adapter is a local filesystem safety boundary, not a
-security boundary.
+The repository still has no parallel multi-agent scheduling, OS sandbox, or published
+real-model benchmark. The explicit apply/rollback adapter is a local filesystem safety
+boundary, not a security boundary.

@@ -46,7 +46,10 @@ from contextopt.search import (
     BranchSearch,
     BranchSearchConfig,
     ExecutableSearchConfig,
+    OrchestrationConfig,
+    PlannerConfig,
     ProposalConfig,
+    ReviewerConfig,
     SearchSessionConfig,
     WorkspaceApplyError,
     apply_best_snapshot,
@@ -58,9 +61,13 @@ from contextopt.search import (
     render_branch_console,
     render_branch_html,
     render_branch_markdown,
+    render_orchestration_console,
+    render_orchestration_html,
+    render_orchestration_markdown,
     render_session_console,
     render_session_markdown,
     rollback_best_snapshot,
+    run_orchestration,
     run_search_session,
     write_apply_receipt,
 )
@@ -357,6 +364,124 @@ def _build_model(args: argparse.Namespace) -> ModelClient:
         max_retries=args.model_retries,
         temperature=args.temperature,
     )
+
+
+def _build_role_model(args: argparse.Namespace, role: str) -> ModelClient:
+    script = getattr(args, f"{role}_script")
+    if script:
+        return ScriptedModel.from_path(script)
+    model_name = getattr(args, f"{role}_model")
+    if not model_name or not args.base_url:
+        raise ValueError(
+            f"--{role}-model and --base-url are required without --{role}-script"
+        )
+    api_key = os.environ.get(args.api_key_env)
+    if not api_key:
+        raise ValueError(
+            f"model API key is missing from environment variable {args.api_key_env}"
+        )
+    return OpenAICompatibleModel(
+        base_url=args.base_url,
+        api_key=api_key,
+        model=model_name,
+        timeout_seconds=args.model_timeout,
+        max_retries=args.model_retries,
+        temperature=args.temperature,
+    )
+
+
+def _orchestrate(args: argparse.Namespace) -> int:
+    if args.resume:
+        root_files = None
+        execution_config = None
+    else:
+        if not args.root_files or not args.task:
+            raise ValueError(
+                "--task and --root-files are required for a new orchestration"
+            )
+        root_files = _load_root_files(args.root_files)
+        if not args.test_command:
+            raise ValueError("--test-command is required for a new orchestration")
+        if not args.allow_command:
+            raise ValueError(
+                "--allow-command is required when executing orchestration tests"
+            )
+        execution_config = ExecutableSearchConfig(
+            command=_split_command(args.test_command),
+            suite=args.test_suite,
+            test_name=args.test_name,
+            timeout_seconds=args.test_timeout,
+            max_report_bytes=args.max_report_bytes,
+        )
+    planner = _build_role_model(args, "planner")
+    solver = _build_role_model(args, "solver")
+    reviewer = _build_role_model(args, "reviewer")
+    config = planner_config = solver_config = reviewer_config = search_config = None
+    if not args.resume:
+        config = OrchestrationConfig(
+            max_rounds=args.max_rounds,
+            max_model_calls=args.max_model_calls,
+            max_planner_calls=args.max_planner_calls,
+            max_solver_calls=args.max_solver_calls,
+            max_reviewer_calls=args.max_reviewer_calls,
+            max_candidates=args.max_candidates,
+            max_test_calls=args.max_test_calls,
+            max_total_tokens=args.max_total_tokens,
+        )
+        planner_config = PlannerConfig(
+            max_items=args.planner_max_items,
+            max_item_chars=args.planner_max_item_chars,
+            max_prompt_chars=args.planner_max_prompt_chars,
+            max_output_tokens=args.planner_output_tokens,
+        )
+        solver_config = ProposalConfig(
+            max_candidates=args.solver_max_candidates,
+            max_files_per_candidate=args.max_files_per_candidate,
+            max_file_chars=args.max_file_chars,
+            max_total_prompt_chars=args.max_total_prompt_chars,
+            max_output_tokens=args.solver_output_tokens,
+        )
+        reviewer_config = ReviewerConfig(
+            max_prompt_chars=args.reviewer_max_prompt_chars,
+            max_output_tokens=args.reviewer_output_tokens,
+            max_issue_items=args.reviewer_max_issue_items,
+            max_item_chars=args.reviewer_max_item_chars,
+        )
+        search_config = BranchSearchConfig(
+            beam_width=args.beam_width,
+            max_depth=args.max_depth,
+            max_candidates=args.branch_max_candidates,
+            test_environment_fingerprint=args.test_environment,
+            stop_on_pass=not args.no_stop_on_pass,
+        )
+    report = asyncio.run(
+        run_orchestration(
+            planner,
+            solver,
+            reviewer,
+            task=args.task,
+            root_files=root_files,
+            execution_config=execution_config,
+            config=config,
+            planner_config=planner_config,
+            solver_config=solver_config,
+            reviewer_config=reviewer_config,
+            search_config=search_config,
+            run_id=args.run_id or uuid.uuid4().hex,
+            checkpoint_path=args.checkpoint,
+            resume=args.resume,
+            retry_pending=args.retry_pending,
+        )
+    )
+    print(render_orchestration_console(report), end="")
+    _write(args.output, json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n")
+    _write(args.markdown, render_orchestration_markdown(report))
+    _write(args.html, render_orchestration_html(report))
+    if report.status == "accepted":
+        return 0
+    if report.status == "paused":
+        return 4
+    return 3 if report.status == "failed" else 2
 
 
 def _result_exit_code(status: str) -> int:
@@ -691,6 +816,71 @@ def build_parser() -> argparse.ArgumentParser:
     session.add_argument("--output", help="write the complete session report")
     session.add_argument("--markdown", help="write a Markdown session report")
     session.set_defaults(handler=_search_session)
+
+    orchestrate = subparsers.add_parser(
+        "orchestrate",
+        help="run a bounded planner/solver/reviewer coding search",
+    )
+    orchestrate.add_argument(
+        "--task",
+        help="coding task or issue text; omitted when resuming from a checkpoint",
+    )
+    orchestrate.add_argument("--root-files")
+    orchestrate.add_argument("--checkpoint", required=True)
+    orchestrate.add_argument("--resume", action="store_true")
+    orchestrate.add_argument(
+        "--retry-pending",
+        action="store_true",
+        help="retry a planner request that was pending when the process stopped",
+    )
+    orchestrate.add_argument("--planner-script")
+    orchestrate.add_argument("--solver-script")
+    orchestrate.add_argument("--reviewer-script")
+    orchestrate.add_argument("--planner-model")
+    orchestrate.add_argument("--solver-model")
+    orchestrate.add_argument("--reviewer-model")
+    orchestrate.add_argument("--base-url")
+    orchestrate.add_argument("--api-key-env", default="CONTEXTOPT_API_KEY")
+    orchestrate.add_argument("--model-timeout", type=float, default=90.0)
+    orchestrate.add_argument("--model-retries", type=int, default=2)
+    orchestrate.add_argument("--temperature", type=float, default=0.0)
+    orchestrate.add_argument("--run-id")
+    orchestrate.add_argument("--test-command")
+    orchestrate.add_argument("--allow-command", action="store_true")
+    orchestrate.add_argument("--test-suite", default="visible-tests")
+    orchestrate.add_argument("--test-name", default="all-visible-tests")
+    orchestrate.add_argument("--test-timeout", type=float, default=120.0)
+    orchestrate.add_argument("--max-report-bytes", type=int, default=64 * 1024)
+    orchestrate.add_argument("--max-rounds", type=int, default=3)
+    orchestrate.add_argument("--max-model-calls", type=int, default=12)
+    orchestrate.add_argument("--max-planner-calls", type=int, default=3)
+    orchestrate.add_argument("--max-solver-calls", type=int, default=3)
+    orchestrate.add_argument("--max-reviewer-calls", type=int, default=3)
+    orchestrate.add_argument("--max-candidates", type=int, default=16)
+    orchestrate.add_argument("--max-test-calls", type=int, default=16)
+    orchestrate.add_argument("--max-total-tokens", type=int, default=100_000)
+    orchestrate.add_argument("--planner-max-items", type=int, default=6)
+    orchestrate.add_argument("--planner-max-item-chars", type=int, default=600)
+    orchestrate.add_argument("--planner-max-prompt-chars", type=int, default=400_000)
+    orchestrate.add_argument("--planner-output-tokens", type=int, default=4_096)
+    orchestrate.add_argument("--solver-max-candidates", type=int, default=4)
+    orchestrate.add_argument("--max-files-per-candidate", type=int, default=32)
+    orchestrate.add_argument("--max-file-chars", type=int, default=200_000)
+    orchestrate.add_argument("--max-total-prompt-chars", type=int, default=400_000)
+    orchestrate.add_argument("--solver-output-tokens", type=int, default=8_192)
+    orchestrate.add_argument("--reviewer-max-prompt-chars", type=int, default=400_000)
+    orchestrate.add_argument("--reviewer-output-tokens", type=int, default=2_048)
+    orchestrate.add_argument("--reviewer-max-issue-items", type=int, default=8)
+    orchestrate.add_argument("--reviewer-max-item-chars", type=int, default=600)
+    orchestrate.add_argument("--beam-width", type=int, default=2)
+    orchestrate.add_argument("--max-depth", type=int, default=4)
+    orchestrate.add_argument("--branch-max-candidates", type=int, default=32)
+    orchestrate.add_argument("--test-environment", default="visible-tests-v1")
+    orchestrate.add_argument("--no-stop-on-pass", action="store_true")
+    orchestrate.add_argument("--output")
+    orchestrate.add_argument("--markdown")
+    orchestrate.add_argument("--html")
+    orchestrate.set_defaults(handler=_orchestrate)
 
     apply_best = subparsers.add_parser(
         "apply-best",

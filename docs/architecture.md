@@ -333,6 +333,41 @@ rejects stale or linked paths, atomically replaces changed files, and writes an 
 observed target. This explicit side-effect boundary keeps search evaluation reproducible and
 makes out-of-band edits visible rather than silently overwriting them.
 
+## Planner / solver / reviewer orchestration — v0.7
+
+The role orchestrator is a sequential state machine above the v0.6 session boundary. It
+keeps the three model clients independent so each role can use a different provider or a
+deterministic scripted adapter:
+
+    task + workspace
+           |
+           v
+        planner ---- strict plan JSON ----+
+                                          |
+                                          v
+        solver <--- plan + bounded evidence ---- complete snapshots
+                                          |
+                                          v
+                       disposable visible-test oracle
+                                          |
+                                          v
+        reviewer <-- plan + branch report -- strict decision JSON
+           |                      |
+           +---- accept only if reviewer says accept AND visible tests pass
+
+Planner and reviewer responses cannot issue tools. Solver responses reuse the existing
+complete-snapshot parser, so no role can smuggle an arbitrary patch or test claim past the
+same path and size checks. The reviewer receives candidate ids, hypotheses, scores, and
+bounded test observations rather than unverified model confidence. A reviewer may reject a
+passing branch; it cannot make a failing branch accepted.
+
+The report stores per-role model fingerprints, per-role and shared budgets, role-call
+response hashes, cross-round feedback, cached test observations, and the same hash-chained
+event type used by branch search. Checkpoints are written before planner, solver, and
+reviewer awaits and after evaluation. A stopped planner request requires explicit retry;
+after a durable planner response, the solver can safely continue on resume. Parallel
+workspace execution and adaptive branch scheduling remain future work.
+
 ## Claim boundaries
 
 - Optimizer objective quality is not Agent task success.

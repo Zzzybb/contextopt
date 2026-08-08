@@ -19,7 +19,7 @@ Task ──> AgentRunner ──> ContextCompiler ──> ModelClient ──> too
 Every boundary ──> durable schema-2 JSONL event log + verified state projection
 ```
 
-> **Status — v0.6 durable proposal/test/search session:** the repository now contains a real
+> **Status — v0.7 role-orchestrated coding search:** the repository now contains a real
 > single-agent read/edit/test loop, recoverable event-sourced execution, a deterministic live
 > context compiler, an auditable beam search over generated coding candidates, and a strict
 > model-to-candidate proposal boundary. A model can return bounded complete workspace
@@ -27,7 +27,7 @@ Every boundary ──> durable schema-2 JSONL event log + verified state project
 > work across rounds, persists pending phases and budgets atomically, and can be resumed
 > without pretending that an interrupted provider call was exactly-once. An accepted snapshot
 > can be explicitly applied to a real workspace and rolled back with a stale-baseline guard.
-> It does **not** yet implement multi-agent scheduling, an OS sandbox, learned semantic memory,
+> It does **not** yet implement parallel workspace execution, an OS sandbox, learned semantic memory,
 > or a statistically powered real-model coding benchmark.
 
 ## Why this project exists
@@ -139,6 +139,17 @@ The event hash chain provides verifiable, corruption-evident integrity. It is no
 signature or malicious-rewrite defense: someone who can replace the entire log can also
 recompute the complete chain because there is no secret or external trust anchor.
 
+### Planner / solver / reviewer orchestration — v0.7
+
+- Three provider-neutral role seams: a strict planner plan, the existing complete-snapshot
+  solver protocol, and a strict reviewer decision.
+- Shared model, token, candidate, test, and per-role budgets; a reviewer decision can
+  reject a passing branch, but it cannot override the visible-test oracle.
+- Cross-round plan and reviewer feedback, test-result reuse, hash-chained role events,
+  atomic checkpoints, and role-specific model fingerprints for safe resume.
+- The orchestrate CLI command plus console/Markdown/HTML reports make role calls and the
+  oracle gate measurable instead of treating a multi-agent transcript as evidence.
+
 ### ContextOpt engine — v0.1 algorithms, v0.3 live integration
 
 - Immutable context candidates with provenance, token cost, dependencies, conflicts,
@@ -156,8 +167,8 @@ recompute the complete chain because there is no secret or external trust anchor
   coordination. `apply-best` and `rollback-best` are explicit local operator actions over
   the files named in the session baseline; they are not transparent workspace versioning.
 - Planner/coder/reviewer role orchestration, parallel agents, PatchTree/MCTS scheduling,
-  or adaptive multi-agent scheduling. The v0.6 session is a bounded iterative loop around
-  one model client, not yet a multi-agent scheduler.
+  or adaptive multi-agent scheduling. The v0.7 orchestrator is sequential and bounded;
+  parallel isolated workspaces and adaptive schedulers remain planned.
 - A container or virtual-machine security boundary. Workspace path checks and permission
   flags reduce accidental access, but are not an OS sandbox. Registered test commands are
   trusted host processes.
@@ -451,8 +462,8 @@ docs/                     # architecture, runtime, and evaluation contract
 - **v0.6 — Durable search session (implemented):** iterative proposal/test feedback,
   cross-round deduplication, atomic resumable checkpoints, shared budgets, and explicit
   apply/rollback receipts.
-- **v0.7 — Agent DevTools:** connect session events to the runtime's richer recovery and
-  context receipts, then add planner/coder/reviewer scheduling under one shared budget.
+- **v0.7 — Role orchestration (implemented):** planner/solver/reviewer protocols,
+  shared budgets, cross-round feedback, checkpointed role events, and an oracle gate.
 - **v1.0 — Evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers.
 

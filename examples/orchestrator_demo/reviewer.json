@@ -1,0 +1,7 @@
+[
+  {
+    "response": {
+      "content": "{\"decision\":\"accept\",\"candidate_id\":\"round-0-sorted-fix\",\"confidence\":0.9,\"blocking_issues\":[],\"required_checks\":[],\"summary\":\"visible ordering test passed and the plan constraints are preserved\"}"
+    }
+  }
+]

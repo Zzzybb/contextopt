@@ -227,6 +227,32 @@ tests are the only oracle used for ranking, and no hidden-test or real-model suc
 made. A passing candidate demonstrates the session control flow and apply boundary, not that a
 provider would discover that candidate on an arbitrary issue.
 
+## Level 2g: planner / solver / reviewer orchestration conformance — implemented
+
+The v0.7 orchestrator adds measurable role boundaries above the v0.6 session:
+
+- planner, solver, and reviewer responses are strict no-tool JSON contracts;
+- model, token, candidate, test, and role budgets are shared and persisted;
+- reviewer acceptance is gated by the visible-test result, so a role transcript cannot
+  convert a failing candidate into success;
+- cross-round feedback, duplicate-test reuse, role fingerprints, checkpoint round trips,
+  and hash-chain events are all available in the report.
+
+The deterministic tests exercise a first failing branch followed by a passing branch,
+with a reviewer retry before acceptance. Metrics are role call counts, actual test
+processes, cache reuses, candidate proposals, total tokens, and oracle-gate outcomes.
+These are orchestration and safety measurements, not model intelligence or hidden-test
+success. The reviewer may reject a passing candidate; it is intentionally not allowed
+to override the executable oracle.
+
+Reproduce the offline role conformance tests with:
+
+    python -m unittest tests.test_orchestrator -v
+
+The CLI entry point is orchestrate; use three scripted model files for a fully offline
+run, or provide one OpenAI-compatible model name per role for a real experiment. A
+controlled real-model comparison still belongs to Level 3.
+
 ## Level 3: controlled real-model coding tasks — planned
 
 Use the same model snapshot, system prompt, tools, repository commit, maximum turns, token

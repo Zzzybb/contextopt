@@ -14,3 +14,6 @@ Each note should cover:
 The first pull request predates this convention; its retrospective note is
 [`0001-contextopt-evolution.md`](0001-contextopt-evolution.md). Future PRs should add the
 next numbered note rather than rewriting an older one.
+
+The repository also keeps a Chinese translation for the convention and retrospective so
+the design intent, validation commands, and claim boundaries are readable in both languages.

@@ -1,0 +1,4 @@
+{
+  "solver.py": "def solve(values):\n    return list(values)\n",
+  "test_solver.py": "import unittest\nfrom solver import solve\n\n\nclass SolverTests(unittest.TestCase):\n    def test_orders_values(self):\n        self.assertEqual(solve([3, 1, 2]), [1, 2, 3])\n\n\nif __name__ == '__main__':\n    unittest.main()\n"
+}
