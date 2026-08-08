@@ -19,11 +19,12 @@ Task ──> AgentRunner ──> ContextCompiler ──> ModelClient ──> too
 Every boundary ──> durable schema-2 JSONL event log + verified state projection
 ```
 
-> **Status — v0.3 live context runtime:** the repository now contains a real single-agent
-> read/edit/test loop, recoverable event-sourced execution, and a deterministic live
-> context compiler with protocol-safe selection, tool-output compaction, version-aware
-> observed memory, and per-turn receipts. It does **not** yet implement multi-agent
-> scheduling, branch search, an OS sandbox, learned semantic memory, or a real-model coding
+> **Status — v0.4 test-guided search:** the repository now contains a real single-agent
+> read/edit/test loop, recoverable event-sourced execution, a deterministic live context
+> compiler, and an auditable beam search over generated coding candidates. The branch
+> layer deduplicates complete workspace states, spends visible-test calls once per state,
+> and emits a self-contained SVG/JSON/Markdown report. It does **not** yet implement
+> multi-agent scheduling, an OS sandbox, learned semantic memory, or a real-model coding
 > benchmark.
 
 ## Why this project exists
@@ -90,6 +91,18 @@ coding success without a controlled real-model benchmark.
   and evicted block ids, compaction/staleness flags, estimates, policy decisions, memory
   identity, and request hashes.
 
+### Test-guided branch search — v0.4
+
+- Immutable candidate workspace snapshots with parent hypotheses and evidence references.
+- Deterministic beam search ordered by visible-test progress, with explicit candidate,
+  test-call, depth, and beam budgets.
+- Fixed-test-environment workspace fingerprints that avoid executing the same candidate
+  state twice; duplicate and beam-prune decisions remain in the audit trace.
+- Hash-chained `search.started`, proposal, evaluation, duplicate, prune, and completed
+  events, plus strict report round-tripping and tamper detection.
+- A zero-dependency report renderer: console table, Markdown accounting, and a
+  self-contained SVG HTML graph suitable for a portfolio demo.
+
 The event hash chain provides verifiable, corruption-evident integrity. It is not a
 signature or malicious-rewrite defense: someone who can replace the entire log can also
 recompute the complete chain because there is no secret or external trust anchor.
@@ -109,15 +122,17 @@ recompute the complete chain because there is no secret or external trust anchor
 
 - Automatic workspace snapshots, rollback, migration to another workspace, or distributed
   coordination. Resume operates on the same configured workspace and validates what it can.
-- Planner/coder/reviewer role orchestration, parallel agents, PatchTree, beam search, or
-  MCTS.
+- Planner/coder/reviewer role orchestration, parallel agents, PatchTree/MCTS scheduling,
+  or a patch executor. The v0.4 branch layer is a deterministic candidate-search core,
+  not yet a multi-agent scheduler.
 - A container or virtual-machine security boundary. Workspace path checks and permission
   flags reduce accidental access, but are not an OS sandbox. Registered test commands are
   trusted host processes.
 - A general shell tool, autonomous package installation, or unrestricted network access.
 - A claim that the scripted demo measures model reasoning or real-world issue resolution.
 - Learned or cross-run semantic memory, a trace UI, or a statistically powered real-model
-  coding benchmark.
+  coding benchmark. The branch demo consumes fixed candidate snapshots and test
+  observations; it does not pretend synthetic observations are model coding accuracy.
 - Exactly-once external side effects. Recovery is tool-specific and conservative;
   explicitly retrying a command can execute it again.
 
@@ -231,6 +246,31 @@ This comparison is not model quality, coding accuracy, or evidence that either c
 would cause a model to solve more tasks. See the
 [context routing evaluation contract](docs/context-routing-eval.md).
 
+Run the v0.4 test-guided branch-search demo and write all three report formats:
+
+```bash
+contextopt branch-search \
+  --output branch-search.json \
+  --markdown branch-search.md \
+  --html branch-search.html
+```
+
+The checked-in deterministic case evaluates five unique workspace states and one
+duplicate candidate. With the default beam width of 2 it produces one passing branch,
+one beam-pruned branch, and one duplicate without a second test call:
+
+| Search accounting | Result |
+|---|---:|
+| Candidate proposals | 6 |
+| Unique test calls | 5 |
+| Duplicate states | 1 |
+| Beam-pruned states | 1 |
+| Best branch | `iterative-fix` |
+
+For a real model adapter, convert each generated patch plus its isolated visible-test
+observation into the same JSON case shape. The search core does not execute arbitrary
+commands itself; the trusted workspace/tool boundary remains the runtime's job.
+
 ## What the offline demo proves
 
 The Runtime Conformance Eval uses a scripted model that already contains the intended
@@ -275,11 +315,12 @@ surrogate-objective misalignment, not evidence of downstream Agent improvement.
 src/contextopt/
 ├── runtime/              # runner, live context/memory, recovery, tools, events
 ├── evaluation/           # model-free context routing/compiler conformance
+├── search/                # test-guided branch search, dedup, and report renderers
 ├── models.py             # context candidates, constraints, receipts
 ├── policies/             # interchangeable selection algorithms
 ├── synthetic.py          # deterministic context microbench generation
 ├── benchmark.py          # paired optimizer metrics and reports
-└── cli.py                # run/resume/status/trace, context-eval, pack, benchmark
+└── cli.py                # run/resume/status/trace, context-eval, branch-search, pack
 
 tests/                    # standard-library unit and integration tests
 examples/runtime_demo/    # offline scripted coding-loop demonstration
@@ -298,10 +339,12 @@ docs/                     # architecture, runtime, and evaluation contract
 - **v0.3 — Live context engine (implemented):** candidate extraction, protocol-atomic
   compaction, observed-memory invalidation, live ContextOpt policies, per-turn receipts,
   and model-free compiler conformance fixtures.
-- **v0.4 — Test-guided search:** isolated branches, duplicate-state detection, adaptive
-  budget allocation, and controlled policy comparisons.
-- **v1.0 — Agent DevTools:** real coding-task benchmark, trace/search visualization, and
-  statistically defensible evaluations.
+- **v0.4 — Test-guided search (implemented):** isolated candidate snapshots,
+  test-progress beam search, fixed-environment deduplication, hash-chained decisions,
+  and self-contained search visualization.
+- **v1.0 — Agent DevTools:** connect the search core to isolated real workspaces and
+  model-generated patches, then run statistically defensible real-model evaluations and
+  add multi-agent scheduling.
 
 See [Architecture](docs/architecture.md), [Runtime](docs/runtime.md), and
 [Evaluation protocol](docs/evaluation.md) for the design and claim boundaries.

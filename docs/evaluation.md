@@ -136,6 +136,41 @@ cannot fit the fixed budget instead of receiving a fabricated quality score.
 See [Context routing/compiler conformance](context-routing-eval.md) for metric definitions,
 the API, and reproduction command.
 
+## Level 2d: test-guided branch-search conformance — implemented
+
+The v0.4 search core evaluates a fixed candidate graph representing model-generated
+workspace snapshots and their visible-test observations. It runs a deterministic beam
+search under explicit candidate and depth budgets. The default fixture contains three
+first-pass hypotheses, two follow-up repairs, and one equivalent repair whose complete
+workspace snapshot is identical to an earlier passing state.
+
+The report keeps these signals separate:
+
+- visible-test calls versus candidate proposals (duplicate states do not consume a
+  second test call under the declared test-environment fingerprint);
+- test progress and best passing branch;
+- beam-pruned candidates and duplicate-state decisions;
+- hash-chain integrity and JSON round-trip determinism;
+- branch graph rendering in dependency-free SVG HTML.
+
+Reproduce the offline report with:
+
+```text
+python -m contextopt branch-search \
+  --output branch-search.json \
+  --markdown branch-search.md \
+  --html branch-search.html
+```
+
+The checked-in fixture currently proposes 6 candidates, evaluates 5 unique workspace
+states, detects 1 duplicate, prunes 1 low-progress branch, and selects `iterative-fix`
+after all five visible tests pass. This is an algorithm and accounting conformance
+result. Candidate snapshots and test results are fixed inputs; no model is called and no
+arbitrary patch command is executed by this module. Therefore it does not establish
+model coding accuracy, hidden-test success, or multi-agent value. A production adapter
+must create isolated workspaces, run the same executable oracle for every candidate, and
+include those effects in the shared compute budget.
+
 ## Level 3: controlled real-model coding tasks — planned
 
 Use the same model snapshot, system prompt, tools, repository commit, maximum turns, token
@@ -179,9 +214,10 @@ retry, state reconciliation, and explicit operator decisions rather than combini
 under an unqualified “idempotent” or “exactly once” label. Event-log survival alone is not
 counted as recovery.
 
-## Level 5: test-guided search and multi-agent scheduling — planned
+## Level 5: multi-agent scheduling — planned
 
-Compare under one shared compute budget:
+After the single-process branch core is connected to real isolated workspaces, compare
+under one shared compute budget:
 
 - single-path Agent;
 - independent best-of-N;

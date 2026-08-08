@@ -221,6 +221,42 @@ Level 2c performs paired, fixed-budget, model-free conformance checks on this li
 [Context routing/compiler conformance](context-routing-eval.md). It measures evidence
 retention and compiler invariants, not whether a model solves a coding task.
 
+## Test-guided branch search — v0.4
+
+The branch layer sits above one runtime trajectory. A model adapter can generate several
+complete candidate workspace snapshots from the same failing task, run the same visible
+test oracle in an isolated workspace for each, and hand the observations to the pure
+search core:
+
+```text
+candidate snapshots + visible-test observations
+                 │
+                 v
+      fixed-environment dedup key
+                 │
+                 v
+       test-progress beam ordering
+                 │
+                 ├── duplicate state ──> audit and skip another test call
+                 ├── low-progress      ──> beam-pruned event
+                 └── passing branch    ──> accepted best candidate
+```
+
+`BranchCase` stores the task, root snapshot, parent-linked `CandidatePatch` objects, and
+their `TestResult` observations. `BranchSearch` assigns each snapshot a stable workspace
+fingerprint and combines it with a declared test-environment fingerprint. The search
+evaluates a state once, orders failing candidates by a bounded test-progress score, keeps
+the configured beam, and stops at the first passing depth unless configured to continue.
+It never executes a shell command itself; the existing trusted `WorkspaceTools` boundary
+and a future isolated-workspace adapter own that side effect.
+
+Every decision is recorded as a small hash-chained event stream. The report includes the
+candidate nodes, test fingerprints, duplicate/prune reasons, accounting metrics, and a
+self-contained SVG HTML graph. `validate_search_report` checks the event chain, parent
+references, terminal event, and case fingerprint before rendering. The v0.4 demo is thus
+useful for explaining search mechanics and compute accounting without claiming that a
+fixed candidate fixture is a real model benchmark.
+
 ## Claim boundaries
 
 - Optimizer objective quality is not Agent task success.

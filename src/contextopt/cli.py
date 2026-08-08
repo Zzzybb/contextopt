@@ -41,6 +41,15 @@ from contextopt.runtime import (
 )
 from contextopt.runtime.context import ContextCompiler, ContextCompilerConfig
 from contextopt.runtime.recovery import replay_events_with_checkpoint
+from contextopt.search import (
+    BranchCase,
+    BranchSearch,
+    BranchSearchConfig,
+    demo_case,
+    render_branch_console,
+    render_branch_html,
+    render_branch_markdown,
+)
 
 
 def _write(path: str | None, content: str) -> None:
@@ -110,6 +119,32 @@ def _context_eval(args: argparse.Namespace) -> int:
     print(render_context_routing_console(report))
     _write(args.output, json.dumps(report, indent=2, sort_keys=True) + "\n")
     _write(args.markdown, render_context_routing_markdown(report))
+    return 0
+
+
+def _load_branch_case(path: str) -> BranchCase:
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("branch search input must be a JSON object")
+    return BranchCase.from_dict(data)
+
+
+def _branch_search(args: argparse.Namespace) -> int:
+    case = demo_case() if args.input is None else _load_branch_case(args.input)
+    report = BranchSearch(
+        BranchSearchConfig(
+            beam_width=args.beam_width,
+            max_depth=args.max_depth,
+            max_candidates=args.max_candidates,
+            test_environment_fingerprint=args.test_environment,
+            stop_on_pass=not args.no_stop_on_pass,
+        )
+    ).run(case)
+    print(render_branch_console(report))
+    payload = json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n"
+    _write(args.output, payload)
+    _write(args.markdown, render_branch_markdown(report))
+    _write(args.html, render_branch_html(report))
     return 0
 
 
@@ -403,6 +438,33 @@ def build_parser() -> argparse.ArgumentParser:
     context_eval.add_argument("--output", help="write the complete JSON report")
     context_eval.add_argument("--markdown", help="write the summary as Markdown")
     context_eval.set_defaults(handler=_context_eval)
+
+    branch_search = subparsers.add_parser(
+        "branch-search",
+        help="run deterministic test-guided coding-candidate branch search",
+    )
+    branch_search.add_argument(
+        "input",
+        nargs="?",
+        help="JSON branch case; omit it to run the built-in repair demo",
+    )
+    branch_search.add_argument("--beam-width", type=int, default=2)
+    branch_search.add_argument("--max-depth", type=int, default=4)
+    branch_search.add_argument("--max-candidates", type=int, default=32)
+    branch_search.add_argument(
+        "--test-environment",
+        default="visible-tests-v1",
+        help="fingerprint of the deterministic test environment used for deduplication",
+    )
+    branch_search.add_argument(
+        "--no-stop-on-pass",
+        action="store_true",
+        help="continue exploring the current frontier after a passing candidate",
+    )
+    branch_search.add_argument("--output", help="write the complete JSON report")
+    branch_search.add_argument("--markdown", help="write a Markdown search report")
+    branch_search.add_argument("--html", help="write a self-contained SVG HTML report")
+    branch_search.set_defaults(handler=_branch_search)
 
     run = subparsers.add_parser(
         "run", help="run one auditable coding-agent loop in a workspace"
