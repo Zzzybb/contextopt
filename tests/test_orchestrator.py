@@ -8,8 +8,9 @@ import unittest
 from pathlib import Path
 
 from contextopt.cli import main
+from contextopt.runtime.identity import stable_hash
 from contextopt.runtime.model import ScriptedModel
-from contextopt.runtime.protocol import ModelResponse, ToolCall
+from contextopt.runtime.protocol import ModelRequest, ModelResponse, ToolCall
 from contextopt.search import (
     BranchSearchConfig,
     CandidatePatch,
@@ -133,6 +134,37 @@ class DelayedScriptedModel(ScriptedModel):
     async def complete(self, request):  # type: ignore[no-untyped-def]
         await asyncio.sleep(0.05)
         return await super().complete(request)
+
+
+class PartialSpeculativeModel:
+    """Return one lane, then block another so checkpoint reuse can be tested."""
+
+    def __init__(self, content: str, *, block_after: int | None) -> None:
+        self._name = "partial-speculative-solver:v1"
+        self._content = content
+        self._block_after = block_after
+        self._never = asyncio.Event()
+        self.requests: list[ModelRequest] = []
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def configuration_fingerprint(self) -> str:
+        return stable_hash({"adapter": "partial-test", "name": self._name})
+
+    def resume_from_turn(self, completed_turns: int) -> None:
+        if completed_turns < 0:
+            raise ValueError("completed_turns must be non-negative")
+
+    async def complete(self, request: ModelRequest) -> ModelResponse:
+        self.requests.append(request)
+        if self._block_after is not None and len(self.requests) > self._block_after:
+            await self._never.wait()
+        else:
+            await asyncio.sleep(0.01)
+        return ModelResponse(content=self._content)
 
 
 MERGE_ROOT_FILES = {
@@ -365,6 +397,79 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(received[0].data["speculative_width"], 2)
         self.assertEqual(received[0].data["valid_lanes"], [0, 1])
         self.assertEqual(checkpoint_report.to_dict(), report.to_dict())
+
+    async def test_speculative_resume_reuses_durable_lane_response(self) -> None:
+        planner_steps = [{"response": {"content": _plan()}}]
+        reviewer_steps = [
+            {"response": {"content": _review("accept", "round-0-spec-0-good")}}
+        ]
+        planner = ScriptedModel(planner_steps, name="partial-planner:v1")
+        reviewer = ScriptedModel(reviewer_steps, name="partial-reviewer:v1")
+        solver = PartialSpeculativeModel(
+            _proposal("good", "def solve(values):\n    return sorted(values)\n"),
+            block_after=1,
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint = Path(temp_dir) / "partial-speculative.json"
+            runner_task = asyncio.create_task(
+                run_orchestration(
+                    planner,
+                    solver,
+                    reviewer,
+                    task="find a correct sorting implementation",
+                    root_files=ROOT_FILES,
+                    execution_config=_execution(),
+                    config=OrchestrationConfig(
+                        max_rounds=1,
+                        max_model_calls=4,
+                        max_planner_calls=1,
+                        max_solver_calls=2,
+                        max_reviewer_calls=1,
+                        max_candidates=2,
+                        max_test_calls=2,
+                        speculative_solver_width=2,
+                    ),
+                    solver_config=ProposalConfig(max_candidates=1),
+                    search_config=BranchSearchConfig(max_depth=1, beam_width=2),
+                    run_id="partial-speculative-test",
+                    checkpoint_path=checkpoint,
+                )
+            )
+            for _ in range(100):
+                if checkpoint.exists():
+                    partial = read_orchestration_checkpoint(checkpoint)
+                    if partial.pending_solver_responses:
+                        break
+                await asyncio.sleep(0.01)
+            else:
+                self.fail("solver lane response was not checkpointed")
+            runner_task.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await runner_task
+            partial = read_orchestration_checkpoint(checkpoint)
+            self.assertEqual(
+                sorted(partial.pending_solver_responses or {}),
+                [0],
+            )
+
+            resumed_solver = PartialSpeculativeModel(
+                _proposal("good", "def solve(values):\n    return sorted(values)\n"),
+                block_after=None,
+            )
+            resumed = await run_orchestration(
+                ScriptedModel(planner_steps, name="partial-planner:v1"),
+                resumed_solver,
+                ScriptedModel(reviewer_steps, name="partial-reviewer:v1"),
+                checkpoint_path=checkpoint,
+                resume=True,
+            )
+        self.assertEqual(resumed.status, "accepted")
+        self.assertEqual(resumed.solver_calls, 2)
+        self.assertEqual(len(resumed_solver.requests), 1)
+        self.assertIsNone(resumed.pending_solver_responses)
+        self.assertTrue(
+            any(event.type == "solver.speculative.reused" for event in resumed.events)
+        )
 
     async def test_adaptive_scheduler_stops_after_first_passing_batch(self) -> None:
         report = await run_orchestration(

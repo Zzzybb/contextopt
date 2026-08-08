@@ -22,7 +22,8 @@ generation，因此 checkpoint 里能审计“本轮到底给了角色什么上�
 独立候选快照，冲突路径写入证据，不会做部分写入。`speculative_solver_width > 1` 还会在
 共享模型/候选预算内并发调用多个 solver lane：每个 lane 有独立多样性指令，响应先分别
 校验、记录哈希/用量/失败，再 namespace 后进入 oracle；checkpoint 记录观察到的 provider
-并发度。planner 和 reviewer 仍然顺序调用，崩溃恢复仍是 at-least-once，不声称 exactly-once。
+并发度和已经落账的 lane response。恢复时复用已落账 lane，只重发没有 response 的 lane；
+planner 和 reviewer 仍然顺序调用，仍不声称 exactly-once。
 OS sandbox、跨运行语义记忆和统计严谨的真实模型评测仍在后续计划中。
 
 ## 为什么适合面试 Agent 开发岗

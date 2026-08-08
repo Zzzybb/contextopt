@@ -213,9 +213,10 @@ recompute the complete chain because there is no secret or external trust anchor
   the files named in the session baseline; they are not transparent workspace versioning.
 - A general speculative role graph, cancellation-aware winner-takes-all policy, and provider-side
   idempotency are not claimed. The current `speculative_solver_width` fan-out is limited to the
-  solver role; planner/reviewer calls remain sequential, and a crash may retry the whole lane
-  group under the documented at-least-once semantics. MCTS selects among generated candidates
-  and does not generate patches itself.
+  solver role; planner/reviewer calls remain sequential. A completed solver response is written
+  into the pending lane map before the group is reduced, so resume reuses durable lanes and only
+  retries lanes without a response (there is still a small crash window before that write).
+  MCTS selects among generated candidates and does not generate patches itself.
 - A container or virtual-machine security boundary. Workspace path checks and permission
   flags reduce accidental access, but are not an OS sandbox. Registered test commands are
   trusted host processes.

@@ -618,7 +618,8 @@ Remaining milestones are:
 
 1. Add durable model-call idempotency hooks where providers expose them.
 2. Add provider-aware cancellation/winner selection and idempotency hooks around the current
-   bounded solver fan-out; a crash can still retry the complete lane group.
+   bounded solver fan-out; completed lane responses are already checkpointed and reused, but a
+   crash in the small response-to-checkpoint window can still cause one lane to run again.
 3. Run the strategy harness against multiple real model versions and independent hidden
    tests, preserving paired budgets and full ledgers.
 4. Add container/VM isolation and a controlled real-model coding benchmark with fixed

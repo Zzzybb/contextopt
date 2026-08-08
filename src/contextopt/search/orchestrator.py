@@ -1027,6 +1027,7 @@ class OrchestrationReport:
     pending_case: BranchCase | None = None
     pending_solver_call: RoleCall | None = None
     pending_solver_variants: tuple[RoleCall, ...] | None = None
+    pending_solver_responses: Mapping[int, ModelResponse] | None = None
     pending_branch_report: BranchSearchReport | None = None
     role_histories: Mapping[str, tuple[AgentMessage, ...]] = field(default_factory=dict)
     feedback: tuple[Mapping[str, Any], ...] = ()
@@ -1130,6 +1131,22 @@ class OrchestrationReport:
                     "pending_solver_call must be one of pending_solver_variants"
                 )
         object.__setattr__(self, "pending_solver_variants", variants)
+        raw_responses = self.pending_solver_responses
+        if raw_responses is not None:
+            if not isinstance(raw_responses, Mapping):
+                raise ValueError("pending_solver_responses must be an object or null")
+            normalized_responses: dict[int, ModelResponse] = {}
+            for lane, response in raw_responses.items():
+                if not isinstance(lane, int) or isinstance(lane, bool) or lane < 0:
+                    raise ValueError(
+                        "pending_solver_responses keys must be non-negative integers"
+                    )
+                if not isinstance(response, ModelResponse):
+                    raise ValueError(
+                        "pending_solver_responses values must be ModelResponse"
+                    )
+                normalized_responses[lane] = response
+            object.__setattr__(self, "pending_solver_responses", normalized_responses)
         verify_search_events(self.events)
         feedback = tuple(dict(item) for item in self.feedback)
         try:
@@ -1145,7 +1162,10 @@ class OrchestrationReport:
             self.pending_solver_variants,
             self.pending_branch_report,
         )
-        if self.phase == "idle" and any(item is not None for item in pending):
+        if self.phase == "idle" and (
+            any(item is not None for item in pending)
+            or self.pending_solver_responses is not None
+        ):
             raise ValueError("idle orchestration cannot have pending state")
         if self.phase == "planning" and any(item is not None for item in pending):
             raise ValueError("planning phase cannot have completed state")
@@ -1164,6 +1184,7 @@ class OrchestrationReport:
             or self.pending_case is None
             or self.pending_solver_call is None
             or self.pending_solver_variants is None
+            or self.pending_solver_responses is not None
             or self.pending_branch_report is not None
         ):
             raise ValueError("evaluating phase requires a solver case")
@@ -1187,6 +1208,11 @@ class OrchestrationReport:
             "test_reuses": self.test_reuses,
             "cached_observations": len(self.observations),
             "max_provider_in_flight": self.max_provider_in_flight,
+            "pending_solver_responses": (
+                0
+                if self.pending_solver_responses is None
+                else len(self.pending_solver_responses)
+            ),
             "total_tokens": self.usage.total_tokens,
         }
 
@@ -1230,6 +1256,7 @@ class OrchestrationReport:
             "pending_case",
             "pending_solver_call",
             "pending_solver_variants",
+            "pending_solver_responses",
             "pending_branch_report",
             "role_histories",
             "feedback",
@@ -1301,6 +1328,24 @@ class OrchestrationReport:
                 for item in raw_messages
             )
         raw_pending_solver_variants = optional_array("pending_solver_variants")
+        raw_pending_solver_responses = value.get("pending_solver_responses")
+        if raw_pending_solver_responses is not None and not isinstance(
+            raw_pending_solver_responses, Mapping
+        ):
+            raise ValueError("pending_solver_responses must be an object or null")
+        pending_solver_responses: dict[int, ModelResponse] | None = None
+        if raw_pending_solver_responses is not None:
+            pending_solver_responses = {}
+            for raw_lane, raw_response in raw_pending_solver_responses.items():
+                try:
+                    lane = int(raw_lane)
+                except (TypeError, ValueError) as exc:
+                    raise ValueError(
+                        "pending_solver_responses keys must be integers"
+                    ) from exc
+                if not isinstance(raw_response, Mapping):
+                    raise ValueError("pending_solver_responses values must be objects")
+                pending_solver_responses[lane] = ModelResponse.from_dict(raw_response)
         report = cls(
             schema_version=str(value.get("schema_version", "")),
             run_id=_s(value.get("run_id"), "run_id"),
@@ -1369,6 +1414,7 @@ class OrchestrationReport:
                     RoleCall.from_dict(item) for item in raw_pending_solver_variants
                 )
             ),
+            pending_solver_responses=pending_solver_responses,
             pending_branch_report=(
                 None
                 if optional("pending_branch_report") is None
@@ -1439,6 +1485,14 @@ class OrchestrationReport:
                 None
                 if self.pending_solver_variants is None
                 else [item.to_dict() for item in self.pending_solver_variants]
+            ),
+            "pending_solver_responses": (
+                None
+                if self.pending_solver_responses is None
+                else {
+                    str(lane): response.to_dict()
+                    for lane, response in sorted(self.pending_solver_responses.items())
+                }
             ),
             "pending_branch_report": (
                 None
@@ -2004,6 +2058,7 @@ class OrchestrationRunner:
             phase="reviewing",
             pending_case=observed,
             pending_branch_report=report,
+            pending_solver_responses=None,
             observations=observations,
             test_calls=working_state.test_calls,
             test_reuses=working_state.test_reuses + reuses,
@@ -2208,6 +2263,7 @@ class OrchestrationRunner:
                     solver_calls=state.solver_calls + 1,
                     pending_plan=None,
                     pending_planner_call=None,
+                    pending_solver_responses=None,
                     feedback=tuple(
                         [
                             *state.feedback,
@@ -2231,11 +2287,18 @@ class OrchestrationRunner:
                 write_orchestration_checkpoint(updated, checkpoint)
             return updated
 
+        stored_responses = dict(state.pending_solver_responses or {})
+        invalid_lanes = set(stored_responses) - set(range(width))
+        if invalid_lanes:
+            raise ValueError(
+                "checkpoint contains speculative solver lanes outside the current width"
+            )
         lane_payloads = [
             {
                 "lane": lane,
                 "model_name": self.solver.name,
                 "request_sha256": _request_fingerprint(request),
+                "response_reused": lane in stored_responses,
                 **_context_event_data(receipt),
             }
             for lane, request, receipt in prepared
@@ -2252,6 +2315,7 @@ class OrchestrationRunner:
                 "speculative_width": width,
                 "max_parallel_solver_calls": width,
                 "speculative_lanes": lane_payloads,
+                "reused_lanes": sorted(stored_responses),
             },
         )
         if checkpoint is not None:
@@ -2277,12 +2341,70 @@ class OrchestrationRunner:
                 finally:
                     in_flight -= 1
 
+        working = replace(
+            state,
+            pending_solver_responses=stored_responses,
+            max_provider_in_flight=max_provider_in_flight,
+        )
+        for lane in sorted(stored_responses):
+            response = stored_responses[lane]
+            working = _event(
+                working,
+                "solver.speculative.reused",
+                {
+                    "lane": lane,
+                    "turn": turn,
+                    "response_sha256": stable_hash(response.to_dict()),
+                    "usage": response.usage.to_dict(),
+                },
+            )
+        if checkpoint is not None and stored_responses:
+            write_orchestration_checkpoint(working, checkpoint)
+
         tasks = [
             asyncio.create_task(call_lane(lane, request))
             for lane, request, _receipt in prepared
+            if lane not in stored_responses
         ]
+        fresh_results: list[tuple[int, ModelResponse | None, Exception | None]] = []
         try:
-            lane_results = await asyncio.gather(*tasks)
+            for completed in asyncio.as_completed(tasks):
+                result = await completed
+                fresh_results.append(result)
+                result_lane, result_response, result_error = result
+                if result_response is not None:
+                    stored_responses[result_lane] = result_response
+                    working = _event(
+                        replace(
+                            working,
+                            pending_solver_responses=dict(stored_responses),
+                            max_provider_in_flight=max_provider_in_flight,
+                        ),
+                        "solver.speculative.durable",
+                        {
+                            "lane": result_lane,
+                            "turn": turn,
+                            "response_sha256": stable_hash(result_response.to_dict()),
+                            "usage": result_response.usage.to_dict(),
+                            "pending_lanes": sorted(stored_responses),
+                            "max_provider_in_flight": max_provider_in_flight,
+                        },
+                    )
+                elif result_error is not None:
+                    working = _event(
+                        working,
+                        "solver.speculative.failed",
+                        {
+                            "lane": result_lane,
+                            "turn": turn,
+                            "error": (
+                                f"{type(result_error).__name__}: "
+                                f"{str(result_error)[:800]}"
+                            ),
+                        },
+                    )
+                if checkpoint is not None:
+                    write_orchestration_checkpoint(working, checkpoint)
         except BaseException:
             for task in tasks:
                 if not task.done():
@@ -2290,75 +2412,85 @@ class OrchestrationRunner:
             await asyncio.gather(*tasks, return_exceptions=True)
             raise
 
+        lane_results = [
+            (lane, response, None)
+            for lane, response in sorted(stored_responses.items())
+        ] + [result for result in fresh_results if result[1] is None]
         receipts = {lane: receipt for lane, _request, receipt in prepared}
-        working = replace(state, max_provider_in_flight=max_provider_in_flight)
+        working = replace(
+            working,
+            pending_solver_responses=dict(stored_responses),
+            max_provider_in_flight=max_provider_in_flight,
+        )
         lane_cases: list[tuple[int, BranchCase]] = []
         lane_calls: list[RoleCall] = []
         lane_errors: list[dict[str, Any]] = []
         response_usage = TokenUsage()
-        for lane, response, error in sorted(lane_results, key=lambda item: item[0]):
-            receipt = receipts[lane]
-            if error is not None:
-                message = f"{type(error).__name__}: {str(error)[:800]}"
+        for lane_id, lane_response, lane_error in sorted(
+            lane_results, key=lambda item: item[0]
+        ):
+            receipt = receipts[lane_id]
+            if lane_error is not None:
+                message = f"{type(lane_error).__name__}: {str(lane_error)[:800]}"
                 call = _error_call("solver", self.solver, turn, message, receipt)
                 lane_calls.append(call)
-                lane_errors.append({"lane": lane, "error": message})
+                lane_errors.append({"lane": lane_id, "error": message})
                 working = _event(
                     working,
                     "solver.speculative.rejected",
-                    {"lane": lane, "turn": turn, "error": message},
+                    {"lane": lane_id, "turn": turn, "error": message},
                 )
                 continue
-            if response is None:
+            if lane_response is None:
                 message = "provider returned no response"
                 call = _error_call("solver", self.solver, turn, message, receipt)
                 lane_calls.append(call)
-                lane_errors.append({"lane": lane, "error": message})
+                lane_errors.append({"lane": lane_id, "error": message})
                 working = _event(
                     working,
                     "solver.speculative.rejected",
-                    {"lane": lane, "turn": turn, "error": message},
+                    {"lane": lane_id, "turn": turn, "error": message},
                 )
                 continue
-            response_usage += response.usage
-            working = _append_role_response(working, "solver", response)
-            call = _call("solver", self.solver, turn, response, receipt)
+            response_usage += lane_response.usage
+            working = _append_role_response(working, "solver", lane_response)
+            call = _call("solver", self.solver, turn, lane_response, receipt)
             lane_calls.append(call)
             try:
                 lane_case = parse_proposal_response(
-                    response, working.task, working.base_files, config
+                    lane_response, working.task, working.base_files, config
                 )
             except (RuntimeContractError, ValueError) as exc:
                 message = f"{type(exc).__name__}: {str(exc)[:800]}"
-                lane_errors.append({"lane": lane, "error": message})
+                lane_errors.append({"lane": lane_id, "error": message})
                 working = _event(
                     working,
                     "solver.speculative.rejected",
                     {
-                        "lane": lane,
+                        "lane": lane_id,
                         "turn": turn,
                         "error": message,
                         "response_sha256": call.response_sha256,
-                        "usage": response.usage.to_dict(),
+                        "usage": lane_response.usage.to_dict(),
                     },
                 )
             else:
                 namespaced_lane = (
                     lane_case
                     if width == 1
-                    else _namespace_case(lane_case, f"spec-{lane}")
+                    else _namespace_case(lane_case, f"spec-{lane_id}")
                 )
-                lane_cases.append((lane, namespaced_lane))
+                lane_cases.append((lane_id, namespaced_lane))
                 working = _event(
                     working,
                     "solver.speculative.received",
                     {
-                        "lane": lane,
+                        "lane": lane_id,
                         "turn": turn,
                         "model_name": self.solver.name,
                         "response_sha256": call.response_sha256,
                         "response_id": call.response_id,
-                        "usage": response.usage.to_dict(),
+                        "usage": lane_response.usage.to_dict(),
                         "candidate_count": len(namespaced_lane.candidates),
                         "case_fingerprint": namespaced_lane.fingerprint,
                     },
@@ -2373,6 +2505,7 @@ class OrchestrationRunner:
                     solver_calls=state.solver_calls + width,
                     pending_plan=None,
                     pending_planner_call=None,
+                    pending_solver_responses=None,
                     usage=state.usage + response_usage,
                     max_provider_in_flight=max_provider_in_flight,
                     feedback=tuple(
@@ -2448,6 +2581,7 @@ class OrchestrationRunner:
                 pending_case=namespaced,
                 pending_solver_call=call,
                 pending_solver_variants=tuple(lane_calls),
+                pending_solver_responses=None,
                 max_provider_in_flight=max_provider_in_flight,
             ),
             "solver.received",
@@ -2763,7 +2897,10 @@ class OrchestrationRunner:
             state = read_orchestration_checkpoint(checkpoint)
             self._adopt(state)
             for role, model in self.models.items():
-                model.resume_from_turn(getattr(state, f"{role}_calls"))
+                completed_turns = getattr(state, f"{role}_calls")
+                if role == "solver" and state.pending_solver_responses:
+                    completed_turns += len(state.pending_solver_responses)
+                model.resume_from_turn(completed_turns)
             if state.status != "running":
                 return state
         else:
@@ -2834,6 +2971,7 @@ def render_orchestration_console(report: OrchestrationReport) -> str:
         f"test_calls={report.test_calls} reuses={report.test_reuses} "
         f"max_in_flight={report.max_in_flight} "
         f"max_provider_in_flight={report.max_provider_in_flight} "
+        f"pending_solver_lanes={report.metrics['pending_solver_responses']} "
         f"context_receipts={context_receipts}"
     ]
     if report.best_candidate_id:
