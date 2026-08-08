@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from importlib import import_module
 from pathlib import Path
 from threading import Lock
-from typing import Any, BinaryIO
+from typing import Any, BinaryIO, cast
 
 SCHEMA_VERSION = "2"
 LEGACY_SCHEMA_VERSION = "1"
@@ -121,7 +121,10 @@ class RunLeaseError(ValueError):
 
 def _acquire_os_lock(handle: BinaryIO) -> None:
     if os.name == "nt":
-        import msvcrt
+        # ``msvcrt`` is a Windows-only runtime module.  Its conditional import
+        # is intentionally typed dynamically because the Linux typeshed stub
+        # does not expose the Windows locking attributes.
+        msvcrt = cast(Any, import_module("msvcrt"))
 
         # Windows permits locking beyond EOF. Keeping the advisory byte away from
         # JSONL writes also lets an empty new event file be locked without a sentinel.
@@ -135,7 +138,7 @@ def _acquire_os_lock(handle: BinaryIO) -> None:
 
 def _release_os_lock(handle: BinaryIO) -> None:
     if os.name == "nt":
-        import msvcrt
+        msvcrt = cast(Any, import_module("msvcrt"))
 
         handle.seek(_WINDOWS_LOCK_OFFSET)
         msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
