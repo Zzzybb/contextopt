@@ -258,6 +258,42 @@ references, terminal event, and case fingerprint before rendering. The v0.4 demo
 useful for explaining search mechanics and compute accounting without claiming that a
 fixed candidate fixture is a real model benchmark.
 
+## Model-to-candidate proposal boundary — v0.5
+
+The proposal layer is the first model-facing seam above the pure search core. It deliberately
+does not let a model claim that a patch works:
+
+```text
+bounded task + root snapshot
+            │
+            v
+      ModelClient.complete
+            │
+            v
+ strict JSON proposal parser ── reject tool calls, unknown fields,
+            │                     oversized files, bad paths/graphs
+            v
+  untested BranchCase (complete snapshots + hypotheses)
+            │
+            v
+ disposable executable oracle ──> TestResult
+            │
+            v
+       pure BranchSearch
+```
+
+`build_proposal_request` is provider-neutral and carries no tools. `parse_proposal_response`
+accepts only a top-level `candidates` array, enforces candidate/file/prompt budgets, and
+constructs the same `CandidatePatch` and parent graph types used by deterministic search. Every
+candidate receives a `not-executed` result until the executable adapter replaces it with an
+observed result. This separation is important for evaluation: prompt compliance, parser
+acceptance, and test success are different measurements.
+
+The `propose-case` CLI supports both `ScriptedModel` and the OpenAI-compatible adapter. Its JSON
+output can be passed directly to `branch-search`; no provider-specific response shape leaks into
+the search or report layers. The current boundary is one-shot and does not yet schedule
+planner/coder/reviewer agents or persist a model-generated patch transaction.
+
 ## Claim boundaries
 
 - Optimizer objective quality is not Agent task success.

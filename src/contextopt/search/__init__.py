@@ -22,6 +22,12 @@ from contextopt.search.executor import (
     evaluate_case,
     run_executable_search,
 )
+from contextopt.search.proposer import (
+    ProposalConfig,
+    build_proposal_request,
+    parse_proposal_response,
+    propose_case,
+)
 
 __all__ = [
     "BranchCase",
@@ -31,11 +37,15 @@ __all__ = [
     "BranchSearchReport",
     "CandidatePatch",
     "ExecutableSearchConfig",
+    "ProposalConfig",
     "SearchEvent",
     "TestResult",
+    "build_proposal_request",
     "demo_case",
     "evaluate_candidate",
     "evaluate_case",
+    "parse_proposal_response",
+    "propose_case",
     "render_branch_console",
     "render_branch_html",
     "render_branch_markdown",

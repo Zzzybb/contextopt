@@ -46,8 +46,10 @@ from contextopt.search import (
     BranchSearch,
     BranchSearchConfig,
     ExecutableSearchConfig,
+    ProposalConfig,
     demo_case,
     evaluate_case,
+    propose_case,
     render_branch_console,
     render_branch_html,
     render_branch_markdown,
@@ -131,6 +133,18 @@ def _load_branch_case(path: str) -> BranchCase:
     return BranchCase.from_dict(data)
 
 
+def _load_root_files(path: str) -> dict[str, str]:
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("root files input must be a JSON object")
+    files: dict[str, str] = {}
+    for file_path, content in data.items():
+        if not isinstance(file_path, str) or not isinstance(content, str):
+            raise ValueError("root files must map strings to strings")
+        files[file_path] = content
+    return files
+
+
 def _branch_search(args: argparse.Namespace) -> int:
     case = demo_case() if args.input is None else _load_branch_case(args.input)
     if args.test_command:
@@ -160,6 +174,31 @@ def _branch_search(args: argparse.Namespace) -> int:
     _write(args.output, payload)
     _write(args.markdown, render_branch_markdown(report))
     _write(args.html, render_branch_html(report))
+    return 0
+
+
+def _propose_case(args: argparse.Namespace) -> int:
+    root_files = _load_root_files(args.root_files)
+    model = _build_model(args)
+    config = ProposalConfig(
+        max_candidates=args.max_candidates,
+        max_files_per_candidate=args.max_files_per_candidate,
+        max_file_chars=args.max_file_chars,
+        max_total_prompt_chars=args.max_total_prompt_chars,
+        max_output_tokens=args.max_output_tokens,
+    )
+    case, _ = asyncio.run(
+        propose_case(
+            model,
+            args.task,
+            root_files,
+            config,
+            run_id=args.run_id,
+        )
+    )
+    payload = json.dumps(case.to_dict(), indent=2, sort_keys=True) + "\n"
+    print(payload, end="")
+    _write(args.output, payload)
     return 0
 
 
@@ -453,6 +492,26 @@ def build_parser() -> argparse.ArgumentParser:
     context_eval.add_argument("--output", help="write the complete JSON report")
     context_eval.add_argument("--markdown", help="write the summary as Markdown")
     context_eval.set_defaults(handler=_context_eval)
+
+    propose = subparsers.add_parser(
+        "propose-case",
+        help="ask a model for bounded coding candidates without executing them",
+    )
+    propose.add_argument("task", help="coding task or issue text")
+    propose.add_argument(
+        "--root-files",
+        required=True,
+        help="JSON object mapping relative paths to complete source text",
+    )
+    _add_model_arguments(propose)
+    propose.add_argument("--run-id", default="branch-proposal")
+    propose.add_argument("--max-candidates", type=int, default=4)
+    propose.add_argument("--max-files-per-candidate", type=int, default=32)
+    propose.add_argument("--max-file-chars", type=int, default=200_000)
+    propose.add_argument("--max-total-prompt-chars", type=int, default=400_000)
+    propose.add_argument("--max-output-tokens", type=int, default=8_192)
+    propose.add_argument("--output", help="write the proposed BranchCase as JSON")
+    propose.set_defaults(handler=_propose_case)
 
     branch_search = subparsers.add_parser(
         "branch-search",

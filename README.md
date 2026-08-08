@@ -19,13 +19,15 @@ Task ──> AgentRunner ──> ContextCompiler ──> ModelClient ──> too
 Every boundary ──> durable schema-2 JSONL event log + verified state projection
 ```
 
-> **Status — v0.4 test-guided search:** the repository now contains a real single-agent
+> **Status — v0.5 model-to-candidate boundary:** the repository now contains a real single-agent
 > read/edit/test loop, recoverable event-sourced execution, a deterministic live context
-> compiler, and an auditable beam search over generated coding candidates. The branch
-> layer deduplicates complete workspace states, spends visible-test calls once per state,
-> and emits a self-contained SVG/JSON/Markdown report. It does **not** yet implement
-> multi-agent scheduling, an OS sandbox, learned semantic memory, or a real-model coding
-> benchmark.
+> compiler, an auditable beam search over generated coding candidates, and a strict
+> model-to-candidate proposal boundary. A model can now return bounded complete workspace
+> snapshots that are parsed, rejected on protocol violations, and handed to the same
+> visible-test oracle. The branch layer deduplicates states, spends test calls once per
+> state, and emits a self-contained SVG/JSON/Markdown report. It does **not** yet
+> implement multi-agent scheduling, an OS sandbox, learned semantic memory, or a
+> statistically powered real-model coding benchmark.
 
 ## Why this project exists
 
@@ -106,6 +108,18 @@ coding success without a controlled real-model benchmark.
   temporary workspace, runs a trusted argv test command without a shell, captures a
   bounded output digest/excerpt, and feeds the observation into the same search core.
 
+### Model-to-candidate proposal boundary — v0.5
+
+- A provider-neutral `propose-case` seam that asks any existing `ModelClient` for a
+  bounded set of complete workspace snapshots rather than accepting arbitrary patches.
+- A strict JSON protocol that rejects tool calls, malformed output, unknown fields,
+  path traversal, oversized files, duplicate ids, and invalid parent graphs before test
+  execution.
+- Explicit separation of proposal from verification: every parsed candidate starts as
+  `not-executed` and must pass through the visible-test oracle before it can be ranked.
+- Offline scripted-model coverage plus a CLI path that can pipe a generated case into
+  `branch-search` for deterministic deduplication and disposable-workspace execution.
+
 The event hash chain provides verifiable, corruption-evident integrity. It is not a
 signature or malicious-rewrite defense: someone who can replace the entire log can also
 recompute the complete chain because there is no secret or external trust anchor.
@@ -126,16 +140,17 @@ recompute the complete chain because there is no secret or external trust anchor
 - Automatic workspace snapshots, rollback, migration to another workspace, or distributed
   coordination. Resume operates on the same configured workspace and validates what it can.
 - Planner/coder/reviewer role orchestration, parallel agents, PatchTree/MCTS scheduling,
-  or model-to-patch generation/rollback orchestration. The v0.4 branch layer is a
-  deterministic candidate-search core, not yet a multi-agent scheduler.
+  or automatic multi-turn proposal/search/rollback orchestration. The v0.5 proposal
+  boundary is intentionally one-shot and provider-neutral, not yet a multi-agent
+  scheduler.
 - A container or virtual-machine security boundary. Workspace path checks and permission
   flags reduce accidental access, but are not an OS sandbox. Registered test commands are
   trusted host processes.
 - A general shell tool, autonomous package installation, or unrestricted network access.
 - A claim that the scripted demo measures model reasoning or real-world issue resolution.
 - Learned or cross-run semantic memory, a trace UI, or a statistically powered real-model
-  coding benchmark. The branch demo consumes fixed candidate snapshots and test
-  observations; it does not pretend synthetic observations are model coding accuracy.
+  coding benchmark. The branch demo and proposal conformance tests do not pretend
+  synthetic observations or protocol acceptance are model coding accuracy.
 - Exactly-once external side effects. Recovery is tool-specific and conservative;
   explicitly retrying a command can execute it again.
 
@@ -283,6 +298,26 @@ contextopt branch-search candidate-case.json \
 The adapter creates disposable workspaces and never invokes a shell, but it is not an OS
 sandbox; use it only with trusted candidate code and test commands.
 
+To exercise the new proposal boundary offline, make `root-files.json` a JSON object whose
+keys are relative paths and whose values are complete file contents. A scripted model can
+then produce a case without network access:
+
+```bash
+contextopt propose-case "Implement solve so it returns ascending values" \
+  --root-files examples/branch_demo/root-files.json \
+  --script examples/branch_demo/proposal.json \
+  --output candidate-case.json
+
+contextopt branch-search candidate-case.json \
+  --test-command "python -m unittest discover -s ." \
+  --allow-command --html branch-search.html
+```
+
+The proposer is deliberately not a verifier: its output records every candidate as
+`not-executed` until the second command runs the visible-test oracle. This makes the seam
+useful for comparing models and prompting strategies without letting model claims become
+test evidence.
+
 ## What the offline demo proves
 
 The Runtime Conformance Eval uses a scripted model that already contains the intended
@@ -327,12 +362,12 @@ surrogate-objective misalignment, not evidence of downstream Agent improvement.
 src/contextopt/
 ├── runtime/              # runner, live context/memory, recovery, tools, events
 ├── evaluation/           # model-free context routing/compiler conformance
-├── search/                # test-guided branch search, dedup, and report renderers
+├── search/                # proposal boundary, branch search, dedup, and renderers
 ├── models.py             # context candidates, constraints, receipts
 ├── policies/             # interchangeable selection algorithms
 ├── synthetic.py          # deterministic context microbench generation
 ├── benchmark.py          # paired optimizer metrics and reports
-└── cli.py                # run/resume/status/trace, context-eval, branch-search, pack
+└── cli.py                # run/resume/status/trace, propose-case, branch-search, pack
 
 tests/                    # standard-library unit and integration tests
 examples/runtime_demo/    # offline scripted coding-loop demonstration
@@ -354,9 +389,12 @@ docs/                     # architecture, runtime, and evaluation contract
 - **v0.4 — Test-guided search (implemented):** isolated candidate snapshots,
   test-progress beam search, fixed-environment deduplication, hash-chained decisions,
   and self-contained search visualization.
-- **v1.0 — Agent DevTools:** connect the search core to model-generated patches and the
-  runtime's recovery/rollback protocol, then run statistically defensible real-model
-  evaluations and add multi-agent scheduling.
+- **v0.5 — Proposal boundary (implemented):** strict model-to-candidate JSON, bounded
+  complete snapshots, offline conformance tests, and a `propose-case` to `branch-search`
+  handoff.
+- **v1.0 — Agent DevTools:** connect proposal/search to the runtime's recovery/rollback
+  protocol, then run statistically defensible real-model evaluations and add multi-agent
+  scheduling.
 
 See [Architecture](docs/architecture.md), [Runtime](docs/runtime.md), and
 [Evaluation protocol](docs/evaluation.md) for the design and claim boundaries.

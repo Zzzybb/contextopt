@@ -174,6 +174,30 @@ sandbox. Neither path establishes model coding accuracy, hidden-test success, or
 multi-agent value; a production benchmark must include isolation, rollback, and all
 candidate test effects in the shared compute budget.
 
+## Level 2e: model-to-candidate protocol conformance — implemented
+
+The v0.5 proposal seam tests the boundary between a provider-neutral `ModelClient` and the
+branch-search case format. It uses scripted responses to verify that:
+
+- the request contains a bounded task/root snapshot, no tools, and an explicit JSON contract;
+- fenced JSON is accepted only when it still decodes to the strict top-level shape;
+- tool calls, malformed JSON, unknown fields, oversized files, invalid paths, duplicate ids,
+  and invalid parent graphs are rejected before any test command runs;
+- accepted candidates are complete snapshots with hypotheses/evidence and an explicit
+  `not-executed` result until the visible-test oracle supplies observations;
+- the CLI can serialize the same case that `branch-search` consumes offline.
+
+These are protocol and safety metrics: proposal acceptance/rejection, budget compliance, and
+verified handoff shape. They do not measure whether a model proposes a good fix, whether hidden
+tests pass, or whether a model would choose useful context. Model quality requires the controlled
+real-model evaluation below.
+
+Reproduce the offline boundary tests with:
+
+```text
+python -m unittest tests.test_proposer -v
+```
+
 ## Level 3: controlled real-model coding tasks — planned
 
 Use the same model snapshot, system prompt, tools, repository commit, maximum turns, token
