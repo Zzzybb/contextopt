@@ -93,7 +93,7 @@ python -m contextopt agent-eval \
 故意失败的候选、正确候选、可见测试和不进入模型快照的独立隐藏 grader；报告会分开
 记录 visible success、hidden success、模型/角色调用、候选数、实际测试进程、缓存复用
 和 token 用量；同时给出描述性 Wilson 95% 区间，以及按相同 fixture/repetition 配对的
-胜/负/平、可见结果差值和测试/token 成本差值，不改变原始 ledger。
+胜/负/平、可见结果差值以及测试/token 成本均值和观测方差，不改变原始 ledger。
 
 如果要接入 OpenAI-compatible 模型，可使用：
 

@@ -26,7 +26,7 @@ from dataclasses import dataclass, field, replace
 from html import escape
 from math import isfinite, sqrt
 from pathlib import Path, PurePosixPath
-from statistics import fmean
+from statistics import fmean, pstdev
 from typing import Any, Literal, cast
 
 from contextopt.runtime.errors import ModelError, RuntimeContractError
@@ -938,7 +938,9 @@ class AgentEvalComparison:
     hidden_ties: int
     hidden_delta: float | None
     mean_test_call_delta: float
+    stddev_test_call_delta: float
     mean_token_delta: float
+    stddev_token_delta: float
 
     def __post_init__(self) -> None:
         if self.baseline_strategy not in _STRATEGIES:
@@ -970,7 +972,12 @@ class AgentEvalComparison:
         )
         if self.hidden_delta != expected_hidden_delta:
             raise ValueError("hidden_delta is inconsistent with paired outcomes")
-        for name in ("mean_test_call_delta", "mean_token_delta"):
+        for name in (
+            "mean_test_call_delta",
+            "stddev_test_call_delta",
+            "mean_token_delta",
+            "stddev_token_delta",
+        ):
             value = getattr(self, name)
             if not isinstance(value, (int, float)) or isinstance(value, bool):
                 raise ValueError(f"{name} must be a number")
@@ -992,7 +999,9 @@ class AgentEvalComparison:
             "hidden_ties": self.hidden_ties,
             "hidden_delta": self.hidden_delta,
             "mean_test_call_delta": self.mean_test_call_delta,
+            "stddev_test_call_delta": self.stddev_test_call_delta,
             "mean_token_delta": self.mean_token_delta,
+            "stddev_token_delta": self.stddev_token_delta,
         }
 
 
@@ -1060,6 +1069,13 @@ def build_agent_eval_comparisons(
             baseline.hidden_success is True and candidate.hidden_success is False
             for baseline, candidate in hidden_pairs
         )
+        test_call_deltas = tuple(
+            candidate.test_calls - baseline.test_calls for baseline, candidate in pairs
+        )
+        token_deltas = tuple(
+            candidate.total_tokens - baseline.total_tokens
+            for baseline, candidate in pairs
+        )
         comparisons.append(
             AgentEvalComparison(
                 baseline_strategy=baseline_strategy,
@@ -1078,14 +1094,10 @@ def build_agent_eval_comparisons(
                     if not hidden_pairs
                     else (hidden_wins - hidden_losses) / len(hidden_pairs)
                 ),
-                mean_test_call_delta=fmean(
-                    candidate.test_calls - baseline.test_calls
-                    for baseline, candidate in pairs
-                ),
-                mean_token_delta=fmean(
-                    candidate.total_tokens - baseline.total_tokens
-                    for baseline, candidate in pairs
-                ),
+                mean_test_call_delta=fmean(test_call_deltas),
+                stddev_test_call_delta=pstdev(test_call_deltas),
+                mean_token_delta=fmean(token_deltas),
+                stddev_token_delta=pstdev(token_deltas),
             )
         )
     return tuple(comparisons)
@@ -1870,7 +1882,7 @@ def render_agent_evaluation_markdown(report: AgentEvalReport) -> str:
                 "repetition; positive visible delta means more paired wins.",
                 "",
                 "| Strategy | Baseline | Paired | Wins | Losses | Ties | Visible Δ | "
-                "Hidden Δ | Mean tests Δ | Mean tokens Δ |",
+                "Hidden Δ | Mean tests Δ (stdev) | Mean tokens Δ (stdev) |",
                 "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
             )
         )
@@ -1879,8 +1891,10 @@ def render_agent_evaluation_markdown(report: AgentEvalReport) -> str:
             f"{comparison.paired_count} | {comparison.wins} | {comparison.losses} | "
             f"{comparison.ties} | {_format_percent_delta(comparison.visible_delta)} | "
             f"{_format_percent_delta(comparison.hidden_delta)} | "
-            f"{comparison.mean_test_call_delta:+.1f} | "
-            f"{comparison.mean_token_delta:+.0f} |"
+            f"{comparison.mean_test_call_delta:+.1f} "
+            f"(stdev {comparison.stddev_test_call_delta:.1f}) | "
+            f"{comparison.mean_token_delta:+.0f} "
+            f"(stdev {comparison.stddev_token_delta:.0f}) |"
             for comparison in comparisons
         )
     lines.extend(("", "## Fixtures", "", "| ID | Category | Task |", "|---|---|---|"))
@@ -1922,8 +1936,10 @@ def _render_agent_eval_comparison_html(report: AgentEvalReport) -> str:
         f"<td>{comparison.wins}/{comparison.losses}/{comparison.ties}</td>"
         f"<td>{_format_percent_delta(comparison.visible_delta)}</td>"
         f"<td>{_format_percent_delta(comparison.hidden_delta)}</td>"
-        f"<td>{comparison.mean_test_call_delta:+.1f}</td>"
-        f"<td>{comparison.mean_token_delta:+.0f}</td>"
+        f"<td>{comparison.mean_test_call_delta:+.1f} "
+        f"(stdev {comparison.stddev_test_call_delta:.1f})</td>"
+        f"<td>{comparison.mean_token_delta:+.0f} "
+        f"(stdev {comparison.stddev_token_delta:.0f})</td>"
         "</tr>"
         for comparison in comparisons
     )
@@ -1933,7 +1949,7 @@ def _render_agent_eval_comparison_html(report: AgentEvalReport) -> str:
         "fixture and repetition. Win/loss/tie is visible outcome count.</p>"
         "<table><thead><tr><th>strategy</th><th>baseline</th><th>paired</th>"
         "<th>wins/losses/ties</th><th>visible Δ</th><th>hidden Δ</th>"
-        "<th>mean tests Δ</th><th>mean tokens Δ</th>"
+        "<th>mean tests Δ (stdev)</th><th>mean tokens Δ (stdev)</th>"
         f"</tr></thead><tbody>{rows}</tbody></table>"
     )
 

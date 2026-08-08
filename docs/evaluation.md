@@ -294,9 +294,9 @@ The Markdown, console, and HTML renderers also show a descriptive Wilson 95% int
 each visible success rate. When at least two strategies are present, they add paired
 comparisons against `single_pass` (or the first configured strategy): wins, losses, ties,
 visible outcome delta, hidden delta when both runs actually executed the hidden grader, and
-mean test/token deltas. These are derived from the raw fixture/repetition ledger, so they do
-not change the durable report schema and must not be read as a significance test with one
-repetition.
+mean test/token deltas with observed population standard deviations. These are derived from
+the raw fixture/repetition ledger, so they do not change the durable report schema and must
+not be read as a significance test with one repetition.
 
 By default this level tests policy wiring, budget accounting, strict model boundaries,
 executable visible/hidden oracle gates, and report consistency with deterministic scripted

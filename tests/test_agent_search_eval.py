@@ -74,6 +74,8 @@ class AgentEvaluationTests(unittest.TestCase):
         self.assertEqual(by_strategy["best_of_n"].ties, 0)
         self.assertEqual(by_strategy["best_of_n"].visible_delta, 1.0)
         self.assertIsNone(by_strategy["best_of_n"].hidden_delta)
+        self.assertEqual(by_strategy["best_of_n"].stddev_test_call_delta, 0.0)
+        self.assertEqual(by_strategy["best_of_n"].stddev_token_delta, 0.0)
         low, high = wilson_interval(1, 1)
         self.assertGreaterEqual(low, 0.0)
         self.assertLessEqual(high, 1.0)
@@ -81,7 +83,7 @@ class AgentEvaluationTests(unittest.TestCase):
         markdown = render_agent_evaluation_markdown(self.report)
         self.assertIn("Visible 95% CI", markdown)
         self.assertIn("Paired comparisons", markdown)
-        self.assertIn("Mean tokens Δ", markdown)
+        self.assertIn("Mean tokens Δ (stdev)", markdown)
 
     def test_hidden_tests_can_be_disabled_without_leaking_the_grader(self) -> None:
         report = run_agent_evaluation(

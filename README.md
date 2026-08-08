@@ -175,7 +175,8 @@ recompute the complete chain because there is no secret or external trust anchor
 - JSON and Markdown reports expose success rate, role/model calls, actual test processes,
   cache reuses, candidate proposals, and reported token usage without hiding failed runs.
   They also include descriptive Wilson 95% intervals and same-fixture/repetition paired
-  deltas (wins/losses/ties plus test/token cost deltas) without changing the raw ledger.
+  deltas (wins/losses/ties plus mean and observed-variance test/token cost deltas) without
+  changing the raw ledger.
 - The evaluator defaults to deterministic scripted responses, but accepts an OpenAI-compatible
   model factory for exploratory runs; either mode keeps the independent hidden grader outside
   the candidate snapshot.
