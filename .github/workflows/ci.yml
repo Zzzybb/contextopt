@@ -25,10 +25,7 @@ jobs:
       - name: Install package
         run: python -m pip install -e ".[dev]"
       - name: Lint and format check
-        run: |
-          python -m ruff check src tests
-          python -m ruff format --check src tests
-          python -m mypy src/contextopt
+        run: python scripts/ci_checks.py
       - name: Run tests
         run: python -m unittest discover -s tests -v
       - name: Smoke benchmark
