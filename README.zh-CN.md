@@ -101,12 +101,16 @@ python -m contextopt agent-eval \
   --model <model-name> --base-url <endpoint> \
   --api-key-env CONTEXTOPT_API_KEY --repetitions 3 \
   --output agent-eval-real.json --markdown agent-eval-real.md \
-  --html agent-eval-real.html
+  --html agent-eval-real.html \
+  --checkpoint agent-eval-real.checkpoint.json
 ~~~
 
 真实模型路径会记录 provider token，但仍是固定小样本的探索性评测，不能直接当成统计
 严谨的模型能力结论。HTML 会生成自包含 dashboard，展示 visible/hidden 成功率、成本
 指标和嵌入式 JSON ledger，适合放在 PR 或作品集里。
+`--checkpoint` 会在每个 fixture/strategy/repetition cell 完成后原子写入；provider 或进程
+中断后，使用相同参数加 `--resume --checkpoint ...`，已完成 cell 会复用，只重跑缺失 cell。
+这是 at-least-once provider 执行语义，不声称 exactly-once。
 
 ## 评测指标
 
@@ -139,6 +143,7 @@ python -m contextopt agent-eval \
 - v0.8 并行调度补充：[docs/pr/0001-v0.8-parallel-scheduler-addendum.zh-CN.md](docs/pr/0001-v0.8-parallel-scheduler-addendum.zh-CN.md)
 - v0.8 评测面板补充：[docs/pr/0001-v0.8-evaluation-dashboard-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-dashboard-addendum.zh-CN.md)
 - v0.8 MCTS 调度补充：[docs/pr/0001-v0.8-mcts-addendum.zh-CN.md](docs/pr/0001-v0.8-mcts-addendum.zh-CN.md)
+- v0.8 评测 checkpoint 补充：[docs/pr/0001-v0.8-evaluation-checkpoint-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-checkpoint-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、
 指标名称是权威定义。

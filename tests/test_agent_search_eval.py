@@ -9,12 +9,15 @@ from pathlib import Path
 
 from contextopt.cli import main
 from contextopt.evaluation import (
+    AgentEvalCheckpoint,
     AgentEvalConfig,
     AgentEvalReport,
     build_algorithm_fixtures,
     build_openai_model_factory,
+    read_agent_evaluation_checkpoint,
     render_agent_evaluation_html,
     run_agent_evaluation,
+    write_agent_evaluation_checkpoint,
 )
 
 
@@ -104,6 +107,31 @@ class AgentEvaluationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "success_rate|summary metrics"):
             AgentEvalReport.from_dict(tampered)
 
+    def test_matrix_checkpoint_is_atomic_and_resume_reuses_completed_cells(
+        self,
+    ) -> None:
+        config = AgentEvalConfig(
+            fixtures=("two-sum",), strategies=("best_of_n",), repetitions=2
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint_path = Path(temp_dir) / "agent-eval.checkpoint.json"
+            complete = run_agent_evaluation(config, checkpoint_path=checkpoint_path)
+            checkpoint = read_agent_evaluation_checkpoint(checkpoint_path)
+            self.assertEqual(len(checkpoint.runs), 2)
+            self.assertEqual(checkpoint.config.to_dict(), config.to_dict())
+            write_agent_evaluation_checkpoint(
+                AgentEvalCheckpoint(
+                    config=checkpoint.config,
+                    fixture_ids=checkpoint.fixture_ids,
+                    runs=checkpoint.runs[:1],
+                ),
+                checkpoint_path,
+            )
+            resumed = run_agent_evaluation(
+                config, checkpoint_path=checkpoint_path, resume=True
+            )
+            self.assertEqual(resumed.to_dict(), complete.to_dict())
+
     def test_configuration_rejects_duplicate_or_unknown_strategy(self) -> None:
         with self.assertRaisesRegex(ValueError, "unique"):
             AgentEvalConfig(strategies=("single_pass", "single_pass"))
@@ -124,6 +152,7 @@ class AgentEvaluationTests(unittest.TestCase):
             output = root / "agent-eval.json"
             markdown = root / "agent-eval.md"
             html = root / "agent-eval.html"
+            checkpoint = root / "agent-eval.checkpoint.json"
             stdout = io.StringIO()
             with redirect_stdout(stdout):
                 exit_code = main(
@@ -137,6 +166,8 @@ class AgentEvaluationTests(unittest.TestCase):
                         str(markdown),
                         "--html",
                         str(html),
+                        "--checkpoint",
+                        str(checkpoint),
                     ]
                 )
 
@@ -149,6 +180,7 @@ class AgentEvaluationTests(unittest.TestCase):
             self.assertIn("Claim boundary", rendered)
             self.assertIn("best_of_n", rendered)
             self.assertIn("<table>", html.read_text(encoding="utf-8"))
+            self.assertEqual(len(json.loads(checkpoint.read_text())["runs"]), 3)
 
 
 if __name__ == "__main__":

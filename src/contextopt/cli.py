@@ -192,7 +192,12 @@ def _agent_eval(args: argparse.Namespace) -> int:
         include_hidden_tests=not args.no_hidden_tests,
         model_adapter=model_adapter,
     )
-    report = run_agent_evaluation(config, model_factory=model_factory)
+    report = run_agent_evaluation(
+        config,
+        model_factory=model_factory,
+        checkpoint_path=args.checkpoint,
+        resume=args.resume,
+    )
     print(render_agent_evaluation_console(report), end="")
     _write(args.output, json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n")
     _write(args.markdown, render_agent_evaluation_markdown(report))
@@ -877,6 +882,12 @@ def build_parser() -> argparse.ArgumentParser:
     agent_eval.add_argument("--markdown", help="write the summary as Markdown")
     agent_eval.add_argument(
         "--html", help="write a self-contained evaluation dashboard"
+    )
+    agent_eval.add_argument(
+        "--checkpoint", help="atomically persist completed evaluation cells"
+    )
+    agent_eval.add_argument(
+        "--resume", action="store_true", help="resume completed cells from --checkpoint"
     )
     agent_eval.set_defaults(handler=_agent_eval)
 

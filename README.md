@@ -339,13 +339,18 @@ python -m contextopt agent-eval \
   --model <model-name> --base-url <endpoint> \
   --api-key-env CONTEXTOPT_API_KEY --repetitions 3 \
   --output agent-eval-real.json --markdown agent-eval-real.md \
-  --html agent-eval-real.html
+  --html agent-eval-real.html \
+  --checkpoint agent-eval-real.checkpoint.json
 ```
 
 This path records provider usage but is still not a statistically powered benchmark; keep
 model versions, prompts, fixtures, tools, and budgets fixed when comparing strategies.
 The HTML output is a self-contained dashboard with visible/hidden success bars, cost columns,
 and the complete JSON ledger embedded for portfolio or PR review.
+`--checkpoint` atomically records each fixture/strategy/repetition cell; if a provider call or
+the process stops, rerun the same command with `--resume --checkpoint ...` to reuse completed
+cells and rerun only the missing cell. This is at-least-once provider execution, not an
+exactly-once claim.
 
 Run the v0.4 test-guided branch-search demo and write all three report formats:
 
@@ -549,7 +554,9 @@ and [Chinese version](docs/pr/0001-v0.8-parallel-scheduler-addendum.zh-CN.md). T
 dashboard is documented in [the dashboard addendum](docs/pr/0001-v0.8-evaluation-dashboard-addendum.md)
 and [Chinese version](docs/pr/0001-v0.8-evaluation-dashboard-addendum.zh-CN.md). The bounded MCTS
 policy is documented in [the MCTS addendum](docs/pr/0001-v0.8-mcts-addendum.md) and [Chinese
-version](docs/pr/0001-v0.8-mcts-addendum.zh-CN.md).
+version](docs/pr/0001-v0.8-mcts-addendum.zh-CN.md). The durable evaluation matrix is documented
+in [the checkpoint addendum](docs/pr/0001-v0.8-evaluation-checkpoint-addendum.md) and [Chinese
+version](docs/pr/0001-v0.8-evaluation-checkpoint-addendum.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers.
 

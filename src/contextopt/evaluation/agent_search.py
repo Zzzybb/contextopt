@@ -18,11 +18,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
+import tempfile
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from html import escape
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from statistics import fmean
 from typing import Any, Literal, cast
 
@@ -540,6 +542,67 @@ class AgentEvalConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class AgentEvalCheckpoint:
+    """Durable partial matrix state for long-running provider evaluations."""
+
+    config: AgentEvalConfig
+    fixture_ids: tuple[str, ...]
+    runs: tuple[AgentEvalRun, ...] = ()
+    schema_version: str = "1"
+
+    def __post_init__(self) -> None:
+        if self.schema_version != "1":
+            raise ValueError(
+                "unsupported agent evaluation checkpoint schema: "
+                f"{self.schema_version!r}"
+            )
+        if self.fixture_ids != self.config.fixtures:
+            raise ValueError("checkpoint fixture ids must match config fixtures")
+        expected = {
+            (fixture_id, strategy, repetition)
+            for fixture_id in self.fixture_ids
+            for strategy in self.config.strategies
+            for repetition in range(self.config.repetitions)
+        }
+        actual = {(run.fixture_id, run.strategy, run.repetition) for run in self.runs}
+        if not actual <= expected:
+            raise ValueError("checkpoint contains a run outside the configured matrix")
+        if len(actual) != len(self.runs):
+            raise ValueError("checkpoint runs must be unique")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "config": self.config.to_dict(),
+            "fixture_ids": list(self.fixture_ids),
+            "runs": [run.to_dict() for run in self.runs],
+        }
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> AgentEvalCheckpoint:
+        value = _mapping(data, "agent evaluation checkpoint")
+        allowed = {"schema_version", "config", "fixture_ids", "runs"}
+        unknown = set(value) - allowed
+        if unknown:
+            raise ValueError(
+                f"agent evaluation checkpoint has unknown fields: {sorted(unknown)!r}"
+            )
+        raw_fixture_ids = value.get("fixture_ids")
+        raw_runs = value.get("runs")
+        if not isinstance(raw_fixture_ids, list) or not isinstance(raw_runs, list):
+            raise ValueError("checkpoint fixture_ids and runs must be arrays")
+        fixture_ids = tuple(_non_empty(item, "fixture id") for item in raw_fixture_ids)
+        if not isinstance(value.get("config"), Mapping):
+            raise ValueError("checkpoint config must be an object")
+        return cls(
+            schema_version=str(value.get("schema_version", "")),
+            config=AgentEvalConfig.from_dict(value["config"]),
+            fixture_ids=fixture_ids,
+            runs=tuple(AgentEvalRun.from_dict(item) for item in raw_runs),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class AgentEvalRun:
     """One strategy/fixture/repetition cell with auditable accounting."""
 
@@ -1030,6 +1093,52 @@ class AgentEvalReport:
         }
 
 
+def write_agent_evaluation_checkpoint(
+    checkpoint: AgentEvalCheckpoint, path: str | Path
+) -> None:
+    """Atomically persist completed evaluation cells after each matrix step."""
+
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(
+        checkpoint.to_dict(), ensure_ascii=False, sort_keys=True, indent=2
+    )
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=target.parent,
+            prefix=f".{target.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as temporary:
+            temporary_path = Path(temporary.name)
+            temporary.write(payload + "\n")
+            temporary.flush()
+            os.fsync(temporary.fileno())
+        if temporary_path is None:
+            raise OSError("temporary evaluation checkpoint path was not created")
+        os.replace(temporary_path, target)
+    except OSError:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+        raise
+
+
+def read_agent_evaluation_checkpoint(path: str | Path) -> AgentEvalCheckpoint:
+    """Read and strictly validate a partial evaluation matrix checkpoint."""
+
+    target = Path(path)
+    try:
+        data = json.loads(target.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"invalid agent evaluation checkpoint: {target}") from exc
+    if not isinstance(data, Mapping):
+        raise ValueError("agent evaluation checkpoint must be an object")
+    return AgentEvalCheckpoint.from_dict(data)
+
+
 def _model_usage(input_tokens: int, output_tokens: int) -> dict[str, int]:
     return {"prompt_tokens": input_tokens, "completion_tokens": output_tokens}
 
@@ -1420,10 +1529,14 @@ def run_agent_evaluation(
     config: AgentEvalConfig | None = None,
     *,
     model_factory: AgentModelFactory | None = None,
+    checkpoint_path: str | Path | None = None,
+    resume: bool = False,
 ) -> AgentEvalReport:
-    """Run the selected paired matrix against the bundled executable fixtures."""
+    """Run the paired matrix, optionally checkpointing and resuming each cell."""
 
     cfg = config or AgentEvalConfig()
+    if resume and checkpoint_path is None:
+        raise ValueError("checkpoint_path is required when resuming an evaluation")
     if model_factory is not None and cfg.model_adapter == "scripted":
         cfg = replace(cfg, model_adapter="custom")
     available = {fixture.fixture_id: fixture for fixture in build_algorithm_fixtures()}
@@ -1431,15 +1544,62 @@ def run_agent_evaluation(
     if unknown:
         raise ValueError(f"unknown agent evaluation fixtures: {sorted(unknown)!r}")
     fixtures = tuple(available[name] for name in cfg.fixtures)
-    runs: list[AgentEvalRun] = []
+    checkpoint = None
+    if resume:
+        checkpoint = read_agent_evaluation_checkpoint(checkpoint_path)  # type: ignore[arg-type]
+        if checkpoint.config.to_dict() != cfg.to_dict():
+            raise ValueError("evaluation checkpoint configuration does not match")
+        if checkpoint.fixture_ids != tuple(fixture.fixture_id for fixture in fixtures):
+            raise ValueError("evaluation checkpoint fixtures do not match")
+    completed = (
+        {(run.fixture_id, run.strategy, run.repetition): run for run in checkpoint.runs}
+        if checkpoint is not None
+        else {}
+    )
+    if checkpoint_path is not None and not resume:
+        write_agent_evaluation_checkpoint(
+            AgentEvalCheckpoint(
+                config=cfg,
+                fixture_ids=tuple(fixture.fixture_id for fixture in fixtures),
+            ),
+            checkpoint_path,
+        )
     for fixture in fixtures:
         for strategy in cfg.strategies:
             for repetition in range(cfg.repetitions):
-                runs.append(
-                    _run_strategy(
-                        fixture, strategy, cfg, repetition, model_factory=model_factory
-                    )
+                key = (fixture.fixture_id, strategy, repetition)
+                if key in completed:
+                    continue
+                completed[key] = _run_strategy(
+                    fixture, strategy, cfg, repetition, model_factory=model_factory
                 )
+                if checkpoint_path is not None:
+                    ordered_runs = tuple(
+                        completed[item]
+                        for item in (
+                            (fixture_item.fixture_id, strategy_item, repetition_item)
+                            for fixture_item in fixtures
+                            for strategy_item in cfg.strategies
+                            for repetition_item in range(cfg.repetitions)
+                        )
+                        if item in completed
+                    )
+                    write_agent_evaluation_checkpoint(
+                        AgentEvalCheckpoint(
+                            config=cfg,
+                            fixture_ids=tuple(
+                                fixture_item.fixture_id for fixture_item in fixtures
+                            ),
+                            runs=ordered_runs,
+                        ),
+                        checkpoint_path,
+                    )
+    runs = [
+        completed[(fixture.fixture_id, strategy, repetition)]
+        for fixture in fixtures
+        for strategy in cfg.strategies
+        for repetition in range(cfg.repetitions)
+    ]
     summaries = tuple(
         _summary(strategy, tuple(run for run in runs if run.strategy == strategy))
         for strategy in cfg.strategies
@@ -1600,6 +1760,7 @@ def render_agent_evaluation_html(report: AgentEvalReport) -> str:
 
 
 __all__ = [
+    "AgentEvalCheckpoint",
     "AgentEvalConfig",
     "AgentEvalFixture",
     "AgentEvalReport",
@@ -1609,8 +1770,10 @@ __all__ = [
     "AgentStrategy",
     "build_algorithm_fixtures",
     "build_openai_model_factory",
+    "read_agent_evaluation_checkpoint",
     "render_agent_evaluation_console",
     "render_agent_evaluation_html",
     "render_agent_evaluation_markdown",
     "run_agent_evaluation",
+    "write_agent_evaluation_checkpoint",
 ]

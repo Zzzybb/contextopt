@@ -278,7 +278,8 @@ independent hidden grader under `grader/` that is never included in the model-vi
 snapshot. The CLI can write machine-readable JSON, Markdown, and a self-contained HTML dashboard:
 
     python -m contextopt agent-eval --fixtures all --repetitions 1 \
-      --output agent-eval.json --markdown agent-eval.md --html agent-eval.html
+      --output agent-eval.json --markdown agent-eval.md --html agent-eval.html \
+      --checkpoint agent-eval.checkpoint.json
 
 The report is paired by fixture, strategy, and repetition. Its primary fields are visible
 `success_rate`, conditional hidden `hidden_success_rate`, `mean_model_calls`, role-call
@@ -295,6 +296,10 @@ responses. `agent-eval --model ... --base-url ...` can replace the scripted fact
 fresh OpenAI-compatible adapters per matrix cell; that path records provider usage but is
 still an exploratory fixed-fixture run, not a statistically powered benchmark. Neither
 mode measures general model capability, latency, provider reliability, or production safety.
+When `--checkpoint PATH` is supplied, the harness atomically persists each completed matrix
+cell. Reusing the same configuration with `--resume --checkpoint PATH` skips durable cells
+and reruns only missing observations; a provider call interrupted before its cell is written
+may run again.
 In particular, a `best_of_n` or orchestrated success here must not be reported as evidence
 that a real model would discover the same candidate.
 

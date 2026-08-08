@@ -1,6 +1,7 @@
 """Reproducible evaluations with explicit claim boundaries."""
 
 from contextopt.evaluation.agent_search import (
+    AgentEvalCheckpoint,
     AgentEvalConfig,
     AgentEvalFixture,
     AgentEvalReport,
@@ -10,10 +11,12 @@ from contextopt.evaluation.agent_search import (
     AgentStrategy,
     build_algorithm_fixtures,
     build_openai_model_factory,
+    read_agent_evaluation_checkpoint,
     render_agent_evaluation_console,
     render_agent_evaluation_html,
     render_agent_evaluation_markdown,
     run_agent_evaluation,
+    write_agent_evaluation_checkpoint,
 )
 from contextopt.evaluation.context_routing import (
     ContextRoutingEvalConfig,
@@ -28,6 +31,7 @@ from contextopt.evaluation.context_routing import (
 )
 
 __all__ = [
+    "AgentEvalCheckpoint",
     "AgentEvalConfig",
     "AgentEvalFixture",
     "AgentEvalReport",
@@ -42,6 +46,7 @@ __all__ = [
     "build_algorithm_fixtures",
     "build_long_coding_traces",
     "build_openai_model_factory",
+    "read_agent_evaluation_checkpoint",
     "render_agent_evaluation_console",
     "render_agent_evaluation_html",
     "render_agent_evaluation_markdown",
@@ -50,4 +55,5 @@ __all__ = [
     "run_agent_evaluation",
     "run_context_routing_evaluation",
     "tool_protocol_issues",
+    "write_agent_evaluation_checkpoint",
 ]

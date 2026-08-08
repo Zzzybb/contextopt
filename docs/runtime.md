@@ -85,7 +85,8 @@ are easiest to explain in an interview. Run it from the repository root:
 
 ```text
 python -m contextopt agent-eval --fixtures all --repetitions 1 \
-  --output agent-eval.json --markdown agent-eval.md --html agent-eval.html
+  --output agent-eval.json --markdown agent-eval.md --html agent-eval.html \
+  --checkpoint agent-eval.checkpoint.json
 ```
 
 The two fixtures are complete ACM/math workspaces. `single_pass` gets one intentionally
@@ -104,6 +105,8 @@ replace scripted responses with fresh OpenAI-compatible adapters per cell. These
 establish the implementation's accounting and oracle gates; they do not establish
 generalization, latency, or production coding ability. The optional HTML output is a
 self-contained dashboard with visible/hidden success bars and the complete JSON ledger.
+The optional checkpoint is atomically updated after each matrix cell; `--resume` reuses
+completed cells and reruns only missing observations, with at-least-once provider semantics.
 
 ## Live context compilation
 
