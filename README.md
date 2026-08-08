@@ -19,7 +19,7 @@ Task ──> AgentRunner ──> ContextCompiler ──> ModelClient ──> too
 Every boundary ──> durable schema-2 JSONL event log + verified state projection
 ```
 
-> **Status — v0.8 coding-agent strategy evaluation:** the repository now contains a real
+> **Status — v0.8 context-aware coding-agent evaluation:** the repository now contains a real
 > single-agent read/edit/test loop, recoverable event-sourced execution, a deterministic live
 > context compiler, an auditable beam search over generated coding candidates, and a strict
 > model-to-candidate proposal boundary. A model can return bounded complete workspace
@@ -28,7 +28,10 @@ Every boundary ──> durable schema-2 JSONL event log + verified state project
 > without pretending that an interrupted provider call was exactly-once. An accepted snapshot
 > can be explicitly applied to a real workspace and rolled back with a stale-baseline guard.
 > The `agent-eval` harness now compares single-pass, Best-of-N, and planner/solver/reviewer
-> control policies on executable ACM/math fixtures with shared accounting.
+> control policies on executable ACM/math fixtures with shared accounting. The planner,
+> solver, and reviewer now compile their prior assistant summaries through the same
+> ContextCompiler, persist a per-role ContextReceipt, and carry a versioned observed-memory
+> fingerprint into each checkpointed call.
 > It does **not** yet implement parallel workspace execution, an OS sandbox, learned semantic memory,
 > or a statistically powered real-model coding benchmark.
 
@@ -149,19 +152,25 @@ recompute the complete chain because there is no secret or external trust anchor
   reject a passing branch, but it cannot override the visible-test oracle.
 - Cross-round plan and reviewer feedback, test-result reuse, hash-chained role events,
   atomic checkpoints, and role-specific model fingerprints for safe resume.
+- Each role request is compiled from its prior assistant summaries plus the fresh mandatory
+  system/user request. The checkpoint stores the selected block ids, message hash, memory
+  fingerprint, and workspace generation, making context selection inspectable and replayable.
 - The orchestrate CLI command plus console/Markdown/HTML reports make role calls and the
   oracle gate measurable instead of treating a multi-agent transcript as evidence.
 
 ### Coding-agent strategy evaluation — v0.8
 
 - Two executable fixtures cover an ACM-style Two Sum repair and the extended Euclidean
-  algorithm, each with a deliberately failing complete root snapshot and visible tests.
+  algorithm, each with a deliberately failing complete root snapshot, visible tests, and
+  an independent hidden grader that is never included in model prompts.
 - `agent-eval` runs paired `single_pass`, `best_of_n`, and `orchestrated` strategies under
-  explicit round, model-call, candidate, and test budgets.
+  explicit round, model-call, candidate, and visible-test budgets, then records independent
+  hidden-test calls after visible acceptance.
 - JSON and Markdown reports expose success rate, role/model calls, actual test processes,
   cache reuses, candidate proposals, and reported token usage without hiding failed runs.
-- The evaluator is intentionally scripted: it is a reproducible control-policy/conformance
-  harness, not a claim about general model quality.
+- The evaluator defaults to deterministic scripted responses, but accepts an OpenAI-compatible
+  model factory for exploratory runs; either mode keeps the independent hidden grader outside
+  the candidate snapshot.
 
 ### ContextOpt engine — v0.1 algorithms, v0.3 live integration
 
@@ -188,8 +197,8 @@ recompute the complete chain because there is no secret or external trust anchor
 - A general shell tool, autonomous package installation, or unrestricted network access.
 - A claim that the scripted demo measures model reasoning or real-world issue resolution.
 - Learned or cross-run semantic memory, a trace UI, or a statistically powered real-model
-  coding benchmark. The v0.8 harness is a deterministic scripted comparison and does not
-  pretend synthetic observations or protocol acceptance are model coding accuracy.
+  coding benchmark. The v0.8 harness is a deterministic scripted comparison by default and
+  does not pretend observed-memory receipts or protocol acceptance are model coding accuracy.
 - Exactly-once external side effects. Recovery is tool-specific and conservative;
   explicitly retrying a command can execute it again.
 
@@ -313,9 +322,20 @@ python -m contextopt agent-eval \
 
 The default matrix contains the `two-sum` ACM fixture and the `extended-gcd` mathematics
 fixture. It compares a deliberately weak one-candidate baseline with Best-of-N and the
-oracle-gated role loop. The report's success rate is visible-test success on these exact
-scripted responses; model quality, hidden-test correctness, latency, and production safety
-remain outside its claim boundary.
+oracle-gated role loop. Reports separate visible success from hidden-grader success; the
+default scripted run is a control-policy conformance result, not a model-quality claim.
+
+For an exploratory OpenAI-compatible run, provide the model and API key environment variable:
+
+```bash
+python -m contextopt agent-eval \
+  --model <model-name> --base-url <endpoint> \
+  --api-key-env CONTEXTOPT_API_KEY --repetitions 3 \
+  --output agent-eval-real.json --markdown agent-eval-real.md
+```
+
+This path records provider usage but is still not a statistically powered benchmark; keep
+model versions, prompts, fixtures, tools, and budgets fixed when comparing strategies.
 
 Run the v0.4 test-guided branch-search demo and write all three report formats:
 
@@ -491,8 +511,12 @@ docs/                     # architecture, runtime, and evaluation contract
   apply/rollback receipts.
 - **v0.7 — Role orchestration (implemented):** planner/solver/reviewer protocols,
   shared budgets, cross-round feedback, checkpointed role events, and an oracle gate.
-- **v0.8 — Strategy evaluation (implemented):** executable ACM/math fixtures and a paired
-  single-pass/Best-of-N/orchestrated accounting harness with JSON/Markdown reports.
+- **v0.8 — Context-aware strategy evaluation (implemented):** executable ACM/math fixtures,
+  independent hidden graders, a paired single-pass/Best-of-N/orchestrated accounting harness,
+  and per-role ContextCompiler/observed-memory receipts.
+
+The v0.8 follow-up is documented in [the role-context addendum](docs/pr/0001-v0.8-context-memory-addendum.md)
+and its [Chinese translation](docs/pr/0001-v0.8-context-memory-addendum.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers.
 

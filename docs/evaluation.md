@@ -237,10 +237,14 @@ The v0.7 orchestrator adds measurable role boundaries above the v0.6 session:
   convert a failing candidate into success;
 - cross-round feedback, duplicate-test reuse, role fingerprints, checkpoint round trips,
   and hash-chain events are all available in the report.
+- every role call compiles its assistant-only history with the shared ContextCompiler and
+  persists a ContextReceipt containing selected blocks, a compiled-message hash, and the
+  versioned observed-memory fingerprint/workspace generation.
 
 The deterministic tests exercise a first failing branch followed by a passing branch,
-with a reviewer retry before acceptance. Metrics are role call counts, actual test
-processes, cache reuses, candidate proposals, total tokens, and oracle-gate outcomes.
+with a reviewer retry before acceptance. Metrics are role call counts, context receipts,
+actual test processes, cache reuses, candidate proposals, total tokens, and oracle-gate
+outcomes.
 These are orchestration and safety measurements, not model intelligence or hidden-test
 success. The reviewer may reject a passing candidate; it is intentionally not allowed
 to override the executable oracle.
@@ -265,23 +269,30 @@ fixtures:
 
 The checked-in fixtures are an ACM-style Two Sum repair and an extended Euclidean
 algorithm repair. Each fixture includes a complete failing root snapshot, a deliberately
-weak candidate, a passing candidate, and a standard-library `unittest` command. The CLI
-can write both machine-readable JSON and Markdown:
+weak candidate, a passing candidate, a standard-library visible-test command, and an
+independent hidden grader under `grader/` that is never included in the model-visible root
+snapshot. The CLI can write both machine-readable JSON and Markdown:
 
     python -m contextopt agent-eval --fixtures all --repetitions 1 \
       --output agent-eval.json --markdown agent-eval.md
 
-The report is paired by fixture, strategy, and repetition. Its primary fields are
-`success_rate`, `mean_model_calls`, role-call decomposition, `mean_candidate_proposals`,
-`mean_test_calls`, `mean_test_reuses`, and `mean_total_tokens`. Failed baseline runs stay
-in the ledger rather than being dropped. The command itself exits successfully when the
-matrix completes; a strategy's visible-test failure is a data point, not a harness crash.
+The report is paired by fixture, strategy, and repetition. Its primary fields are visible
+`success_rate`, conditional hidden `hidden_success_rate`, `mean_model_calls`, role-call
+decomposition, `mean_candidate_proposals`, `mean_test_calls`, `mean_test_reuses`,
+`mean_hidden_test_calls`, and `mean_total_tokens`. A hidden grader runs only after visible
+acceptance, so a visible pass cannot silently erase an independent failure. Failed baseline
+runs stay in the ledger rather than being dropped. The command itself exits successfully
+when the matrix completes; a strategy's visible-test failure is a data point, not a harness
+crash. `--no-hidden-tests` is available only when reproducing the visible-only control flow.
 
-This level tests policy wiring, budget accounting, strict model boundaries, executable
-oracle gates, and report consistency with deterministic scripted responses. It does not
-measure general model capability, hidden-test correctness, latency, provider reliability,
-or production safety. In particular, a `best_of_n` or orchestrated success here must not
-be reported as evidence that a real model would discover the same candidate.
+By default this level tests policy wiring, budget accounting, strict model boundaries,
+executable visible/hidden oracle gates, and report consistency with deterministic scripted
+responses. `agent-eval --model ... --base-url ...` can replace the scripted factory with
+fresh OpenAI-compatible adapters per matrix cell; that path records provider usage but is
+still an exploratory fixed-fixture run, not a statistically powered benchmark. Neither
+mode measures general model capability, latency, provider reliability, or production safety.
+In particular, a `best_of_n` or orchestrated success here must not be reported as evidence
+that a real model would discover the same candidate.
 
 ## Level 3: controlled real-model coding tasks — planned
 

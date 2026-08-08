@@ -63,6 +63,17 @@ and cached observations are persisted in an orchestration checkpoint. A pending 
 request pauses unless the operator resumes with an explicit retry; solver and reviewer
 boundaries are checkpointed so evaluation evidence is never treated as model confidence.
 
+Each role also has an independent assistant-only history. Before a provider call, the runner
+concatenates that history with the role's fresh system/user request and sends the transcript
+through the same `ContextCompiler` used by the single-agent runtime. The default orchestrator
+policy is submodular selection with a 16k-token budget and `versioned-v1` observed memory. The
+`RoleCall` stores the resulting `ContextReceipt` (selected/evicted block ids, compiled-message
+hash, memory fingerprint, and workspace generation), and the request/received events include
+the same receipt. This makes role context a replayable protocol boundary rather than an
+uninspectable prompt concatenation. A provider response containing tool calls is not added to
+the assistant-only history because these three role contracts are intentionally no-tool JSON
+interfaces.
+
 For a deterministic local run, give orchestrate three ScriptedModel JSON files and the same
 trusted visible-test command used by search-session. Real-model experiments should keep
 provider, prompt, tool, budget, and repository versions fixed across role ablations.
@@ -81,13 +92,17 @@ The two fixtures are complete ACM/math workspaces. `single_pass` gets one intent
 weak candidate, `best_of_n` gets a bad and a good candidate in one response, and
 `orchestrated` receives a failing first round followed by a reviewer-gated retry. Every
 candidate is materialized in a disposable workspace and tested by the same standard-
-library command. The result is a paired ledger, not a model leaderboard.
+library command. After visible acceptance, the evaluator runs a separate hidden grader
+whose source is not in the model-visible root snapshot. The result is a paired ledger, not
+a model leaderboard.
 
-The report separates actual test processes from cache reuses and records model/role calls,
-candidate proposals, rounds, and provider-reported token usage. A baseline failure remains
-visible in the report, while the CLI returns zero once the matrix itself has completed.
-These metrics establish the implementation's accounting and oracle gates; they do not
-establish generalization, hidden-test correctness, latency, or real-model coding ability.
+The report separates actual visible test processes from cache reuses, records hidden grader
+calls separately, and records model/role calls, candidate proposals, rounds, and
+provider-reported token usage. A baseline failure remains visible in the report, while the
+CLI returns zero once the matrix itself has completed. Use `--model` and `--base-url` to
+replace scripted responses with fresh OpenAI-compatible adapters per cell. These metrics
+establish the implementation's accounting and oracle gates; they do not establish
+generalization, latency, or production coding ability.
 
 ## Live context compilation
 
@@ -588,8 +603,8 @@ Remaining milestones are:
 2. Connect session events to runtime context receipts and richer recovery metadata.
 3. Connect role events to runtime context receipts and richer role-specific recovery
    metadata.
-4. Connect the strategy harness to real model adapters and independent hidden tests while
-   preserving the paired budgets and report schema.
+4. Run the strategy harness against multiple real model versions and independent hidden
+   tests, preserving paired budgets and full ledgers.
 5. Add container/VM isolation and a controlled real-model coding benchmark with fixed
    snapshots, versions, repetitions, and independent hidden tests.
 

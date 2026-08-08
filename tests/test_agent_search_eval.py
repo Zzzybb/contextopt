@@ -12,6 +12,7 @@ from contextopt.evaluation import (
     AgentEvalConfig,
     AgentEvalReport,
     build_algorithm_fixtures,
+    build_openai_model_factory,
     run_agent_evaluation,
 )
 
@@ -47,12 +48,50 @@ class AgentEvaluationTests(unittest.TestCase):
         self.assertEqual(by_strategy["single_pass"].success_count, 0)
         self.assertEqual(by_strategy["best_of_n"].success_count, 1)
         self.assertEqual(by_strategy["orchestrated"].success_count, 1)
+        self.assertEqual(by_strategy["best_of_n"].hidden_success_rate, 1.0)
+        self.assertEqual(by_strategy["orchestrated"].hidden_success_rate, 1.0)
+        self.assertEqual(by_strategy["single_pass"].hidden_run_count, 0)
         self.assertGreater(
             by_strategy["orchestrated"].mean_model_calls,
             by_strategy["best_of_n"].mean_model_calls,
         )
         self.assertIn(
             "does not measure general model capability", report.claim_boundary
+        )
+
+    def test_hidden_tests_can_be_disabled_without_leaking_the_grader(self) -> None:
+        report = run_agent_evaluation(
+            AgentEvalConfig(
+                fixtures=("two-sum",),
+                strategies=("best_of_n",),
+                include_hidden_tests=False,
+            )
+        )
+        self.assertEqual(report.summaries[0].hidden_run_count, 0)
+        self.assertEqual(report.runs[0].hidden_test_calls, 0)
+        self.assertNotIn("hidden_files", report.fixtures[0].to_dict())
+
+    def test_openai_factory_is_fresh_and_role_specific_without_calling_network(
+        self,
+    ) -> None:
+        factory = build_openai_model_factory(
+            base_url="https://example.invalid/v1",
+            api_key="test-key",
+            model="solver-model",
+            planner_model="planner-model",
+            reviewer_model="reviewer-model",
+        )
+        models = factory(build_algorithm_fixtures()[0], "orchestrated")
+        self.assertEqual(
+            [model.name for model in models],
+            [
+                "openai-compatible:planner-model",
+                "openai-compatible:solver-model",
+                "openai-compatible:reviewer-model",
+            ],
+        )
+        self.assertIsNot(
+            models[0], factory(build_algorithm_fixtures()[0], "orchestrated")[0]
         )
 
     def test_report_roundtrip_and_tamper_detection(self) -> None:

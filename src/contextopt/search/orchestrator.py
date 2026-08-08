@@ -13,12 +13,18 @@ import json
 import os
 import tempfile
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from html import escape
 from math import isfinite
 from pathlib import Path
 from typing import Any, Literal, cast
 
+from contextopt.runtime.context import (
+    ContextCompiler,
+    ContextCompilerConfig,
+    ContextReceipt,
+    compile_runtime_context,
+)
 from contextopt.runtime.errors import ModelError, RuntimeContractError
 from contextopt.runtime.identity import stable_hash
 from contextopt.runtime.protocol import (
@@ -201,6 +207,15 @@ class OrchestrationConfig:
     max_candidates: int = 16
     max_test_calls: int = 16
     max_total_tokens: int = 100_000
+    context_config: ContextCompilerConfig = field(
+        default_factory=lambda: ContextCompilerConfig(
+            policy="submodular",
+            budget_tokens=16_000,
+            recent_blocks=2,
+            max_tool_output_tokens=2_048,
+            memory_policy="versioned-v1",
+        )
+    )
 
     def __post_init__(self) -> None:
         for name in (
@@ -216,6 +231,8 @@ class OrchestrationConfig:
             value = getattr(self, name)
             if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
                 raise ValueError(f"{name} must be a positive integer")
+        if not isinstance(self.context_config, ContextCompilerConfig):
+            raise ValueError("context_config must be a ContextCompilerConfig")
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> OrchestrationConfig:
@@ -229,15 +246,22 @@ class OrchestrationConfig:
             "max_candidates",
             "max_test_calls",
             "max_total_tokens",
+            "context_config",
         }
         unknown = set(value) - allowed
         if unknown:
             raise ValueError(
                 f"orchestration config has unknown fields: {sorted(unknown)!r}"
             )
-        return cls(**dict(value))
+        values = dict(value)
+        raw_context = values.get("context_config")
+        if raw_context is not None:
+            if not isinstance(raw_context, Mapping):
+                raise ValueError("orchestration context_config must be an object")
+            values["context_config"] = ContextCompilerConfig.from_dict(raw_context)
+        return cls(**values)
 
-    def to_dict(self) -> dict[str, int]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             name: getattr(self, name)
             for name in (
@@ -250,7 +274,7 @@ class OrchestrationConfig:
                 "max_test_calls",
                 "max_total_tokens",
             )
-        }
+        } | {"context_config": self.context_config.to_dict()}
 
 
 @dataclass(frozen=True, slots=True)
@@ -732,6 +756,7 @@ class RoleCall:
     response_sha256: str
     response_id: str | None
     usage: TokenUsage
+    context_receipt: ContextReceipt | None = None
 
     def __post_init__(self) -> None:
         if self.role not in {"planner", "solver", "reviewer"}:
@@ -753,6 +778,7 @@ class RoleCall:
             "response_sha256",
             "response_id",
             "usage",
+            "context_receipt",
         }
         unknown = set(value) - allowed
         if unknown:
@@ -763,6 +789,9 @@ class RoleCall:
         response_id = value.get("response_id")
         if response_id is not None and not isinstance(response_id, str):
             raise ValueError("role call response_id must be a string or null")
+        context_receipt = value.get("context_receipt")
+        if context_receipt is not None and not isinstance(context_receipt, Mapping):
+            raise ValueError("role call context_receipt must be an object or null")
         return cls(
             role=str(value.get("role")),
             turn=int(value.get("turn", -1)),
@@ -770,6 +799,11 @@ class RoleCall:
             response_sha256=_s(value.get("response_sha256"), "response_sha256"),
             response_id=response_id,
             usage=TokenUsage.from_dict(usage),
+            context_receipt=(
+                None
+                if context_receipt is None
+                else ContextReceipt.from_dict(context_receipt)
+            ),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -780,6 +814,9 @@ class RoleCall:
             "response_sha256": self.response_sha256,
             "response_id": self.response_id,
             "usage": self.usage.to_dict(),
+            "context_receipt": (
+                None if self.context_receipt is None else self.context_receipt.to_dict()
+            ),
         }
 
 
@@ -897,6 +934,7 @@ class OrchestrationReport:
     pending_case: BranchCase | None = None
     pending_solver_call: RoleCall | None = None
     pending_branch_report: BranchSearchReport | None = None
+    role_histories: Mapping[str, tuple[AgentMessage, ...]] = field(default_factory=dict)
     feedback: tuple[Mapping[str, Any], ...] = ()
     schema_version: str = "1"
 
@@ -951,6 +989,29 @@ class OrchestrationReport:
             _s(fingerprint, "observation fingerprint")
             if not isinstance(result, TestResult):
                 raise ValueError("observations must map fingerprints to TestResult")
+        if not isinstance(self.role_histories, Mapping):
+            raise ValueError("role_histories must be an object")
+        histories = dict(self.role_histories)
+        if not histories:
+            histories = {role: () for role in ("planner", "solver", "reviewer")}
+        if set(histories) != {"planner", "solver", "reviewer"}:
+            raise ValueError(
+                "role_histories must contain planner, solver, and reviewer"
+            )
+        normalized_histories: dict[str, tuple[AgentMessage, ...]] = {}
+        for role, messages in histories.items():
+            if not isinstance(messages, (tuple, list)):
+                raise ValueError(f"{role} role history must be an array")
+            normalized = tuple(messages)
+            if any(
+                not isinstance(message, AgentMessage) or message.role != "assistant"
+                for message in normalized
+            ):
+                raise ValueError(
+                    f"{role} role history must contain assistant messages only"
+                )
+            normalized_histories[role] = normalized
+        object.__setattr__(self, "role_histories", normalized_histories)
         verify_search_events(self.events)
         feedback = tuple(dict(item) for item in self.feedback)
         try:
@@ -1045,6 +1106,7 @@ class OrchestrationReport:
             "pending_case",
             "pending_solver_call",
             "pending_branch_report",
+            "role_histories",
             "feedback",
         }
         unknown = set(value) - allowed
@@ -1094,6 +1156,19 @@ class OrchestrationReport:
             not isinstance(item, Mapping) for item in feedback
         ):
             raise ValueError("feedback must be an array of objects")
+        raw_histories = value.get("role_histories", {})
+        if not isinstance(raw_histories, Mapping):
+            raise ValueError("role_histories must be an object")
+        role_histories: dict[str, tuple[AgentMessage, ...]] = {}
+        for role, raw_messages in raw_histories.items():
+            if role not in {"planner", "solver", "reviewer"}:
+                raise ValueError(f"role_histories has unknown role: {role!r}")
+            if not isinstance(raw_messages, list):
+                raise ValueError(f"{role} role history must be an array")
+            role_histories[role] = tuple(
+                AgentMessage.from_dict(_m(item, f"{role} role history message"))
+                for item in raw_messages
+            )
         report = cls(
             schema_version=str(value.get("schema_version", "")),
             run_id=_s(value.get("run_id"), "run_id"),
@@ -1158,6 +1233,7 @@ class OrchestrationReport:
                 if optional("pending_branch_report") is None
                 else BranchSearchReport.from_dict(optional("pending_branch_report"))
             ),
+            role_histories=role_histories,
             feedback=tuple(feedback),
         )
         metrics = value.get("metrics")
@@ -1221,6 +1297,10 @@ class OrchestrationReport:
                 if self.pending_branch_report is None
                 else self.pending_branch_report.to_dict()
             ),
+            "role_histories": {
+                role: [message.to_dict() for message in messages]
+                for role, messages in sorted(self.role_histories.items())
+            },
             "feedback": [dict(item) for item in self.feedback],
         }
 
@@ -1345,8 +1425,70 @@ def _next_files(
     return dict(candidate.files) if candidate is not None else dict(fallback)
 
 
+def _compile_role_request(
+    context_config: ContextCompilerConfig,
+    history: Sequence[AgentMessage],
+    request: ModelRequest,
+    *,
+    task: str,
+) -> tuple[ModelRequest, ContextReceipt]:
+    """Compile a role's prior assistant summaries plus its fresh request.
+
+    The current system/user request remains part of the compiler's mandatory
+    protocol surface.  Only provider-independent assistant responses are carried
+    across turns, so a checkpoint can reproduce the same memory fingerprint
+    without persisting provider-specific hidden state.
+    """
+
+    compiler = ContextCompiler(context_config)
+    compiled = compile_runtime_context(
+        compiler,
+        (*tuple(history), *request.messages),
+        task=task,
+    )
+    return replace(request, messages=compiled.messages), compiled.receipt
+
+
+def _append_role_response(
+    state: OrchestrationReport,
+    role: str,
+    response: ModelResponse,
+) -> OrchestrationReport:
+    # These three contracts deliberately reject tool calls.  Do not persist an
+    # incomplete assistant/tool exchange that the next context compilation could
+    # not reproduce as a valid protocol transcript.
+    if response.tool_calls:
+        return state
+    histories = {
+        name: tuple(messages) for name, messages in state.role_histories.items()
+    }
+    histories[role] = (
+        *histories[role],
+        AgentMessage(
+            role="assistant",
+            content=response.content,
+            tool_calls=response.tool_calls,
+        ),
+    )
+    return replace(state, role_histories=histories)
+
+
+def _context_event_data(receipt: ContextReceipt) -> dict[str, Any]:
+    return {
+        "context_config_fingerprint": receipt.config_fingerprint,
+        "context_receipt": receipt.to_dict(),
+        "compiled_messages_sha256": receipt.messages_sha256,
+        "memory_fingerprint": receipt.memory_fingerprint,
+        "workspace_generation": receipt.workspace_generation,
+    }
+
+
 def _call(
-    role: str, model: ModelClient, turn: int, response: ModelResponse
+    role: str,
+    model: ModelClient,
+    turn: int,
+    response: ModelResponse,
+    context_receipt: ContextReceipt | None = None,
 ) -> RoleCall:
     return RoleCall(
         role=role,
@@ -1355,10 +1497,17 @@ def _call(
         response_sha256=stable_hash(response.to_dict()),
         response_id=response.response_id,
         usage=response.usage,
+        context_receipt=context_receipt,
     )
 
 
-def _error_call(role: str, model: ModelClient, turn: int, message: str) -> RoleCall:
+def _error_call(
+    role: str,
+    model: ModelClient,
+    turn: int,
+    message: str,
+    context_receipt: ContextReceipt | None = None,
+) -> RoleCall:
     return RoleCall(
         role=role,
         turn=turn,
@@ -1366,6 +1515,7 @@ def _error_call(role: str, model: ModelClient, turn: int, message: str) -> RoleC
         response_sha256=stable_hash({"role": role, "turn": turn, "error": message}),
         response_id=None,
         usage=TokenUsage(),
+        context_receipt=context_receipt,
     )
 
 
@@ -1490,6 +1640,7 @@ class OrchestrationRunner:
             usage=TokenUsage(),
             best_candidate_id=None,
             best_files=None,
+            role_histories={role: () for role in self.models},
         )
         return _event(
             state,
@@ -1578,6 +1729,51 @@ class OrchestrationRunner:
         if config is None:
             raise ValueError("planner configuration is incomplete")
         turn = state.planner_calls + 1
+        receipt: ContextReceipt | None = None
+        try:
+            request, receipt = _compile_role_request(
+                state.config.context_config,
+                state.role_histories["planner"],
+                build_planner_request(
+                    state.task,
+                    state.base_files,
+                    config,
+                    run_id=state.run_id,
+                    turn=turn,
+                    feedback=state.feedback,
+                ),
+                task=state.task,
+            )
+        except (RuntimeContractError, ValueError) as exc:
+            message = f"{type(exc).__name__}: {str(exc)[:800]}"
+            updated = _event(
+                replace(
+                    state,
+                    phase="idle",
+                    model_calls=state.model_calls + 1,
+                    planner_calls=state.planner_calls + 1,
+                    feedback=tuple(
+                        [
+                            *state.feedback,
+                            {"planner_rejected": message, "round": len(state.rounds)},
+                        ][-16:]
+                    ),
+                ),
+                "planner.rejected",
+                {"round": len(state.rounds), "turn": turn, "error": message},
+            )
+            if (
+                updated.model_calls >= updated.config.max_model_calls
+                or updated.planner_calls >= updated.config.max_planner_calls
+            ):
+                updated = _finish(
+                    updated,
+                    "failed",
+                    "planner contract failed until its budget was exhausted",
+                )
+            if checkpoint is not None:
+                write_orchestration_checkpoint(updated, checkpoint)
+            return updated
         state = _event(
             replace(state, phase="planning", reason=None),
             "planner.requested",
@@ -1586,20 +1782,15 @@ class OrchestrationRunner:
                 "turn": turn,
                 "base_fingerprint": stable_hash(state.base_files),
                 "feedback_count": len(state.feedback),
+                **({} if receipt is None else _context_event_data(receipt)),
             },
         )
         if checkpoint is not None:
             write_orchestration_checkpoint(state, checkpoint)
         try:
-            plan, response = await plan_task(
-                self.planner,
-                state.task,
-                state.base_files,
-                config,
-                run_id=state.run_id,
-                turn=turn,
-                feedback=state.feedback,
-            )
+            response = await self.planner.complete(request)
+            state = _append_role_response(state, "planner", response)
+            plan = parse_planner_response(response, config)
         except (ModelError, RuntimeContractError, ValueError) as exc:
             message = f"{type(exc).__name__}: {str(exc)[:800]}"
             updated = _event(
@@ -1630,7 +1821,7 @@ class OrchestrationRunner:
             if checkpoint is not None:
                 write_orchestration_checkpoint(updated, checkpoint)
             return updated
-        call = _call("planner", self.planner, turn, response)
+        call = _call("planner", self.planner, turn, response, receipt)
         updated = _event(
             replace(
                 state,
@@ -1650,6 +1841,7 @@ class OrchestrationRunner:
                 "response_id": call.response_id,
                 "usage": response.usage.to_dict(),
                 "plan_fingerprint": stable_hash(plan.to_dict()),
+                **({} if receipt is None else _context_event_data(receipt)),
             },
         )
         if checkpoint is not None:
@@ -1674,6 +1866,54 @@ class OrchestrationRunner:
             )
         config = replace(config, max_candidates=min(config.max_candidates, remaining))
         turn = state.solver_calls + 1
+        receipt: ContextReceipt | None = None
+        try:
+            request, receipt = _compile_role_request(
+                state.config.context_config,
+                state.role_histories["solver"],
+                build_solver_request(
+                    state.task,
+                    state.base_files,
+                    plan,
+                    config,
+                    run_id=state.run_id,
+                    turn=turn,
+                    feedback=state.feedback,
+                ),
+                task=state.task,
+            )
+        except (RuntimeContractError, ValueError) as exc:
+            message = f"{type(exc).__name__}: {str(exc)[:800]}"
+            updated = _event(
+                replace(
+                    state,
+                    phase="idle",
+                    model_calls=state.model_calls + 1,
+                    solver_calls=state.solver_calls + 1,
+                    pending_plan=None,
+                    pending_planner_call=None,
+                    feedback=tuple(
+                        [
+                            *state.feedback,
+                            {"solver_rejected": message, "round": len(state.rounds)},
+                        ][-16:]
+                    ),
+                ),
+                "solver.rejected",
+                {"round": len(state.rounds), "turn": turn, "error": message},
+            )
+            if (
+                updated.model_calls >= updated.config.max_model_calls
+                or updated.solver_calls >= updated.config.max_solver_calls
+            ):
+                updated = _finish(
+                    updated,
+                    "failed",
+                    "solver contract failed until its budget was exhausted",
+                )
+            if checkpoint is not None:
+                write_orchestration_checkpoint(updated, checkpoint)
+            return updated
         state = _event(
             replace(state, phase="solving", reason=None),
             "solver.requested",
@@ -1683,20 +1923,16 @@ class OrchestrationRunner:
                 "base_fingerprint": stable_hash(state.base_files),
                 "proposal_config": config.to_dict(),
                 "plan_fingerprint": stable_hash(plan.to_dict()),
+                **({} if receipt is None else _context_event_data(receipt)),
             },
         )
         if checkpoint is not None:
             write_orchestration_checkpoint(state, checkpoint)
         try:
-            case, response = await solve_plan(
-                self.solver,
-                state.task,
-                state.base_files,
-                plan,
-                config,
-                run_id=state.run_id,
-                turn=turn,
-                feedback=state.feedback,
+            response = await self.solver.complete(request)
+            state = _append_role_response(state, "solver", response)
+            case = parse_proposal_response(
+                response, state.task, state.base_files, config
             )
         except (ModelError, RuntimeContractError, ValueError) as exc:
             message = f"{type(exc).__name__}: {str(exc)[:800]}"
@@ -1731,7 +1967,7 @@ class OrchestrationRunner:
                 write_orchestration_checkpoint(updated, checkpoint)
             return updated
         namespaced = _namespace(case, len(state.rounds))
-        call = _call("solver", self.solver, turn, response)
+        call = _call("solver", self.solver, turn, response, receipt)
         updated = _event(
             replace(
                 state,
@@ -1754,6 +1990,7 @@ class OrchestrationRunner:
                 "usage": response.usage.to_dict(),
                 "case_fingerprint": namespaced.fingerprint,
                 "candidate_count": len(namespaced.candidates),
+                **({} if receipt is None else _context_event_data(receipt)),
             },
         )
         if checkpoint is not None:
@@ -1777,6 +2014,26 @@ class OrchestrationRunner:
         plan = cast(PlannerPlan, state.pending_plan)
         branch_report = cast(BranchSearchReport, state.pending_branch_report)
         turn = state.reviewer_calls + 1
+        receipt: ContextReceipt | None = None
+        request: ModelRequest | None = None
+        preparation_error: str | None = None
+        try:
+            request, receipt = _compile_role_request(
+                state.config.context_config,
+                state.role_histories["reviewer"],
+                build_reviewer_request(
+                    state.task,
+                    plan,
+                    branch_report,
+                    config,
+                    run_id=state.run_id,
+                    turn=turn,
+                    feedback=state.feedback,
+                ),
+                task=state.task,
+            )
+        except (RuntimeContractError, ValueError) as exc:
+            preparation_error = f"{type(exc).__name__}: {str(exc)[:800]}"
         state = _event(
             replace(state, phase="reviewing", reason=None),
             "reviewer.requested",
@@ -1785,23 +2042,19 @@ class OrchestrationRunner:
                 "turn": turn,
                 "branch_status": branch_report.status,
                 "best_node_id": branch_report.best_node_id,
+                **({} if receipt is None else _context_event_data(receipt)),
             },
         )
         if checkpoint is not None:
             write_orchestration_checkpoint(state, checkpoint)
         response: ModelResponse | None = None
         try:
-            decision, response = await review_branch(
-                self.reviewer,
-                state.task,
-                plan,
-                branch_report,
-                config,
-                run_id=state.run_id,
-                turn=turn,
-                feedback=state.feedback,
-            )
-            call = _call("reviewer", self.reviewer, turn, response)
+            if preparation_error is not None or request is None:
+                raise ValueError(preparation_error or "reviewer request is unavailable")
+            response = await self.reviewer.complete(request)
+            state = _append_role_response(state, "reviewer", response)
+            decision = parse_reviewer_response(response, config)
+            call = _call("reviewer", self.reviewer, turn, response, receipt)
         except (ModelError, RuntimeContractError, ValueError) as exc:
             message = f"{type(exc).__name__}: {str(exc)[:800]}"
             decision = ReviewDecision(
@@ -1812,7 +2065,7 @@ class OrchestrationRunner:
                 ("repeat reviewer contract with strict JSON",),
                 "reviewer contract failed; continue conservatively",
             )
-            call = _error_call("reviewer", self.reviewer, turn, message)
+            call = _error_call("reviewer", self.reviewer, turn, message, receipt)
         best_node = _best(branch_report)
         best_id, best_files = state.best_candidate_id, state.best_files
         previous_scores = [
@@ -1906,6 +2159,7 @@ class OrchestrationRunner:
                 "usage": call.usage.to_dict(),
                 "decision": decision.to_dict(),
                 "oracle_gate": accepted,
+                **({} if receipt is None else _context_event_data(receipt)),
             },
         )
         if updated.status == "running" and (
@@ -2070,11 +2324,18 @@ async def run_orchestration(
 
 
 def render_orchestration_console(report: OrchestrationReport) -> str:
+    completed_calls = tuple(
+        call
+        for item in report.rounds
+        for call in (item.planner_call, item.solver_call, item.reviewer_call)
+    )
+    context_receipts = sum(call.context_receipt is not None for call in completed_calls)
     lines = [
         f"status={report.status} phase={report.phase} rounds={len(report.rounds)} "
         f"model_calls={report.model_calls} planner={report.planner_calls} "
         f"solver={report.solver_calls} reviewer={report.reviewer_calls} "
-        f"test_calls={report.test_calls} reuses={report.test_reuses}"
+        f"test_calls={report.test_calls} reuses={report.test_reuses} "
+        f"context_receipts={context_receipts}"
     ]
     if report.best_candidate_id:
         lines.append(f"best_candidate={report.best_candidate_id}")
@@ -2090,6 +2351,12 @@ def render_orchestration_console(report: OrchestrationReport) -> str:
 
 
 def render_orchestration_markdown(report: OrchestrationReport) -> str:
+    completed_calls = tuple(
+        call
+        for item in report.rounds
+        for call in (item.planner_call, item.solver_call, item.reviewer_call)
+    )
+    context_receipts = sum(call.context_receipt is not None for call in completed_calls)
     lines = [
         "# ContextOpt planner / solver / reviewer orchestration",
         "",
@@ -2101,6 +2368,8 @@ def render_orchestration_markdown(report: OrchestrationReport) -> str:
         f"reviewer {report.reviewer_calls})",
         f"- Actual test calls: {report.test_calls}; "
         f"cached reuses: {report.test_reuses}",
+        f"- Context receipts: {context_receipts}/{len(completed_calls)} "
+        "(selected message blocks and observed-memory fingerprints)",
         f"- Best candidate: {report.best_candidate_id or 'none'}",
         "",
         "| Round | Branch | Reviewer | Confidence | Candidate | Test calls |",
@@ -2129,6 +2398,12 @@ def render_orchestration_html(report: OrchestrationReport) -> str:
 
     rows: list[str] = []
     for item in report.rounds:
+        context_blocks = [
+            len(call.context_receipt.selected_block_ids)
+            if call.context_receipt is not None
+            else 0
+            for call in (item.planner_call, item.solver_call, item.reviewer_call)
+        ]
         rows.append(
             "<tr>"
             f"<td>{item.index}</td>"
@@ -2139,10 +2414,11 @@ def render_orchestration_html(report: OrchestrationReport) -> str:
             f"<td>{escape(item.review.decision)}</td>"
             f"<td>{item.review.confidence:.2f}</td>"
             f"<td>{item.branch_report.metrics.get('test_calls', 0)}</td>"
+            f"<td>{','.join(str(value) for value in context_blocks)}</td>"
             "</tr>"
         )
     if not rows:
-        rows.append("<tr><td colspan='8'>no completed rounds</td></tr>")
+        rows.append("<tr><td colspan='9'>no completed rounds</td></tr>")
     payload = escape(json.dumps(report.to_dict(), ensure_ascii=False, sort_keys=True))
     return (
         "<!doctype html><html><head><meta charset='utf-8'>"
@@ -2163,7 +2439,8 @@ def render_orchestration_html(report: OrchestrationReport) -> str:
         f"<div class='metric'>best: {escape(report.best_candidate_id or 'none')}</div>"
         "</div><table><thead><tr><th>round</th><th>planner</th><th>solver</th>"
         "<th>reviewer</th><th>branch</th><th>review</th><th>confidence</th>"
-        f"<th>test calls</th></tr></thead><tbody>{''.join(rows)}</tbody></table>"
+        f"<th>test calls</th><th>context blocks (p/s/r)</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody></table>"
         "<details><summary>durable report JSON</summary><code>"
         f"{payload}</code></details>"
         "</body></html>\n"

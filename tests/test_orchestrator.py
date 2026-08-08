@@ -173,9 +173,60 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(report.test_calls, 2)
             self.assertEqual(len(report.rounds), 2)
             self.assertIn("review", planner.requests[1].messages[-1].content)
+            self.assertTrue(
+                all(
+                    call.context_receipt is not None
+                    for item in report.rounds
+                    for call in (
+                        item.planner_call,
+                        item.solver_call,
+                        item.reviewer_call,
+                    )
+                )
+            )
+            self.assertTrue(
+                all(
+                    any(message.role == "assistant" for message in request.messages)
+                    for request in (
+                        planner.requests[1],
+                        solver.requests[1],
+                        reviewer.requests[1],
+                    )
+                )
+            )
+            self.assertEqual(
+                {
+                    role: len(messages)
+                    for role, messages in report.role_histories.items()
+                },
+                {"planner": 2, "solver": 2, "reviewer": 2},
+            )
+            self.assertTrue(
+                all(
+                    call.context_receipt.memory_fingerprint is not None
+                    for item in report.rounds
+                    for call in (
+                        item.planner_call,
+                        item.solver_call,
+                        item.reviewer_call,
+                    )
+                )
+            )
             self.assertEqual(
                 read_orchestration_checkpoint(checkpoint).to_dict(), report.to_dict()
             )
+            legacy = report.to_dict()
+            legacy["config"].pop("context_config")
+            legacy.pop("role_histories")
+            for round_payload in legacy["rounds"]:
+                for role in ("planner_call", "solver_call", "reviewer_call"):
+                    round_payload[role].pop("context_receipt")
+            restored_legacy = type(report).from_dict(legacy)
+            self.assertEqual(
+                restored_legacy.role_histories,
+                {"planner": (), "solver": (), "reviewer": ()},
+            )
+            self.assertIsNone(restored_legacy.rounds[0].planner_call.context_receipt)
 
     async def test_reviewer_cannot_accept_failing_candidate(self) -> None:
         planner = ScriptedModel([{"response": {"content": _plan()}}], name="p:v1")

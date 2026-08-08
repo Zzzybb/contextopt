@@ -22,6 +22,7 @@ from contextopt.benchmark import (
 from contextopt.evaluation import (
     AgentEvalConfig,
     ContextRoutingEvalConfig,
+    build_openai_model_factory,
     render_agent_evaluation_console,
     render_agent_evaluation_markdown,
     render_context_routing_console,
@@ -155,6 +156,28 @@ def _agent_eval(args: argparse.Namespace) -> int:
         name.strip() for name in args.fixtures.split(",") if name.strip()
     )
     fixtures = ("two-sum", "extended-gcd") if "all" in raw_fixtures else raw_fixtures
+    model_factory = None
+    model_adapter = "scripted"
+    if args.model:
+        if not args.base_url:
+            raise ValueError("--base-url is required when --model is supplied")
+        api_key = os.environ.get(args.api_key_env)
+        if not api_key:
+            raise ValueError(
+                f"model API key is missing from environment variable {args.api_key_env}"
+            )
+        model_factory = build_openai_model_factory(
+            base_url=args.base_url,
+            api_key=api_key,
+            model=args.model,
+            planner_model=args.planner_model,
+            solver_model=args.solver_model,
+            reviewer_model=args.reviewer_model,
+            timeout_seconds=args.model_timeout,
+            max_retries=args.model_retries,
+            temperature=args.temperature,
+        )
+        model_adapter = "openai-compatible"
     config = AgentEvalConfig(
         strategies=strategies,
         fixtures=fixtures,
@@ -163,8 +186,10 @@ def _agent_eval(args: argparse.Namespace) -> int:
         max_model_calls=args.max_model_calls,
         max_candidates=args.max_candidates,
         max_test_calls=args.max_test_calls,
+        include_hidden_tests=not args.no_hidden_tests,
+        model_adapter=model_adapter,
     )
-    report = run_agent_evaluation(config)
+    report = run_agent_evaluation(config, model_factory=model_factory)
     print(render_agent_evaluation_console(report), end="")
     _write(args.output, json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n")
     _write(args.markdown, render_agent_evaluation_markdown(report))
@@ -457,6 +482,13 @@ def _orchestrate(args: argparse.Namespace) -> int:
             max_candidates=args.max_candidates,
             max_test_calls=args.max_test_calls,
             max_total_tokens=args.max_total_tokens,
+            context_config=ContextCompilerConfig(
+                policy=args.context_policy,
+                budget_tokens=args.context_budget,
+                recent_blocks=args.context_recent_blocks,
+                max_tool_output_tokens=args.context_max_tool_output_tokens,
+                memory_policy=args.context_memory,
+            ),
         )
         planner_config = PlannerConfig(
             max_items=args.planner_max_items,
@@ -797,6 +829,29 @@ def build_parser() -> argparse.ArgumentParser:
     agent_eval.add_argument("--max-model-calls", type=int, default=6)
     agent_eval.add_argument("--max-candidates", type=int, default=2)
     agent_eval.add_argument("--max-test-calls", type=int, default=2)
+    agent_eval.add_argument(
+        "--no-hidden-tests",
+        action="store_true",
+        help=(
+            "skip the independent fixture grader (visible tests remain "
+            "authoritative for search)"
+        ),
+    )
+    agent_eval.add_argument(
+        "--model",
+        help=(
+            "optional OpenAI-compatible model; omit for deterministic "
+            "ScriptedModel mode"
+        ),
+    )
+    agent_eval.add_argument("--planner-model")
+    agent_eval.add_argument("--solver-model")
+    agent_eval.add_argument("--reviewer-model")
+    agent_eval.add_argument("--base-url")
+    agent_eval.add_argument("--api-key-env", default="CONTEXTOPT_API_KEY")
+    agent_eval.add_argument("--model-timeout", type=float, default=90.0)
+    agent_eval.add_argument("--model-retries", type=int, default=2)
+    agent_eval.add_argument("--temperature", type=float, default=0.0)
     agent_eval.add_argument("--output", help="write the complete JSON report")
     agent_eval.add_argument("--markdown", help="write the summary as Markdown")
     agent_eval.set_defaults(handler=_agent_eval)
@@ -912,6 +967,36 @@ def build_parser() -> argparse.ArgumentParser:
     orchestrate.add_argument("--max-candidates", type=int, default=16)
     orchestrate.add_argument("--max-test-calls", type=int, default=16)
     orchestrate.add_argument("--max-total-tokens", type=int, default=100_000)
+    orchestrate.add_argument(
+        "--context-policy",
+        choices=("full", "recent", "topk", "density", "submodular"),
+        default="submodular",
+        help="context-routing policy applied independently to each role history",
+    )
+    orchestrate.add_argument(
+        "--context-budget",
+        type=int,
+        default=16_000,
+        help="estimated input-token budget for each compiled role request",
+    )
+    orchestrate.add_argument(
+        "--context-recent-blocks",
+        type=int,
+        default=2,
+        help="newest protocol blocks retained as mandatory context",
+    )
+    orchestrate.add_argument(
+        "--context-max-tool-output-tokens",
+        type=int,
+        default=2_048,
+        help="estimated-token cap per tool observation before compaction",
+    )
+    orchestrate.add_argument(
+        "--context-memory",
+        choices=("none", "versioned-v1"),
+        default="versioned-v1",
+        help="observed-memory validity signals supplied to role context routing",
+    )
     orchestrate.add_argument("--planner-max-items", type=int, default=6)
     orchestrate.add_argument("--planner-max-item-chars", type=int, default=600)
     orchestrate.add_argument("--planner-max-prompt-chars", type=int, default=400_000)

@@ -333,7 +333,7 @@ rejects stale or linked paths, atomically replaces changed files, and writes an 
 observed target. This explicit side-effect boundary keeps search evaluation reproducible and
 makes out-of-band edits visible rather than silently overwriting them.
 
-## Planner / solver / reviewer orchestration — v0.7
+## Planner / solver / reviewer orchestration — v0.7 + observed-memory wiring
 
 The role orchestrator is a sequential state machine above the v0.6 session boundary. It
 keeps the three model clients independent so each role can use a different provider or a
@@ -368,6 +368,15 @@ reviewer awaits and after evaluation. A stopped planner request requires explici
 after a durable planner response, the solver can safely continue on resume. Parallel
 workspace execution and adaptive branch scheduling remain future work.
 
+Role context is now a first-class part of this report. Each role retains only its prior
+assistant responses, combines them with the next fresh request, and runs the transcript through
+`ContextCompiler` with `versioned-v1` observed memory by default. Every completed `RoleCall`
+stores a `ContextReceipt`; the receipt's selected block ids, compiled message hash, memory
+fingerprint, and workspace generation are also included in the role events. This preserves the
+provider-neutral boundary while making long-context selection and memory invalidation
+measurable across retries and checkpoint recovery. It is observed, transcript-derived memory,
+not learned cross-run semantic memory.
+
 ## Coding-agent strategy evaluation — v0.8
 
 The evaluation layer reuses the same proposal parser, disposable executable oracle, and
@@ -378,11 +387,14 @@ algorithm/math fixtures and runs three policy shapes over each fixture:
     best_of_n    -> several candidates -> branch ranking -> visible oracle
     orchestrated -> planner -> solver -> oracle -> reviewer -> bounded retry
 
-Each matrix cell is a fresh scripted model and a fresh temporary workspace. The report
-stores the fixture/strategy/repetition ledger plus self-consistent aggregates for success
-rate, role/model calls, candidate proposals, actual tests, cache reuses, rounds, and
-reported token usage. The evaluator is a model-free control-policy contract test; the
-scripted candidate is not evidence that a real model would solve an arbitrary issue.
+Each matrix cell gets a fresh model tuple and a fresh temporary workspace. The default
+tuple is scripted for deterministic conformance; the CLI can inject fresh
+OpenAI-compatible adapters for exploratory provider runs. Visible acceptance is followed
+by an independent hidden grader whose source is excluded from the model-visible snapshot.
+The report stores the fixture/strategy/repetition ledger plus self-consistent aggregates
+for visible/hidden success, role/model calls, candidate proposals, actual tests, cache
+reuses, rounds, and reported token usage. Neither scripted nor small fixed-fixture provider
+runs are evidence that a real model would solve an arbitrary issue.
 
 ## Claim boundaries
 

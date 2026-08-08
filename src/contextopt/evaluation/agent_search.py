@@ -19,27 +19,33 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field, replace
 from pathlib import PurePosixPath
 from statistics import fmean
 from typing import Any, Literal, cast
 
 from contextopt.runtime.errors import ModelError, RuntimeContractError
-from contextopt.runtime.model import ScriptedModel
+from contextopt.runtime.model import OpenAICompatibleModel, ScriptedModel
+from contextopt.runtime.protocol import ModelClient
 from contextopt.search import (
     BranchSearchConfig,
+    CandidatePatch,
     ExecutableSearchConfig,
     OrchestrationConfig,
     PlannerConfig,
     ProposalConfig,
     ReviewerConfig,
     SearchSessionConfig,
+    evaluate_candidate,
     run_orchestration,
     run_search_session,
 )
 
 AgentStrategy = Literal["single_pass", "best_of_n", "orchestrated"]
+AgentModelFactory = Callable[
+    ["AgentEvalFixture", AgentStrategy], tuple[ModelClient, ...]
+]
 _STRATEGIES: tuple[AgentStrategy, ...] = (
     "single_pass",
     "best_of_n",
@@ -48,10 +54,22 @@ _STRATEGIES: tuple[AgentStrategy, ...] = (
 _CLAIM_BOUNDARY = (
     "This is a deterministic control-policy and protocol evaluation with scripted "
     "model responses. It measures visible-test success, role/model-call budgets, "
-    "candidate accounting, and token accounting on the bundled fixtures; it does "
-    "not measure general model capability, hidden-test correctness, latency, or "
-    "production safety."
+    "independent hidden-test success when enabled, candidate accounting, and token "
+    "accounting on the bundled fixtures; it does not measure general model capability, "
+    "latency, provider reliability, or production safety."
 )
+_REAL_MODEL_CLAIM_BOUNDARY = (
+    "This is an exploratory fixed-fixture provider evaluation. It records visible-test "
+    "and independent hidden-test outcomes, role/model-call budgets, candidate "
+    "accounting, and provider-reported token usage for the selected model; it is not "
+    "a statistically powered benchmark and does not establish general coding ability, "
+    "latency, provider "
+    "reliability, security isolation, or production safety."
+)
+
+
+def _claim_boundary(adapter: str) -> str:
+    return _CLAIM_BOUNDARY if adapter == "scripted" else _REAL_MODEL_CLAIM_BOUNDARY
 
 
 def _non_empty(value: Any, label: str) -> str:
@@ -182,6 +200,8 @@ class AgentEvalFixture:
     bad_files: Mapping[str, str]
     good_files: Mapping[str, str]
     test_name: str
+    hidden_files: Mapping[str, str] = field(default_factory=dict)
+    hidden_test_name: str = "hidden-oracle"
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -191,9 +211,19 @@ class AgentEvalFixture:
         object.__setattr__(self, "title", _non_empty(self.title, "title"))
         object.__setattr__(self, "task", _non_empty(self.task, "task"))
         object.__setattr__(self, "test_name", _non_empty(self.test_name, "test_name"))
+        object.__setattr__(
+            self,
+            "hidden_test_name",
+            _non_empty(self.hidden_test_name, "hidden_test_name"),
+        )
         for name in ("root_files", "bad_files", "good_files"):
             value = getattr(self, name)
             object.__setattr__(self, name, _snapshot(value, name))
+        object.__setattr__(
+            self,
+            "hidden_files",
+            _snapshot(self.hidden_files, "hidden_files") if self.hidden_files else {},
+        )
         if set(self.bad_files) != set(self.root_files) or set(self.good_files) != set(
             self.root_files
         ):
@@ -205,6 +235,17 @@ class AgentEvalFixture:
             command=(sys.executable, "-m", "unittest", "discover", "-s", "."),
             suite=f"agent-eval:{self.fixture_id}",
             test_name=self.test_name,
+        )
+
+    @property
+    def hidden_execution_config(self) -> ExecutableSearchConfig:
+        """Return a separate command that never enters the model-visible root."""
+
+        module_name = f"grader.oracle_{self.fixture_id.replace('-', '_')}"
+        return ExecutableSearchConfig(
+            command=(sys.executable, "-m", "unittest", module_name),
+            suite=f"agent-eval-hidden:{self.fixture_id}",
+            test_name=self.hidden_test_name,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -219,6 +260,10 @@ class AgentEvalFixture:
             "bad_files": dict(self.bad_files),
             "good_files": dict(self.good_files),
             "test_name": self.test_name,
+            # Hidden grader source is intentionally not serialized into a public
+            # report.  The fixture digest and result fields provide the audit trail
+            # without leaking the independent oracle before a run is reviewed.
+            "hidden_test_name": self.hidden_test_name,
         }
 
 
@@ -255,6 +300,20 @@ def build_algorithm_fixtures() -> tuple[AgentEvalFixture, ...]:
         seen[value] = index
     return []
 """
+    two_sum_hidden = (
+        "import unittest\n"
+        "from two_sum import two_sum\n\n\n"
+        "class HiddenTwoSumTests(unittest.TestCase):\n"
+        "    def test_negative_values_and_late_pair(self):\n"
+        "        values = [10, -4, 8, 6, 1]\n"
+        "        self.assertEqual(two_sum(values, 2), [1, 3])\n"
+        "        self.assertEqual(values, [10, -4, 8, 6, 1])\n\n"
+        "    def test_empty_and_singleton_inputs(self):\n"
+        "        self.assertEqual(two_sum([], 0), [])\n"
+        "        self.assertEqual(two_sum([4], 8), [])\n\n\n"
+        "if __name__ == '__main__':\n"
+        "    unittest.main()\n"
+    )
 
     gcd_tests = (
         "import unittest\n"
@@ -288,6 +347,22 @@ def build_algorithm_fixtures() -> tuple[AgentEvalFixture, ...]:
     gcd, x1, y1 = extended_gcd(b, a % b)
     return gcd, y1, x1 - (a // b) * y1
 """
+    gcd_hidden = (
+        "import unittest\n"
+        "from extended_gcd import extended_gcd\n\n\n"
+        "class HiddenExtendedGcdTests(unittest.TestCase):\n"
+        "    def assert_bezout(self, a, b):\n"
+        "        gcd, x, y = extended_gcd(a, b)\n"
+        "        self.assertEqual(gcd, __import__('math').gcd(a, b))\n"
+        "        self.assertEqual(a * x + b * y, gcd)\n\n"
+        "    def test_negative_inputs(self):\n"
+        "        self.assert_bezout(-30, 12)\n"
+        "        self.assert_bezout(30, -12)\n\n"
+        "    def test_large_coprime_inputs(self):\n"
+        "        self.assert_bezout(1234567, 76543)\n\n\n"
+        "if __name__ == '__main__':\n"
+        "    unittest.main()\n"
+    )
 
     return (
         AgentEvalFixture(
@@ -302,6 +377,11 @@ def build_algorithm_fixtures() -> tuple[AgentEvalFixture, ...]:
             bad_files={"two_sum.py": two_sum_bad, "test_two_sum.py": two_sum_tests},
             good_files={"two_sum.py": two_sum_good, "test_two_sum.py": two_sum_tests},
             test_name="two-sum-visible-tests",
+            hidden_files={
+                "grader/__init__.py": "",
+                "grader/oracle_two_sum.py": two_sum_hidden,
+            },
+            hidden_test_name="two-sum-hidden-tests",
         ),
         AgentEvalFixture(
             fixture_id="extended-gcd",
@@ -324,6 +404,11 @@ def build_algorithm_fixtures() -> tuple[AgentEvalFixture, ...]:
                 "test_extended_gcd.py": gcd_tests,
             },
             test_name="extended-gcd-visible-tests",
+            hidden_files={
+                "grader/__init__.py": "",
+                "grader/oracle_extended_gcd.py": gcd_hidden,
+            },
+            hidden_test_name="extended-gcd-hidden-tests",
         ),
     )
 
@@ -339,6 +424,8 @@ class AgentEvalConfig:
     max_model_calls: int = 6
     max_candidates: int = 2
     max_test_calls: int = 2
+    include_hidden_tests: bool = True
+    model_adapter: str = "scripted"
 
     def __post_init__(self) -> None:
         if not self.strategies:
@@ -367,6 +454,10 @@ class AgentEvalConfig:
             "max_test_calls",
         ):
             _positive_int(getattr(self, name), name)
+        if not isinstance(self.include_hidden_tests, bool):
+            raise ValueError("include_hidden_tests must be a boolean")
+        if self.model_adapter not in {"scripted", "openai-compatible", "custom"}:
+            raise ValueError(f"unsupported agent model adapter: {self.model_adapter!r}")
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> AgentEvalConfig:
@@ -379,6 +470,8 @@ class AgentEvalConfig:
             "max_model_calls",
             "max_candidates",
             "max_test_calls",
+            "include_hidden_tests",
+            "model_adapter",
         }
         unknown = set(value) - allowed
         if unknown:
@@ -403,6 +496,12 @@ class AgentEvalConfig:
             max_test_calls=_positive_int(
                 value.get("max_test_calls", 2), "max_test_calls"
             ),
+            include_hidden_tests=_boolean(
+                value.get("include_hidden_tests", True), "include_hidden_tests"
+            ),
+            model_adapter=_non_empty(
+                value.get("model_adapter", "scripted"), "model_adapter"
+            ),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -414,6 +513,8 @@ class AgentEvalConfig:
             "max_model_calls": self.max_model_calls,
             "max_candidates": self.max_candidates,
             "max_test_calls": self.max_test_calls,
+            "include_hidden_tests": self.include_hidden_tests,
+            "model_adapter": self.model_adapter,
         }
 
 
@@ -437,6 +538,9 @@ class AgentEvalRun:
     total_tokens: int
     best_candidate_id: str | None
     error: str | None = None
+    hidden_test_calls: int = 0
+    hidden_success: bool | None = None
+    hidden_error: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -481,6 +585,24 @@ class AgentEvalRun:
             )
         if self.error is not None:
             object.__setattr__(self, "error", _non_empty(self.error, "error"))
+        if (
+            not isinstance(self.hidden_test_calls, int)
+            or isinstance(self.hidden_test_calls, bool)
+            or self.hidden_test_calls < 0
+        ):
+            raise ValueError("hidden_test_calls must be a non-negative integer")
+        if self.hidden_success is not None and not isinstance(
+            self.hidden_success, bool
+        ):
+            raise ValueError("hidden_success must be a boolean or null")
+        if self.hidden_success is None and self.hidden_test_calls != 0:
+            raise ValueError("hidden test calls require a hidden result")
+        if self.hidden_success is not None and self.hidden_test_calls <= 0:
+            raise ValueError("hidden result requires at least one hidden test call")
+        if self.hidden_error is not None:
+            object.__setattr__(
+                self, "hidden_error", _non_empty(self.hidden_error, "hidden_error")
+            )
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> AgentEvalRun:
@@ -502,6 +624,9 @@ class AgentEvalRun:
             "total_tokens",
             "best_candidate_id",
             "error",
+            "hidden_test_calls",
+            "hidden_success",
+            "hidden_error",
         }
         unknown = set(value) - allowed
         if unknown:
@@ -535,6 +660,19 @@ class AgentEvalRun:
                 else str(value["best_candidate_id"])
             ),
             error=None if value.get("error") is None else str(value["error"]),
+            hidden_test_calls=_non_negative_int(
+                value.get("hidden_test_calls", 0), "hidden_test_calls"
+            ),
+            hidden_success=(
+                None
+                if value.get("hidden_success") is None
+                else _boolean(value["hidden_success"], "hidden_success")
+            ),
+            hidden_error=(
+                None
+                if value.get("hidden_error") is None
+                else str(value["hidden_error"])
+            ),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -555,6 +693,9 @@ class AgentEvalRun:
             "total_tokens": self.total_tokens,
             "best_candidate_id": self.best_candidate_id,
             "error": self.error,
+            "hidden_test_calls": self.hidden_test_calls,
+            "hidden_success": self.hidden_success,
+            "hidden_error": self.hidden_error,
         }
 
 
@@ -572,6 +713,10 @@ class AgentEvalSummary:
     mean_test_reuses: float
     mean_candidate_proposals: float
     mean_total_tokens: float
+    hidden_run_count: int
+    hidden_success_count: int
+    hidden_success_rate: float | None
+    mean_hidden_test_calls: float
 
     def __post_init__(self) -> None:
         if self.strategy not in _STRATEGIES:
@@ -592,6 +737,7 @@ class AgentEvalSummary:
             "mean_test_reuses",
             "mean_candidate_proposals",
             "mean_total_tokens",
+            "mean_hidden_test_calls",
         ):
             value = getattr(self, name)
             if (
@@ -600,6 +746,26 @@ class AgentEvalSummary:
                 or value < 0
             ):
                 raise ValueError(f"{name} must be a non-negative number")
+        if (
+            not isinstance(self.hidden_run_count, int)
+            or isinstance(self.hidden_run_count, bool)
+            or self.hidden_run_count < 0
+            or self.hidden_run_count > self.run_count
+        ):
+            raise ValueError("hidden_run_count must be within run_count")
+        if (
+            not isinstance(self.hidden_success_count, int)
+            or isinstance(self.hidden_success_count, bool)
+            or not 0 <= self.hidden_success_count <= self.hidden_run_count
+        ):
+            raise ValueError("hidden_success_count must be within hidden_run_count")
+        expected_hidden_rate = (
+            None
+            if self.hidden_run_count == 0
+            else self.hidden_success_count / self.hidden_run_count
+        )
+        if self.hidden_success_rate != expected_hidden_rate:
+            raise ValueError("hidden_success_rate is inconsistent with hidden counts")
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> AgentEvalSummary:
@@ -615,6 +781,10 @@ class AgentEvalSummary:
             "mean_test_reuses",
             "mean_candidate_proposals",
             "mean_total_tokens",
+            "hidden_run_count",
+            "hidden_success_count",
+            "hidden_success_rate",
+            "mean_hidden_test_calls",
         }
         unknown = set(value) - allowed
         if unknown:
@@ -632,6 +802,18 @@ class AgentEvalSummary:
             mean_test_reuses=float(value.get("mean_test_reuses", -1.0)),
             mean_candidate_proposals=float(value.get("mean_candidate_proposals", -1.0)),
             mean_total_tokens=float(value.get("mean_total_tokens", -1.0)),
+            hidden_run_count=_non_negative_int(
+                value.get("hidden_run_count", 0), "hidden_run_count"
+            ),
+            hidden_success_count=_non_negative_int(
+                value.get("hidden_success_count", 0), "hidden_success_count"
+            ),
+            hidden_success_rate=(
+                None
+                if value.get("hidden_success_rate") is None
+                else float(value["hidden_success_rate"])
+            ),
+            mean_hidden_test_calls=float(value.get("mean_hidden_test_calls", 0.0)),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -646,6 +828,10 @@ class AgentEvalSummary:
             "mean_test_reuses": self.mean_test_reuses,
             "mean_candidate_proposals": self.mean_candidate_proposals,
             "mean_total_tokens": self.mean_total_tokens,
+            "hidden_run_count": self.hidden_run_count,
+            "hidden_success_count": self.hidden_success_count,
+            "hidden_success_rate": self.hidden_success_rate,
+            "mean_hidden_test_calls": self.mean_hidden_test_calls,
         }
 
 
@@ -657,6 +843,8 @@ def _summary(strategy: AgentStrategy, runs: Sequence[AgentEvalRun]) -> AgentEval
         return fmean(getattr(run, name) for run in runs)
 
     successes = sum(run.success for run in runs)
+    hidden_runs = tuple(run for run in runs if run.hidden_success is not None)
+    hidden_successes = sum(run.hidden_success is True for run in hidden_runs)
     return AgentEvalSummary(
         strategy=strategy,
         run_count=len(runs),
@@ -668,6 +856,12 @@ def _summary(strategy: AgentStrategy, runs: Sequence[AgentEvalRun]) -> AgentEval
         mean_test_reuses=mean("test_reuses"),
         mean_candidate_proposals=mean("candidate_proposals"),
         mean_total_tokens=mean("total_tokens"),
+        hidden_run_count=len(hidden_runs),
+        hidden_success_count=hidden_successes,
+        hidden_success_rate=(
+            None if not hidden_runs else hidden_successes / len(hidden_runs)
+        ),
+        mean_hidden_test_calls=mean("hidden_test_calls"),
     )
 
 
@@ -687,7 +881,7 @@ class AgentEvalReport:
             raise ValueError(
                 f"unsupported agent evaluation schema: {self.schema_version!r}"
             )
-        if self.claim_boundary != _CLAIM_BOUNDARY:
+        if self.claim_boundary != _claim_boundary(self.config.model_adapter):
             raise ValueError("agent evaluation claim_boundary is not canonical")
         fixture_ids = tuple(fixture.fixture_id for fixture in self.fixtures)
         if len(fixture_ids) != len(set(fixture_ids)):
@@ -769,6 +963,7 @@ class AgentEvalReport:
                 "bad_files",
                 "good_files",
                 "test_name",
+                "hidden_test_name",
             }
             unknown_fixture = set(fixture) - allowed_fixture
             if unknown_fixture:
@@ -786,6 +981,10 @@ class AgentEvalReport:
                     bad_files=_mapping(fixture.get("bad_files"), "bad_files"),
                     good_files=_mapping(fixture.get("good_files"), "good_files"),
                     test_name=_non_empty(fixture.get("test_name"), "test_name"),
+                    hidden_test_name=_non_empty(
+                        fixture.get("hidden_test_name", "hidden-oracle"),
+                        "hidden_test_name",
+                    ),
                 )
             )
         if not isinstance(value.get("config"), Mapping):
@@ -827,7 +1026,7 @@ def _script_step(
 
 def _strategy_models(
     fixture: AgentEvalFixture, strategy: AgentStrategy
-) -> tuple[ScriptedModel, ...]:
+) -> tuple[ModelClient, ...]:
     bad = fixture.bad_files
     good = fixture.good_files
     if strategy == "single_pass":
@@ -908,14 +1107,105 @@ def _strategy_models(
     )
 
 
+def build_openai_model_factory(
+    *,
+    base_url: str,
+    api_key: str,
+    model: str,
+    planner_model: str | None = None,
+    solver_model: str | None = None,
+    reviewer_model: str | None = None,
+    timeout_seconds: float = 90.0,
+    max_retries: int = 2,
+    temperature: float | None = 0.0,
+) -> AgentModelFactory:
+    """Build a fresh OpenAI-compatible model tuple for every matrix cell.
+
+    The factory keeps provider credentials outside the persisted report.  A new adapter
+    is created for every fixture/strategy/repetition so a failed trajectory cannot leak
+    cursor or conversation state into the next paired cell.
+    """
+
+    if not model:
+        raise ValueError("model must not be empty")
+    names = {
+        "planner": planner_model or model,
+        "solver": solver_model or model,
+        "reviewer": reviewer_model or model,
+    }
+
+    def create(role: str) -> OpenAICompatibleModel:
+        return OpenAICompatibleModel(
+            base_url=base_url,
+            api_key=api_key,
+            model=names[role],
+            timeout_seconds=timeout_seconds,
+            max_retries=max_retries,
+            temperature=temperature,
+        )
+
+    def factory(
+        _fixture: AgentEvalFixture, strategy: AgentStrategy
+    ) -> tuple[ModelClient, ...]:
+        if strategy == "orchestrated":
+            return (create("planner"), create("solver"), create("reviewer"))
+        return (create("solver"),)
+
+    return factory
+
+
+def _hidden_outcome(
+    fixture: AgentEvalFixture,
+    files: Mapping[str, str] | None,
+    config: AgentEvalConfig,
+) -> tuple[int, bool | None, str | None]:
+    """Run the independent oracle only after a visible candidate is accepted."""
+
+    if not config.include_hidden_tests or files is None:
+        return 0, None, None
+    try:
+        combined = dict(files)
+        overlap = set(combined) & set(fixture.hidden_files)
+        if overlap:
+            raise ValueError(
+                f"hidden grader path collides with candidate: {sorted(overlap)!r}"
+            )
+        combined.update(fixture.hidden_files)
+        candidate = CandidatePatch(
+            id="hidden-oracle-candidate",
+            parent_id="root",
+            hypothesis=(
+                "evaluate the accepted visible-test snapshot against hidden tests"
+            ),
+            files=combined,
+        )
+        result = evaluate_candidate(candidate, fixture.hidden_execution_config)
+        if result.is_success:
+            return 1, True, None
+        return 1, False, result.output_excerpt or result.error or "hidden oracle failed"
+    except (ValueError, OSError) as exc:
+        return 1, False, f"{type(exc).__name__}: {str(exc)[:800]}"
+
+
 def _run_strategy(
     fixture: AgentEvalFixture,
     strategy: AgentStrategy,
     config: AgentEvalConfig,
     repetition: int,
+    model_factory: AgentModelFactory | None = None,
 ) -> AgentEvalRun:
     try:
-        models = _strategy_models(fixture, strategy)
+        models = (
+            _strategy_models(fixture, strategy)
+            if model_factory is None
+            else model_factory(fixture, strategy)
+        )
+        expected_models = 3 if strategy == "orchestrated" else 1
+        if len(models) != expected_models:
+            raise ValueError(
+                f"model factory returned {len(models)} models for {strategy}; "
+                f"expected {expected_models}"
+            )
         execution = fixture.execution_config
         branch = BranchSearchConfig(
             beam_width=2, max_depth=1, max_candidates=config.max_candidates
@@ -941,6 +1231,13 @@ def _run_strategy(
                     run_id=f"agent-eval-{fixture.fixture_id}-single-{repetition}",
                 )
             )
+            hidden_calls, hidden_success, hidden_error = _hidden_outcome(
+                fixture,
+                session_report.best_files
+                if session_report.status == "accepted"
+                else None,
+                config,
+            )
             return AgentEvalRun(
                 fixture_id=fixture.fixture_id,
                 strategy=strategy,
@@ -960,6 +1257,9 @@ def _run_strategy(
                 error=(
                     session_report.reason if session_report.status == "failed" else None
                 ),
+                hidden_test_calls=hidden_calls,
+                hidden_success=hidden_success,
+                hidden_error=hidden_error,
             )
         if strategy == "best_of_n":
             session_report = asyncio.run(
@@ -979,6 +1279,13 @@ def _run_strategy(
                     run_id=f"agent-eval-{fixture.fixture_id}-best-{repetition}",
                 )
             )
+            hidden_calls, hidden_success, hidden_error = _hidden_outcome(
+                fixture,
+                session_report.best_files
+                if session_report.status == "accepted"
+                else None,
+                config,
+            )
             return AgentEvalRun(
                 fixture_id=fixture.fixture_id,
                 strategy=strategy,
@@ -998,6 +1305,9 @@ def _run_strategy(
                 error=(
                     session_report.reason if session_report.status == "failed" else None
                 ),
+                hidden_test_calls=hidden_calls,
+                hidden_success=hidden_success,
+                hidden_error=hidden_error,
             )
         planner, solver, reviewer = models
         orchestration_report = asyncio.run(
@@ -1024,6 +1334,13 @@ def _run_strategy(
                 run_id=f"agent-eval-{fixture.fixture_id}-orchestrated-{repetition}",
             )
         )
+        hidden_calls, hidden_success, hidden_error = _hidden_outcome(
+            fixture,
+            orchestration_report.best_files
+            if orchestration_report.status == "accepted"
+            else None,
+            config,
+        )
         return AgentEvalRun(
             fixture_id=fixture.fixture_id,
             strategy=strategy,
@@ -1045,6 +1362,9 @@ def _run_strategy(
                 if orchestration_report.status == "failed"
                 else None
             ),
+            hidden_test_calls=hidden_calls,
+            hidden_success=hidden_success,
+            hidden_error=hidden_error,
         )
     except (ModelError, RuntimeContractError, ValueError, OSError) as exc:
         return AgentEvalRun(
@@ -1067,10 +1387,16 @@ def _run_strategy(
         )
 
 
-def run_agent_evaluation(config: AgentEvalConfig | None = None) -> AgentEvalReport:
+def run_agent_evaluation(
+    config: AgentEvalConfig | None = None,
+    *,
+    model_factory: AgentModelFactory | None = None,
+) -> AgentEvalReport:
     """Run the selected paired matrix against the bundled executable fixtures."""
 
     cfg = config or AgentEvalConfig()
+    if model_factory is not None and cfg.model_adapter == "scripted":
+        cfg = replace(cfg, model_adapter="custom")
     available = {fixture.fixture_id: fixture for fixture in build_algorithm_fixtures()}
     unknown = set(cfg.fixtures) - set(available)
     if unknown:
@@ -1080,7 +1406,11 @@ def run_agent_evaluation(config: AgentEvalConfig | None = None) -> AgentEvalRepo
     for fixture in fixtures:
         for strategy in cfg.strategies:
             for repetition in range(cfg.repetitions):
-                runs.append(_run_strategy(fixture, strategy, cfg, repetition))
+                runs.append(
+                    _run_strategy(
+                        fixture, strategy, cfg, repetition, model_factory=model_factory
+                    )
+                )
     summaries = tuple(
         _summary(strategy, tuple(run for run in runs if run.strategy == strategy))
         for strategy in cfg.strategies
@@ -1090,18 +1420,31 @@ def run_agent_evaluation(config: AgentEvalConfig | None = None) -> AgentEvalRepo
         fixtures=fixtures,
         runs=tuple(runs),
         summaries=summaries,
+        claim_boundary=_claim_boundary(cfg.model_adapter),
     )
+
+
+def _format_rate(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.0%}"
+
+
+def _hidden_label(value: bool | None) -> str:
+    return "n/a" if value is None else ("pass" if value else "fail")
 
 
 def render_agent_evaluation_console(report: AgentEvalReport) -> str:
     lines = [
-        "strategy success rate | mean model calls | mean test calls | mean tokens",
-        "--- | ---: | ---: | ---:",
+        "strategy visible | hidden | mean model calls | mean visible tests | "
+        "mean tokens",
+        "--- | ---: | ---: | ---: | ---:",
     ]
     lines.extend(
         f"{summary.strategy} {summary.success_count}/{summary.run_count} "
-        f"({summary.success_rate:.0%}) | {summary.mean_model_calls:.1f} | "
-        f"{summary.mean_test_calls:.1f} | {summary.mean_total_tokens:.0f}"
+        f"({summary.success_rate:.0%}) | "
+        f"{summary.hidden_success_count}/{summary.hidden_run_count} "
+        f"({_format_rate(summary.hidden_success_rate)}) | "
+        f"{summary.mean_model_calls:.1f} | {summary.mean_test_calls:.1f} | "
+        f"{summary.mean_total_tokens:.0f}"
         for summary in report.summaries
     )
     failures = sum(not run.success for run in report.runs)
@@ -1115,16 +1458,19 @@ def render_agent_evaluation_markdown(report: AgentEvalReport) -> str:
     lines = [
         "# ContextOpt coding-agent strategy evaluation",
         "",
-        "This report uses executable ACM/math fixtures and deterministic scripted "
-        "model responses.",
+        "This report uses executable ACM/math fixtures, independent hidden tests, "
+        "and deterministic scripted model responses.",
         "",
-        "| Strategy | Success | Mean model calls | Mean test calls | Mean reuses | "
-        "Mean candidates | Mean tokens |",
-        "|---|---:|---:|---:|---:|---:|---:|",
+        "| Strategy | Visible | Hidden | Mean model calls | Mean visible tests | "
+        "Mean reuses | Mean candidates | Mean tokens |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     lines.extend(
         f"| `{summary.strategy}` | {summary.success_count}/{summary.run_count} "
-        f"({summary.success_rate:.0%}) | {summary.mean_model_calls:.1f} | "
+        f"({summary.success_rate:.0%}) | "
+        f"{summary.hidden_success_count}/{summary.hidden_run_count} "
+        f"({_format_rate(summary.hidden_success_rate)}) | "
+        f"{summary.mean_model_calls:.1f} | "
         f"{summary.mean_test_calls:.1f} | {summary.mean_test_reuses:.1f} | "
         f"{summary.mean_candidate_proposals:.1f} | {summary.mean_total_tokens:.0f} |"
         for summary in report.summaries
@@ -1139,12 +1485,15 @@ def render_agent_evaluation_markdown(report: AgentEvalReport) -> str:
             "",
             "## Run ledger",
             "",
-            "| Fixture | Strategy | Status | Tests | Best candidate | Error |",
-            "|---|---|---|---:|---|---|",
+            "| Fixture | Strategy | Status | Visible tests | Hidden | Best candidate | "
+            "Error |",
+            "|---|---|---|---:|---:|---|---|",
         )
     )
     lines.extend(
         f"| `{run.fixture_id}` | `{run.strategy}` | {run.status} | {run.test_calls} | "
+        f"{_hidden_label(run.hidden_success)} "
+        "| "
         f"{run.best_candidate_id or 'none'} | {run.error or ''} |"
         for run in report.runs
     )
@@ -1158,8 +1507,10 @@ __all__ = [
     "AgentEvalReport",
     "AgentEvalRun",
     "AgentEvalSummary",
+    "AgentModelFactory",
     "AgentStrategy",
     "build_algorithm_fixtures",
+    "build_openai_model_factory",
     "render_agent_evaluation_console",
     "render_agent_evaluation_markdown",
     "run_agent_evaluation",

@@ -10,9 +10,12 @@
 - 安全边界：测试和 apply/rollback 都是显式操作，不能因为模型说成功就写盘。
 
 当前状态是 v0.8。已经实现单 Agent 运行时、上下文选择、分支搜索、可恢复的
-proposal/test session、顺序的 planner / solver / reviewer 编排，以及固定 ACM/数学
-题目的代码 Agent 策略评测。并行工作区、PatchTree/MCTS 和真实模型统计评测仍在后续
-计划中。
+proposal/test session、顺序的 planner / solver / reviewer 编排，以及带独立隐藏测试的
+固定 ACM/数学题代码 Agent 策略评测。评测也可以接入 OpenAI-compatible 模型做探索性
+运行。现在三个角色还会把各自历史中的 assistant 摘要和当前请求交给同一个
+ContextCompiler，持久化 ContextReceipt、消息哈希、版本化观察记忆指纹和 workspace
+generation，因此 checkpoint 里能审计“本轮到底给了角色什么上下文”。并行工作区、
+PatchTree/MCTS 和统计严谨的真实模型评测仍在后续计划中。
 
 ## 为什么适合面试 Agent 开发岗
 
@@ -22,7 +25,9 @@ proposal/test session、顺序的 planner / solver / reviewer 编排，以及固
 2. 上下文工程：协议原子性、token 估算、freshness、版本化观察记忆和选择收据；
 3. 代码生成 Agent：模型只能输出完整快照，必须经过路径校验和可执行测试；
 4. 多 Agent 协作：三个角色使用独立模型指纹，但共享 token、候选和测试预算；
-5. 评测边界：reviewer 不能绕过可见测试，脚本 conformance 与模型能力明确分开。
+5. 角色上下文与记忆：每个角色的历史摘要独立编译，receipt 记录选择块、消息哈希、
+   memory fingerprint 和 workspace generation；
+6. 评测边界：reviewer 不能绕过可见测试，脚本 conformance 与模型能力明确分开。
 
 这些设计让演示可以回答“状态是什么、失败如何恢复、指标如何计算、谁有权
 接受结果”，而不是只展示一段角色扮演对话。
@@ -59,8 +64,21 @@ python -m contextopt agent-eval \
 
 默认包含 `two-sum`（ACM 算法）和 `extended-gcd`（数论/数学）两个可执行 fixture，
 比较 `single_pass`、`best_of_n` 与 `orchestrated`。每个 fixture 都有完整根快照、
-故意失败的候选、正确候选和可见测试；报告会把成功率、模型/角色调用、候选数、
-实际测试进程、缓存复用和 token 用量放在同一张表中。
+故意失败的候选、正确候选、可见测试和不进入模型快照的独立隐藏 grader；报告会分开
+记录 visible success、hidden success、模型/角色调用、候选数、实际测试进程、缓存复用
+和 token 用量。
+
+如果要接入 OpenAI-compatible 模型，可使用：
+
+~~~text
+python -m contextopt agent-eval \
+  --model <model-name> --base-url <endpoint> \
+  --api-key-env CONTEXTOPT_API_KEY --repetitions 3 \
+  --output agent-eval-real.json --markdown agent-eval-real.md
+~~~
+
+真实模型路径会记录 provider token，但仍是固定小样本的探索性评测，不能直接当成统计
+严谨的模型能力结论。
 
 ## 评测指标
 
@@ -71,13 +89,15 @@ python -m contextopt agent-eval \
 - 每轮分支的 visible-test 通过情况、去重、剪枝和 best branch；
 - total_tokens、checkpoint 事件链和恢复后的状态一致性；
 - oracle gate：只有 reviewer accept 且候选可见测试通过才会 accepted。
-- 策略评测的 `success_rate`、`mean_model_calls`、`mean_test_calls`、
-  `mean_candidate_proposals` 和 `mean_total_tokens`。
+- 策略评测的 visible/hidden `success_rate`、`mean_model_calls`、`mean_test_calls`、
+  `mean_candidate_proposals`、`mean_hidden_test_calls` 和 `mean_total_tokens`。
+- 编排角色的 ContextReceipt：`policy`、选择/淘汰 block、`messages_sha256`、
+  `memory_fingerprint` 和 `workspace_generation`，用于解释长程上下文是否真的被使用。
 
 脚本模型只能证明协议、预算、持久化、恢复和策略控制流正确，不能证明真实模型的
-编码能力。`agent-eval` 的成功率只是固定脚本在可见测试上的通过率，不代表隐藏测试、
-泛化能力、延迟或生产安全。真实模型比较必须固定模型版本、提示词、仓库快照、工具
-和预算，并加入独立隐藏测试。
+编码能力。`agent-eval` 会在可见测试通过后运行独立隐藏 grader，但固定脚本通过仍不
+代表泛化能力、延迟或生产安全。真实模型比较必须固定模型版本、提示词、仓库快照、
+工具和预算，并保留多次运行的完整 ledger。
 
 ## 项目文档
 
@@ -87,6 +107,7 @@ python -m contextopt agent-eval \
 - PR 变更说明约定：[docs/pr/README.md](docs/pr/README.md)
 - PR #1 中文回顾：[docs/pr/0001-contextopt-evolution.zh-CN.md](docs/pr/0001-contextopt-evolution.zh-CN.md)
 - v0.8 中文变更说明：[docs/pr/0001-v0.8-evaluation-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-addendum.zh-CN.md)
+- v0.8 角色上下文补充：[docs/pr/0001-v0.8-context-memory-addendum.zh-CN.md](docs/pr/0001-v0.8-context-memory-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、
 指标名称是权威定义。
