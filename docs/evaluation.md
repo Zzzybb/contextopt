@@ -104,6 +104,38 @@ the authoritative event stream can be fully replayed when that cache is deleted 
 Turn, tool, and token budgets remain cumulative across sessions. Wall timeout is measured
 per active `run` or `resume` session, so downtime is intentionally excluded.
 
+## Level 2c: context routing/compiler conformance — implemented
+
+The v0.3 runner has a live `ContextCompiler` seam before each `ModelRequest`. A deterministic,
+model-free evaluation compares `recent`, `topk`, `density`, and `submodular` on the same
+three long coding traces at fixed 512- and 1,024-estimated-token budgets. The traces contain
+protocol-atomic assistant/tool exchanges, unrelated history, and evaluation-only exact
+evidence probes.
+
+Metrics are kept separate:
+
+- exact evidence-probe recall;
+- assistant/tool protocol validity;
+- estimated-token budget compliance and overage;
+- source-to-compiled compression ratio;
+- canonical messages-plus-receipt determinism across repeated compilations.
+
+At 1,024 estimated tokens, the current fixed fixtures retain a mean 0.222 of probes under
+the `recent` baseline versus 0.778 under `submodular`. All four policies are protocol-valid,
+budget-compliant, and byte-deterministic on these cases. Those numbers are regression
+observations for transparent fixtures, not confidence intervals or evidence of model task
+success. At 512 estimated tokens all policies retain zero labelled probes, which is also
+reported rather than hidden by a composite score.
+
+No model is called, no code is generated, and no repository test outcome is scored. The
+token estimator is stable and local, not a provider tokenizer. Exact probe retention does
+not show that a model would notice or use the evidence, while compression says only how
+much context was removed. The `full` policy is recorded as unsupported when the source
+cannot fit the fixed budget instead of receiving a fabricated quality score.
+
+See [Context routing/compiler conformance](context-routing-eval.md) for metric definitions,
+the API, and reproduction command.
+
 ## Level 3: controlled real-model coding tasks — planned
 
 Use the same model snapshot, system prompt, tools, repository commit, maximum turns, token
@@ -125,8 +157,9 @@ claims require more runs based on observed variance. Report paired differences a
 confidence intervals, not only aggregate point estimates. Preserve failed trajectories and
 exact model/version metadata.
 
-Before comparing context policies, the runtime must actually compile their outputs into
-otherwise identical model requests. That integration is not present in v0.2b.
+Level 2c verifies that the runtime compiles policy outputs into otherwise identical bounded
+requests. Level 3 remains necessary because compiler conformance and labelled retention do
+not establish real-model coding performance.
 
 ## Level 4: extended long-horizon robustness — planned
 
@@ -181,5 +214,6 @@ Every reported experiment should preserve:
 
 The two v0.1 optimizer reports can be regenerated with commands in the README. Their
 objective and selection metrics are deterministic; timing is local diagnostic data. The
-v0.2a Runtime Conformance and v0.2b Recovery Conformance are deterministic except for
-timestamps, active-session elapsed durations, temporary paths, and subprocess timing.
+v0.2a Runtime Conformance, v0.2b Recovery Conformance, and v0.3 Context Routing
+Conformance fixtures are deterministic except for timestamps, active-session elapsed
+durations, temporary paths, and subprocess timing where those runtime fields are present.

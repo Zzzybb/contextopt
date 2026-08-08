@@ -12,6 +12,12 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Literal, cast
 
+from contextopt.runtime.context import (
+    ContextCompiler,
+    ContextCompilerConfig,
+    ContextReceipt,
+    compile_runtime_context,
+)
 from contextopt.runtime.protocol import (
     AgentMessage,
     ModelResponse,
@@ -147,6 +153,8 @@ class RunConfigSnapshot:
     tool_fingerprint: str
     limits: RunLimits
     permissions: RunPermissions
+    context_config: dict[str, Any] | None
+    context_fingerprint: str | None
     config_sha256: str
 
     @classmethod
@@ -159,6 +167,7 @@ class RunConfigSnapshot:
         tool_fingerprint: str,
         limits: RunLimits,
         permissions: RunPermissions,
+        context_config: Mapping[str, Any] | None = None,
     ) -> RunConfigSnapshot:
         base = {
             "task": task,
@@ -168,6 +177,13 @@ class RunConfigSnapshot:
             "limits": limits.to_dict(),
             "permissions": permissions.to_dict(),
         }
+        if context_config is not None:
+            normalized_context = dict(context_config)
+            # Fail here rather than after a run has started if a caller supplied a
+            # configuration that cannot be represented in the durable JSON log.
+            context_fingerprint = canonical_sha256(normalized_context)
+            base["context_config"] = normalized_context
+            base["context_fingerprint"] = context_fingerprint
         return cls.from_dict({**base, "config_sha256": canonical_sha256(base)})
 
     @classmethod
@@ -185,8 +201,15 @@ class RunConfigSnapshot:
                     "config_sha256",
                 }
             ),
+            optional=frozenset({"context_config", "context_fingerprint"}),
             label="run config",
         )
+        has_context_config = "context_config" in value
+        has_context_fingerprint = "context_fingerprint" in value
+        if has_context_config != has_context_fingerprint:
+            raise RecoveryError(
+                "context_config and context_fingerprint must be stored together"
+            )
         messages = tuple(
             _protocol(
                 AgentMessage.from_dict,
@@ -209,6 +232,30 @@ class RunConfigSnapshot:
             _object(value["permissions"], "run config permissions"),
             "run config permissions",
         )
+        context_config = (
+            dict(_object(value["context_config"], "run context config"))
+            if has_context_config
+            else None
+        )
+        if context_config is not None:
+            try:
+                parsed_context_config = ContextCompilerConfig.from_dict(context_config)
+            except ValueError as exc:
+                raise RecoveryError(f"invalid run context config: {exc}") from exc
+            if parsed_context_config.to_dict() != context_config:
+                raise RecoveryError("run context config must use its canonical form")
+        context_fingerprint = (
+            _sha256(value["context_fingerprint"], "run context_fingerprint")
+            if has_context_fingerprint
+            else None
+        )
+        if (
+            context_config is not None
+            and canonical_sha256(context_config) != context_fingerprint
+        ):
+            raise RecoveryError(
+                "context_fingerprint does not match normalized context_config"
+            )
         snapshot = cls(
             task=_string(value["task"], "run config task", allow_empty=False),
             initial_messages=messages,
@@ -220,6 +267,8 @@ class RunConfigSnapshot:
             ),
             limits=cast(RunLimits, limits),
             permissions=cast(RunPermissions, permissions),
+            context_config=context_config,
+            context_fingerprint=context_fingerprint,
             config_sha256=_sha256(value["config_sha256"], "run config config_sha256"),
         )
         normalized = snapshot.to_dict()
@@ -229,7 +278,7 @@ class RunConfigSnapshot:
         return snapshot
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        value: dict[str, Any] = {
             "task": self.task,
             "initial_messages": [
                 message.to_dict() for message in self.initial_messages
@@ -240,6 +289,11 @@ class RunConfigSnapshot:
             "permissions": self.permissions.to_dict(),
             "config_sha256": self.config_sha256,
         }
+        if self.context_config is not None:
+            assert self.context_fingerprint is not None
+            value["context_config"] = dict(self.context_config)
+            value["context_fingerprint"] = self.context_fingerprint
+        return value
 
 
 @dataclass(frozen=True, slots=True)
@@ -909,6 +963,7 @@ def reduce_event(
                     "message_count",
                     "message_roles",
                     "max_output_tokens",
+                    "context",
                 }
             ),
             label="model.requested data",
@@ -916,16 +971,119 @@ def reduce_event(
         turn = _integer(data["turn"], "model request turn", minimum=1)
         if turn != state.turn + 1:
             raise RecoveryError("model request turn is not the next turn")
-        if "message_count" in data and _integer(
-            data["message_count"], "model request message_count"
-        ) != len(state.messages):
-            raise RecoveryError("model request message_count does not match projection")
-        if "message_roles" in data:
-            roles = _array(data["message_roles"], "model request message_roles")
-            if roles != [message.role for message in state.messages]:
+        message_count = (
+            _integer(data["message_count"], "model request message_count")
+            if "message_count" in data
+            else None
+        )
+        roles = (
+            _array(data["message_roles"], "model request message_roles")
+            if "message_roles" in data
+            else None
+        )
+        raw_context = data.get("context")
+        if state.config.context_config is None:
+            if raw_context is not None:
+                raise RecoveryError(
+                    "legacy full-history run cannot contain a context receipt"
+                )
+            if message_count is not None and message_count != len(state.messages):
+                raise RecoveryError(
+                    "model request message_count does not match projection"
+                )
+            if roles is not None and roles != [
+                message.role for message in state.messages
+            ]:
                 raise RecoveryError(
                     "model request message_roles do not match projection"
                 )
+        else:
+            if raw_context is None:
+                raise RecoveryError(
+                    "configured context compiler requires a per-turn receipt"
+                )
+            receipt = cast(
+                ContextReceipt,
+                _protocol(
+                    ContextReceipt.from_dict,
+                    _object(raw_context, "model request context"),
+                    "model request context",
+                ),
+            )
+            if receipt.config_fingerprint != state.config.context_fingerprint:
+                raise RecoveryError(
+                    "context receipt fingerprint does not match run config"
+                )
+            try:
+                expected_context = compile_runtime_context(
+                    ContextCompiler(
+                        ContextCompilerConfig.from_dict(state.config.context_config)
+                    ),
+                    state.messages,
+                    task=state.config.task,
+                )
+            except (TypeError, ValueError) as exc:
+                raise RecoveryError(
+                    f"failed to reproduce model request context: {exc}"
+                ) from exc
+            if expected_context.receipt != receipt:
+                raise RecoveryError(
+                    "context receipt was not derived from the projected transcript"
+                )
+            if receipt.policy != state.config.context_config.get("policy"):
+                raise RecoveryError("context receipt policy does not match run config")
+            if receipt.schema_version != state.config.context_config.get(
+                "compiler_version"
+            ):
+                raise RecoveryError(
+                    "context receipt schema does not match compiler version"
+                )
+            if receipt.budget_tokens != state.config.context_config.get(
+                "budget_tokens"
+            ):
+                raise RecoveryError("context receipt budget does not match run config")
+            memory_policy = state.config.context_config.get("memory_policy")
+            has_memory_identity = (
+                receipt.memory_fingerprint is not None
+                and receipt.workspace_generation is not None
+            )
+            if memory_policy == "versioned-v1" and not has_memory_identity:
+                raise RecoveryError(
+                    "versioned context receipt is missing its memory identity"
+                )
+            if memory_policy == "none" and (
+                receipt.memory_fingerprint is not None
+                or receipt.workspace_generation is not None
+            ):
+                raise RecoveryError(
+                    "memory-disabled context receipt contains a memory identity"
+                )
+            if message_count is None or message_count != receipt.message_count:
+                raise RecoveryError(
+                    "model request message_count does not match context receipt"
+                )
+            if roles is None or roles != list(receipt.message_roles):
+                raise RecoveryError(
+                    "model request message_roles do not match context receipt"
+                )
+            selected_blocks = [block for block in receipt.blocks if block.selected]
+            selected_roles = [role for block in selected_blocks for role in block.roles]
+            if selected_roles != list(receipt.message_roles):
+                raise RecoveryError(
+                    "context receipt selected blocks do not match message roles"
+                )
+            if receipt.message_count != len(selected_roles):
+                raise RecoveryError(
+                    "context receipt message_count does not match selected blocks"
+                )
+            source_roles = [role for block in receipt.blocks for role in block.roles]
+            if source_roles != [message.role for message in state.messages]:
+                raise RecoveryError(
+                    "context receipt blocks do not cover the projected transcript"
+                )
+            if receipt.estimated_selected_tokens > receipt.budget_tokens:
+                raise RecoveryError("context receipt exceeds its token budget")
+            _sha256(receipt.messages_sha256, "context receipt messages_sha256")
         if "max_output_tokens" in data:
             _integer(
                 data["max_output_tokens"],
@@ -1230,7 +1388,14 @@ def reduce_event(
         data = _fields(
             event.data,
             required=frozenset({"config_sha256"}),
-            optional=frozenset({"model_fingerprint", "tool_fingerprint", "reason"}),
+            optional=frozenset(
+                {
+                    "model_fingerprint",
+                    "tool_fingerprint",
+                    "context_fingerprint",
+                    "reason",
+                }
+            ),
             label="run.resumed data",
         )
         if state.phase not in {"paused", "interrupted"}:
@@ -1252,6 +1417,20 @@ def reduce_event(
             != state.config.tool_fingerprint
         ):
             raise RecoveryError("resume tool fingerprint changed")
+        if "context_fingerprint" in data:
+            if state.config.context_fingerprint is None:
+                raise RecoveryError(
+                    "legacy run cannot resume with a context fingerprint"
+                )
+            if (
+                _sha256(data["context_fingerprint"], "resume context_fingerprint")
+                != state.config.context_fingerprint
+            ):
+                raise RecoveryError("resume context fingerprint changed")
+        elif state.config.context_fingerprint is not None:
+            raise RecoveryError(
+                "configured context run requires a resume context fingerprint"
+            )
         if "reason" in data:
             _string(data["reason"], "resume reason")
         return _advance(state, event, phase="running")

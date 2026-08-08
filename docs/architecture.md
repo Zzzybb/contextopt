@@ -4,7 +4,7 @@
 
 ForgeAgent is the long-horizon coding-agent runtime being built in this repository.
 ContextOpt is both the current Python package/CLI and the context-selection subsystem that
-will be integrated into that runtime.
+is integrated at that runtime's model-request boundary.
 
 The architecture separates four concepts:
 
@@ -17,13 +17,13 @@ The architecture separates four concepts:
 Messages alone are not authoritative state, an event log is not automatically usable
 memory, and persistence without a strict transition model does not provide safe resume.
 
-## Current runtime — v0.2b
+## Current runtime — v0.3
 
 ```text
 Task
   │
   v
-AgentRunner ──────────────> EventLog (schema-2 hash chain)
+AgentRunner ──────────────> EventLog (schema-2 hash chain + context receipts)
   │        ^                         │
   │        │                         v
   │        │              strict reducer ──> RunProjection
@@ -31,6 +31,9 @@ AgentRunner ──────────────> EventLog (schema-2 hash 
   │        │                            atomic checkpoint cache
   │        │ normalized ModelResponse / ToolOutcome
   v        │
+ContextCompiler ──────────> bounded, protocol-atomic messages
+  │ compiled ModelRequest
+  v
 ModelClient
   │ structured ToolCall(s)
   v
@@ -43,7 +46,9 @@ WorkspaceTools ───────────> bounded workspace + registered
 
 Owns the single-agent turn loop. It constructs provider-neutral requests, accounts for
 reported token usage, enforces limits before later actions, executes tool calls in order,
-and writes one terminal event. A model response without tool calls ends the run.
+and writes one terminal event. When configured, it compiles the reconstructed transcript
+through `ContextCompiler` before each model request and persists the selection receipt in
+`model.requested`. A model response without tool calls ends the run.
 
 Repeated call ids with identical arguments reuse the reconstructed completed outcome;
 reusing an id with different arguments is a contract error. Turn, tool-call, and token
@@ -52,7 +57,7 @@ session, so stopped process time is not charged.
 
 ### ModelClient
 
-The runtime depends on a narrow async protocol rather than one provider SDK. v0.2b has:
+The runtime depends on a narrow async protocol rather than one provider SDK. v0.3 has:
 
 - `ScriptedModel`, used for deterministic observation-aware offline conformance runs;
 - `OpenAICompatibleModel`, a minimal non-streaming Chat Completions adapter.
@@ -129,13 +134,28 @@ continues.
 
 See [Runtime](runtime.md) for the executable contract and offline demonstration.
 
-## Current context engine — v0.1
+## Current context engine — v0.3
 
 The context layer remains a deterministic pure function:
 
 ```text
 SelectionProblem + ContextPolicy -> ContextFrame + SelectionReceipt
 ```
+
+The v0.3 runtime adds a live compiler around that selection core:
+
+```text
+projected AgentMessage history + query + fixed estimated-token budget
+    -> protocol-atomic blocks
+    -> ContextPolicy
+    -> bounded AgentMessage history + ContextReceipt
+```
+
+Assistant tool calls and their tool results form one indivisible block, preventing orphaned
+tool results or incomplete tool-call groups. Tool output can be deterministically compacted
+before selection. The receipt records original/candidate/selected estimates, selected and
+evicted block ids, compaction and staleness, policy decisions, message roles, and the exact
+compiled-request hash. These are stable local estimates, not provider token counts.
 
 ### ContextItem
 
@@ -163,10 +183,9 @@ Generates paired cases from fixed seeds, runs every policy on the same case, val
 every result, and preserves raw per-run metrics. It evaluates solver and synthetic context
 properties, not Agent coding success.
 
-## Integration seam
+## Live compiler seam — v0.3
 
-The runtime currently sends its accumulated messages directly to `ModelClient`. The next
-context milestone introduces a compiler at that boundary:
+The runner now invokes the compiler at the `ModelRequest` boundary:
 
 ```text
 Run/Event Log
@@ -192,13 +211,21 @@ Candidate Builder <──── Repository Graph / Memory Store
        Tool/Test Outcome Event
 ```
 
-Every compiled request should persist both its exact context and selection receipt. This
-will permit replay and paired context-policy comparisons from the same authoritative state.
-None of that wiring is claimed as implemented in v0.2b.
+The compiler configuration and fingerprint are part of the durable run configuration. Each
+compiled `model.requested` event carries a receipt tied to its selected message roles,
+estimated budget, and request hash. Resume rejects a changed compiler configuration and
+reconstructs the same request from authoritative events before continuing. Runs without a
+configured compiler retain the legacy full-history path.
+
+Level 2c performs paired, fixed-budget, model-free conformance checks on this live seam; see
+[Context routing/compiler conformance](context-routing-eval.md). It measures evidence
+retention and compiler invariants, not whether a model solves a coding task.
 
 ## Claim boundaries
 
 - Optimizer objective quality is not Agent task success.
+- Labelled evidence retention is not evidence use, reasoning quality, or coding success.
+- Compiler token estimates are deterministic accounting units, not provider token counts.
 - Runtime conformance is not model reasoning ability.
 - A normal model stop is not proof that code is correct.
 - Visible test success is not a substitute for an independent hidden oracle.

@@ -9,6 +9,12 @@ from pathlib import Path
 from time import monotonic
 from typing import Any, Literal, TypeVar
 
+from contextopt.runtime.context import (
+    CompiledContext,
+    ContextBudgetError,
+    ContextCompiler,
+    compile_runtime_context,
+)
 from contextopt.runtime.errors import ModelError, RuntimeContractError
 from contextopt.runtime.events import EventLog, read_events
 from contextopt.runtime.identity import stable_hash
@@ -61,6 +67,7 @@ class AgentRunner:
         limits: RunLimits | None = None,
         system_prompt: str = DEFAULT_CODING_SYSTEM_PROMPT,
         checkpoint_path: str | Path | None = None,
+        context_compiler: ContextCompiler | None = None,
     ) -> None:
         self.model = model
         self.tools = tools
@@ -69,6 +76,7 @@ class AgentRunner:
         if self.limits != tools.limits:
             raise ValueError("runner limits must match workspace tool limits")
         self.system_prompt = system_prompt
+        self.context_compiler = context_compiler
         self.checkpoint_path = (
             Path(checkpoint_path)
             if checkpoint_path is not None
@@ -138,8 +146,18 @@ class AgentRunner:
         self.event_log.close()
         return self._result(state, "paused", reason)
 
-    @staticmethod
-    def _request(state: RunProjection, tools: WorkspaceTools) -> ModelRequest:
+    def _compile_context(self, state: RunProjection) -> CompiledContext | None:
+        if self.context_compiler is None:
+            return None
+        return compile_runtime_context(
+            self.context_compiler,
+            state.messages,
+            task=state.config.task,
+        )
+
+    def _request(
+        self, state: RunProjection, tools: WorkspaceTools
+    ) -> tuple[ModelRequest, CompiledContext | None]:
         limits = state.config.limits
         remaining_tokens = (
             limits.max_output_tokens_per_call
@@ -149,13 +167,15 @@ class AgentRunner:
                 limits.max_total_tokens - state.usage.total_tokens,
             )
         )
-        return ModelRequest(
+        compiled = self._compile_context(state)
+        request = ModelRequest(
             run_id=state.run_id,
             turn=state.turn + 1,
-            messages=state.messages,
+            messages=(state.messages if compiled is None else compiled.messages),
             tools=tools.definitions,
             max_output_tokens=remaining_tokens,
         )
+        return request, compiled
 
     @staticmethod
     def _request_sha256(request: ModelRequest) -> str:
@@ -251,19 +271,22 @@ class AgentRunner:
     async def _call_model(
         self, state: RunProjection, session_started: float
     ) -> RunProjection:
-        request = self._request(state, self.tools)
+        request, compiled = self._request(state, self.tools)
         request_sha256 = self._request_sha256(request)
         if state.pending_model is None:
+            request_data: dict[str, object] = {
+                "turn": request.turn,
+                "message_count": len(request.messages),
+                "message_roles": [message.role for message in request.messages],
+                "request_sha256": request_sha256,
+                "max_output_tokens": request.max_output_tokens,
+            }
+            if compiled is not None:
+                request_data["context"] = compiled.receipt.to_dict()
             state = self._append(
                 state,
                 "model.requested",
-                {
-                    "turn": request.turn,
-                    "message_count": len(request.messages),
-                    "message_roles": [message.role for message in request.messages],
-                    "request_sha256": request_sha256,
-                    "max_output_tokens": request.max_output_tokens,
-                },
+                request_data,
             )
         else:
             if state.pending_model.turn != request.turn:
@@ -558,6 +581,11 @@ class AgentRunner:
             tool_fingerprint=self.tools.configuration_fingerprint,
             limits=self.limits,
             permissions=self.tools.permissions,
+            context_config=(
+                None
+                if self.context_compiler is None
+                else self.context_compiler.config.to_dict()
+            ),
         )
         state = self._append(
             None,
@@ -587,6 +615,15 @@ class AgentRunner:
             raise ValueError("run limits do not match the original run")
         if self.tools.permissions != state.config.permissions:
             raise ValueError("run permissions do not match the original run")
+        context_fingerprint = (
+            None
+            if self.context_compiler is None
+            else self.context_compiler.configuration_fingerprint
+        )
+        if context_fingerprint != state.config.context_fingerprint:
+            raise ValueError(
+                "context compiler configuration does not match the original run"
+            )
 
         # Restore adapter-local cursors before writing any resume marker so a
         # rejected adapter cannot leave the durable run in a changed phase.
@@ -600,15 +637,20 @@ class AgentRunner:
                 {"status": "interrupted", "reason": "unclean_process_exit"},
             )
         if state.phase in {"paused", "interrupted"}:
+            resume_data: dict[str, object] = {
+                "config_sha256": state.config.config_sha256,
+                "model_fingerprint": self.model.configuration_fingerprint,
+                "tool_fingerprint": self.tools.configuration_fingerprint,
+                "reason": "operator_resume",
+            }
+            if self.context_compiler is not None:
+                resume_data["context_fingerprint"] = (
+                    self.context_compiler.configuration_fingerprint
+                )
             state = self._append(
                 state,
                 "run.resumed",
-                {
-                    "config_sha256": state.config.config_sha256,
-                    "model_fingerprint": self.model.configuration_fingerprint,
-                    "tool_fingerprint": self.tools.configuration_fingerprint,
-                    "reason": "operator_resume",
-                },
+                resume_data,
             )
         return await self._run_guarded(
             state,
@@ -658,6 +700,19 @@ class AgentRunner:
                 current,
                 "failed",
                 f"model_error:{exc.code}",
+                session_started,
+            )
+        except ContextBudgetError as exc:
+            current = self._projection()
+            current = self._append(
+                current,
+                "runtime.failed",
+                {"error_type": type(exc).__name__, "message": str(exc)},
+            )
+            return self._finish(
+                current,
+                "stopped",
+                "context_budget_exceeded",
                 session_started,
             )
         except (

@@ -113,7 +113,7 @@ class RuntimeResumeTests(unittest.IsolatedAsyncioTestCase):
             event_path = root / "cancel-events.jsonl"
             limits = _limits(command_timeout_seconds=5.0)
             permissions = RunPermissions(allow_command=True)
-            script = [
+            script: list[dict[str, Any]] = [
                 {
                     "response": {
                         "tool_calls": [

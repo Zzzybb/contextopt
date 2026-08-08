@@ -19,6 +19,12 @@ from contextopt.benchmark import (
     render_markdown,
     run_benchmark,
 )
+from contextopt.evaluation import (
+    ContextRoutingEvalConfig,
+    render_context_routing_console,
+    render_context_routing_markdown,
+    run_context_routing_evaluation,
+)
 from contextopt.models import ContextItem, ObjectiveWeights, SelectionProblem
 from contextopt.policies import POLICIES, create_policy
 from contextopt.runtime import (
@@ -33,6 +39,7 @@ from contextopt.runtime import (
     read_events,
     render_trace,
 )
+from contextopt.runtime.context import ContextCompiler, ContextCompilerConfig
 from contextopt.runtime.recovery import replay_events_with_checkpoint
 
 
@@ -84,6 +91,28 @@ def _pack(args: argparse.Namespace) -> int:
     return 0
 
 
+def _context_eval(args: argparse.Namespace) -> int:
+    policies = tuple(name.strip() for name in args.policies.split(",") if name.strip())
+    try:
+        budgets = tuple(
+            int(value.strip()) for value in args.budgets.split(",") if value.strip()
+        )
+    except ValueError as exc:
+        raise ValueError("--budgets must be comma-separated integers") from exc
+    config = ContextRoutingEvalConfig(
+        policies=policies,
+        budgets=budgets,
+        repetitions=args.repetitions,
+        recent_blocks=args.recent_blocks,
+        max_tool_output_tokens=args.max_tool_output_tokens,
+    )
+    report = run_context_routing_evaluation(config)
+    print(render_context_routing_console(report))
+    _write(args.output, json.dumps(report, indent=2, sort_keys=True) + "\n")
+    _write(args.markdown, render_context_routing_markdown(report))
+    return 0
+
+
 def _split_command(command: str) -> tuple[str, ...]:
     parts = shlex.split(command, posix=os.name != "nt")
     if not parts:
@@ -121,6 +150,18 @@ def _result_exit_code(status: str) -> int:
 
 def _default_checkpoint_path(event_path: Path) -> Path:
     return event_path.with_name(event_path.name + ".checkpoint.json")
+
+
+def _context_compiler_from_args(args: argparse.Namespace) -> ContextCompiler:
+    return ContextCompiler(
+        ContextCompilerConfig(
+            policy=args.context_policy,
+            budget_tokens=args.context_budget,
+            recent_blocks=args.context_recent_blocks,
+            max_tool_output_tokens=args.context_max_tool_output_tokens,
+            memory_policy=args.context_memory,
+        )
+    )
 
 
 def _run_agent(args: argparse.Namespace) -> int:
@@ -163,6 +204,7 @@ def _run_agent(args: argparse.Namespace) -> int:
             tools=tools,
             event_log=event_log,
             limits=limits,
+            context_compiler=_context_compiler_from_args(args),
         )
         result = asyncio.run(runner.run(args.task))
     finally:
@@ -206,6 +248,13 @@ def _resume_agent(args: argparse.Namespace) -> int:
     )
     model = _build_model(args)
     event_log = EventLog(event_path, state.run_id, repair_truncated=True)
+    context_compiler = (
+        None
+        if state.config.context_config is None
+        else ContextCompiler(
+            ContextCompilerConfig.from_dict(state.config.context_config)
+        )
+    )
     try:
         runner = AgentRunner(
             model=model,
@@ -213,6 +262,7 @@ def _resume_agent(args: argparse.Namespace) -> int:
             event_log=event_log,
             limits=state.config.limits,
             checkpoint_path=checkpoint_path,
+            context_compiler=context_compiler,
         )
         run_result = asyncio.run(
             runner.resume(pending_tool_resolution=args.pending_tool_resolution)
@@ -268,6 +318,20 @@ def _status(args: argparse.Namespace) -> int:
             "terminal": (None if state.terminal is None else state.terminal.to_dict()),
             "through_seq": state.through_seq,
             "through_event_sha256": state.through_event_sha256,
+            "context": {
+                "config": state.config.context_config,
+                "fingerprint": state.config.context_fingerprint,
+                "last_receipt": next(
+                    (
+                        event["data"].get("context")
+                        for event in reversed(events)
+                        if event.get("type") == "model.requested"
+                        and isinstance(event.get("data"), dict)
+                        and event["data"].get("context") is not None
+                    ),
+                    None,
+                ),
+            },
         }
     print(json.dumps(payload, indent=2, sort_keys=True))
     return 0
@@ -327,6 +391,19 @@ def build_parser() -> argparse.ArgumentParser:
     pack.add_argument("--output", help="write the selection receipt as JSON")
     pack.set_defaults(handler=_pack)
 
+    context_eval = subparsers.add_parser(
+        "context-eval",
+        help="compare live context policies on fixed, model-free coding traces",
+    )
+    context_eval.add_argument("--policies", default="recent,topk,density,submodular")
+    context_eval.add_argument("--budgets", default="512,1024")
+    context_eval.add_argument("--repetitions", type=int, default=3)
+    context_eval.add_argument("--recent-blocks", type=int, default=2)
+    context_eval.add_argument("--max-tool-output-tokens", type=int, default=96)
+    context_eval.add_argument("--output", help="write the complete JSON report")
+    context_eval.add_argument("--markdown", help="write the summary as Markdown")
+    context_eval.set_defaults(handler=_context_eval)
+
     run = subparsers.add_parser(
         "run", help="run one auditable coding-agent loop in a workspace"
     )
@@ -348,6 +425,36 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--wall-timeout", type=float, default=900.0)
     run.add_argument("--command-timeout", type=float, default=120.0)
     run.add_argument("--max-tool-output-bytes", type=int, default=256 * 1024)
+    run.add_argument(
+        "--context-policy",
+        choices=("full", "recent", "topk", "density", "submodular"),
+        default="submodular",
+        help="live context-routing policy used for every model request",
+    )
+    run.add_argument(
+        "--context-budget",
+        type=int,
+        default=16_000,
+        help="estimated input-token budget for compiled message history",
+    )
+    run.add_argument(
+        "--context-recent-blocks",
+        type=int,
+        default=2,
+        help="newest protocol blocks retained as mandatory context",
+    )
+    run.add_argument(
+        "--context-max-tool-output-tokens",
+        type=int,
+        default=2_048,
+        help="estimated-token cap per tool observation before head/tail compaction",
+    )
+    run.add_argument(
+        "--context-memory",
+        choices=("none", "versioned-v1"),
+        default="versioned-v1",
+        help="deterministic evidence-validity signals supplied to context routing",
+    )
     run.set_defaults(handler=_run_agent)
 
     resume = subparsers.add_parser(

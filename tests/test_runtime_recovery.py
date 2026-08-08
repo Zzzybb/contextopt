@@ -7,6 +7,11 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from contextopt.runtime.context import (
+    ContextCompiler,
+    ContextCompilerConfig,
+    compile_runtime_context,
+)
 from contextopt.runtime.protocol import (
     AgentMessage,
     RunLimits,
@@ -187,6 +192,106 @@ def _terminal(
 
 
 class RecoveryProjectionTests(unittest.TestCase):
+    def test_context_receipt_must_be_reproduced_from_projected_messages(self) -> None:
+        compiler_config = ContextCompilerConfig(
+            policy="submodular",
+            budget_tokens=4_096,
+            recent_blocks=1,
+            memory_policy="versioned-v1",
+        )
+        initial_messages = (
+            AgentMessage(role="system", content="Be careful."),
+            AgentMessage(role="user", content="Read note.txt."),
+        )
+        config = RunConfigSnapshot.create(
+            task="Read note.txt.",
+            initial_messages=initial_messages,
+            model_fingerprint=canonical_sha256({"model": "scripted:v2"}),
+            tool_fingerprint=canonical_sha256({"tools": ["read_file"]}),
+            limits=RunLimits(max_turns=4, max_tool_calls=4),
+            permissions=RunPermissions(),
+            context_config=compiler_config.to_dict(),
+        )
+        compiled = compile_runtime_context(
+            ContextCompiler(compiler_config),
+            initial_messages,
+            task=config.task,
+        )
+
+        valid = _Trace("context-receipt-valid")
+        _start(valid, config)
+        valid.append(
+            "model.requested",
+            {
+                "turn": 1,
+                "request_sha256": canonical_sha256({"request": "opaque"}),
+                "message_count": len(compiled.messages),
+                "message_roles": [message.role for message in compiled.messages],
+                "max_output_tokens": 64,
+                "context": compiled.receipt.to_dict(),
+            },
+        )
+        self.assertIsNotNone(replay_events(valid.events).pending_model)
+
+        forged_receipt = compiled.receipt.to_dict()
+        forged_receipt["messages_sha256"] = "f" * 64
+        forged = _Trace("context-receipt-forged")
+        _start(forged, config)
+        forged.append(
+            "model.requested",
+            {
+                "turn": 1,
+                "request_sha256": canonical_sha256({"request": "opaque"}),
+                "message_count": len(compiled.messages),
+                "message_roles": [message.role for message in compiled.messages],
+                "max_output_tokens": 64,
+                "context": forged_receipt,
+            },
+        )
+        with self.assertRaisesRegex(RecoveryError, "not derived"):
+            replay_events(forged.events)
+
+    def test_run_config_persists_context_identity_without_breaking_legacy_hashes(
+        self,
+    ) -> None:
+        legacy = _config()
+        legacy_data = legacy.to_dict()
+        self.assertNotIn("context_config", legacy_data)
+        self.assertNotIn("context_fingerprint", legacy_data)
+        self.assertEqual(RunConfigSnapshot.from_dict(legacy_data), legacy)
+
+        context_config = {
+            "compiler_version": 1,
+            "policy": "submodular",
+            "budget_tokens": 4_096,
+            "recent_blocks": 2,
+            "max_tool_output_tokens": 2_048,
+            "memory_policy": "versioned-v1",
+        }
+        configured = RunConfigSnapshot.create(
+            task=legacy.task,
+            initial_messages=legacy.initial_messages,
+            model_fingerprint=legacy.model_fingerprint,
+            tool_fingerprint=legacy.tool_fingerprint,
+            limits=legacy.limits,
+            permissions=legacy.permissions,
+            context_config=context_config,
+        )
+        configured_data = configured.to_dict()
+
+        self.assertEqual(configured.context_config, context_config)
+        self.assertEqual(
+            configured.context_fingerprint,
+            canonical_sha256(context_config),
+        )
+        self.assertEqual(RunConfigSnapshot.from_dict(configured_data), configured)
+        self.assertNotEqual(configured.config_sha256, legacy.config_sha256)
+
+        tampered = json.loads(json.dumps(configured_data))
+        tampered["context_config"]["budget_tokens"] = 8_192
+        with self.assertRaisesRegex(RecoveryError, "context_fingerprint"):
+            RunConfigSnapshot.from_dict(tampered)
+
     def test_full_replay_reconstructs_messages_usage_cache_and_terminal(self) -> None:
         config = _config()
         trace = _Trace()

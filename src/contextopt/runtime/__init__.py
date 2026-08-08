@@ -1,5 +1,20 @@
 """Auditable runtime primitives for long-running coding agents."""
 
+from contextopt.runtime.context import (
+    CONTEXT_COMPILER_VERSION,
+    MIN_TOOL_OUTPUT_TOKENS,
+    CompiledContext,
+    ContextBlockAnnotation,
+    ContextBlockReceipt,
+    ContextBudgetError,
+    ContextCompiler,
+    ContextCompilerConfig,
+    ContextReceipt,
+    compile_runtime_context,
+    estimate_message_tokens,
+    estimate_messages_tokens,
+    estimate_text_tokens,
+)
 from contextopt.runtime.events import (
     EventLog,
     EventScan,
@@ -8,6 +23,7 @@ from contextopt.runtime.events import (
     render_trace,
     scan_events,
 )
+from contextopt.runtime.memory import EvidenceRecord, MemorySnapshot
 from contextopt.runtime.model import OpenAICompatibleModel, ScriptedModel
 from contextopt.runtime.protocol import (
     AgentMessage,
@@ -33,11 +49,22 @@ from contextopt.runtime.tool_state import ToolExecutionPlan, ToolReconciliation
 from contextopt.runtime.tools import WorkspaceTools
 
 __all__ = [
+    "CONTEXT_COMPILER_VERSION",
+    "MIN_TOOL_OUTPUT_TOKENS",
     "AgentMessage",
     "AgentRunResult",
     "AgentRunner",
+    "CompiledContext",
+    "ContextBlockAnnotation",
+    "ContextBlockReceipt",
+    "ContextBudgetError",
+    "ContextCompiler",
+    "ContextCompilerConfig",
+    "ContextReceipt",
     "EventLog",
     "EventScan",
+    "EvidenceRecord",
+    "MemorySnapshot",
     "ModelClient",
     "ModelRequest",
     "ModelResponse",
@@ -56,6 +83,10 @@ __all__ = [
     "ToolOutcome",
     "ToolReconciliation",
     "WorkspaceTools",
+    "compile_runtime_context",
+    "estimate_message_tokens",
+    "estimate_messages_tokens",
+    "estimate_text_tokens",
     "read_events",
     "render_trace",
     "replay_events",

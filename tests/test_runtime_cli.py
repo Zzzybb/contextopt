@@ -142,12 +142,18 @@ class RuntimeCliTests(unittest.TestCase):
             self.assertEqual(result["usage"]["total_tokens"], 23)
             self.assertEqual(result["event_log"], event_log.as_posix())
             self.assertTrue(event_log.is_file())
+            events = read_events(event_log)
+            context_config = events[0]["data"]["config"]["context_config"]
+            self.assertEqual(context_config["compiler_version"], 1)
+            self.assertEqual(context_config["policy"], "submodular")
+            self.assertEqual(context_config["memory_policy"], "versioned-v1")
 
             trace_code, trace = self._invoke(["trace", str(event_log)])
 
             self.assertEqual(trace_code, 0)
             self.assertIn("0000 run.started status=running", trace)
             self.assertIn("model.responded turn=1 calls=1", trace)
+            self.assertIn("model.requested turn=1 messages=2 policy=submodular", trace)
             self.assertIn(
                 "tool.completed tool=read_file call=read-note ok=True",
                 trace,
@@ -326,6 +332,11 @@ class RuntimeCliTests(unittest.TestCase):
             self.assertEqual(status["terminal"]["status"], "completed")
             self.assertEqual(status["terminal"]["reason"], "model_stopped")
             self.assertEqual(len(status["through_event_sha256"]), 64)
+            self.assertEqual(status["context"]["config"]["policy"], "submodular")
+            self.assertEqual(
+                status["context"]["last_receipt"]["config_fingerprint"],
+                status["context"]["fingerprint"],
+            )
 
             resume_code, resumed = self._invoke_json(["resume", str(event_log)])
 

@@ -1,9 +1,11 @@
 # ForgeAgent runtime
 
-The v0.2b runtime is a bounded, auditable and recoverable single-agent loop inside the
-`contextopt` package. It reconstructs execution state from durable events and can resume a
-non-terminal run against the same validated model/tool configuration. It is not yet a
-long-term memory or multi-agent system.
+The v0.3 runtime is a bounded, auditable and recoverable single-agent loop inside the
+`contextopt` package. It reconstructs execution state from durable events, compiles a
+bounded context for every model call, and can resume a non-terminal run against the same
+validated model, tool, and context configuration. Its observed-memory projection is
+derived from the current transcript; it is not learned cross-run memory or a multi-agent
+system.
 
 ## Current execution contract
 
@@ -11,21 +13,23 @@ long-term memory or multi-agent system.
                           append every boundary
                          ┌──────────────────────> JSONL EventLog
                          │
-Task -> AgentRunner -> ModelClient
-           ^               │
-           │               │ structured ToolCall(s)
-           │               v
-           └──── observation message <──── WorkspaceTools
-           │                                 │
-           │                          files + visible tests
+Task -> AgentRunner -> ContextCompiler -> ModelClient
+           ^               ^                    │
+           │      observed-memory snapshot      │ structured ToolCall(s)
+           │                                    v
+           └──────── observation message <── WorkspaceTools
+           │                                    │
+           │                             files + visible tests
            v
  strict event reducer <---- schema-2 log ----> atomic projection cache
 ```
 
 Each model response may contain text and zero or more structured tool calls. The runner
 appends the assistant response, executes calls in order, converts every `ToolOutcome` into
-a tool observation carrying the same call id, and sends the enlarged message history to
-the next model turn. A response without tool calls completes the run.
+a tool observation carrying the same call id, compiles the accumulated history under the
+run's context budget, and sends that provider-valid view to the next model turn. The full
+normalized history remains in the event projection even when a block is omitted from one
+model request. A response without tool calls completes the run.
 
 The runtime currently exposes:
 
@@ -41,6 +45,155 @@ The runtime currently exposes:
 The observation includes the exit code and captured output so the model can react. A path
 violation, malformed argument, denied permission, launch failure, or timeout is instead a
 tool failure.
+
+## Live context compilation
+
+Every new CLI run constructs a deterministic `ContextCompiler`. Before a model call, the
+compiler turns the complete projected transcript into candidate blocks, scores those
+blocks, selects a bounded subset, restores chronological order, and records what it did.
+The source transcript is never rewritten or discarded.
+
+### Protocol-atomic blocks
+
+A standalone system, user, or assistant message is one block. An assistant message that
+declares tool calls and all immediately following matching tool-result messages form one
+atomic block. The compiler validates call ids, tool names, missing results, orphan results,
+duplicate results, and declared result order. The runtime separately permits a call id to
+reappear only with identical arguments and a cached identical outcome. A policy can retain
+or evict either complete exchange, but cannot send a tool result without the assistant call
+that created it.
+
+System and user blocks are mandatory. The newest configured number of blocks are also
+mandatory, regardless of policy. If mandatory context cannot fit after tool-output
+compaction, compilation fails explicitly instead of silently dropping the task or emitting
+an over-budget request.
+
+The live policies are:
+
+| Policy | Selection rule |
+|---|---|
+| `full` | Keep every block; fail if the complete estimate exceeds the budget. |
+| `recent` | Keep mandatory blocks, then fill a newest-first contiguous sliding window. |
+| `topk` | Rank optional blocks by deterministic standalone utility. |
+| `density` | Rank optional blocks by standalone utility per estimated token. |
+| `submodular` | Greedily maximize marginal set utility per token, including topic coverage and duplicate penalties. |
+
+The original exact knapsack and oracle policies remain available to the offline `pack` and
+synthetic `benchmark` commands; they are not live runtime choices.
+
+### CLI configuration and estimates
+
+New `contextopt run` invocations accept these settings:
+
+| Flag | Default |
+|---|---:|
+| `--context-policy` | `submodular` |
+| `--context-budget` | `16000` |
+| `--context-recent-blocks` | `2` |
+| `--context-max-tool-output-tokens` | `2048` |
+| `--context-memory` | `versioned-v1` |
+
+For example:
+
+```text
+contextopt run <task> --workspace <path> \
+  --context-policy submodular \
+  --context-budget 16000 \
+  --context-recent-blocks 2 \
+  --context-max-tool-output-tokens 2048 \
+  --context-memory versioned-v1
+```
+
+The compiler's “tokens” are deterministic estimates, not results from the selected
+provider's tokenizer. Runs of ASCII text, CJK characters, punctuation, message metadata,
+and tool-call arguments are counted by a small fixed local rule so recovery can
+reproduce the same input without a provider package. Provider-reported input/output usage
+continues to drive `RunLimits.max_total_tokens`; the context estimate controls only message
+packing.
+
+Before selection, a tool observation above
+`--context-max-tool-output-tokens` is deterministically replaced by a compact marker,
+content digest, omitted-character count, and retained head/tail evidence. The original
+observation remains in the authoritative event-derived transcript. Non-tool messages and
+tool-call arguments are not silently truncated, so they can still make mandatory context
+infeasible under an unrealistically small budget. The per-observation cap has a minimum of
+48 estimated tokens so the compact representation can retain its full digest and bounded
+head/tail evidence under the runtime's tool-output byte limit.
+
+### Observed-memory invalidation
+
+With the default `versioned-v1` memory policy, the runner deterministically rebuilds a
+`MemorySnapshot` from canonical tool outcomes already present in the transcript. Recorded
+file writes advance the observed workspace generation, invalidate earlier evidence for the
+same path, invalidate prior workspace search/listing results, and invalidate test evidence
+produced before the mutation. A later read becomes evidence for the new observed path
+version; rerunning the same test scope invalidates the older result for that generation. A
+cached `tool.reused` write outcome is recorded as an alias of the original evidence and
+does not advance the workspace generation a second time.
+
+Stale evidence remains auditable, but receives zero freshness and strongly reduced
+importance when blocks are scored. The snapshot's fingerprint and workspace generation
+are attached to the request receipt. This is an **observed-memory model**: an out-of-band
+filesystem change that no tool outcome recorded is not detected, and no semantic facts are
+learned or carried across runs.
+
+Set `--context-memory none` to disable these validity signals while retaining context
+routing and receipts.
+
+### Per-turn receipt and recovery contract
+
+Every new `model.requested` event includes a `context` receipt. It contains:
+
+- context configuration fingerprint, policy, and estimated-token budget;
+- original, post-compaction candidate, and selected estimates;
+- selected, evicted, compacted, and stale block ids;
+- the complete policy `ContextFrame`, including each selection decision;
+- each block's source message range, roles, mandatory/stale/compacted flags, and estimates;
+- compiled-message count and roles, memory fingerprint, workspace generation, and a
+  compiled-message SHA-256.
+
+The event's outer `request_sha256` separately covers the compiled messages, tool
+definitions, and maximum output-token request. On resume, the runtime loads the persisted
+context configuration, verifies its fingerprint, reconstructs the transcript and observed
+memory, recompiles the pending request, and refuses to call the model if that outer request
+hash changed. Receipt deserialization also checks its block partition, estimates,
+selected/evicted sets, roles, and `ContextFrame` for internal consistency. The reducer also
+recompiles every recorded context receipt from the authoritative transcript and rejects a
+self-consistent receipt that did not come from that state.
+
+`compiler_version` is part of the persisted configuration fingerprint. Token estimation,
+block grouping, compaction, scoring, selection, and memory-annotation semantics together
+form this context ABI; changing any of them requires a version bump plus a compatible
+reader/compiler or an explicit trace migration.
+
+This makes pending-request recovery reproducible; it does not make the provider call
+exactly once. If no durable model response exists, a matching pending request may still be
+sent again.
+
+### Context routing/compiler conformance evaluation
+
+Run a paired, model-free comparison from the repository root:
+
+```text
+python -m contextopt context-eval \
+  --policies recent,submodular --budgets 1024 --repetitions 3 \
+  --output context-routing.json
+```
+
+Across the three fixed, protocol-valid fixtures, the current 1,024-estimated-token result
+is:
+
+| Policy | Evidence recall | Protocol valid | Budget compliant |
+|---|---:|---:|---:|
+| `recent` | 0.222 | 1.000 | 1.000 |
+| `submodular` | 0.778 | 1.000 | 1.000 |
+
+The JSON report records `model_calls: 0`. Gold evidence probes are used only by the scorer
+and are not passed to a policy. Evidence recall measures exact retention in the compiled
+messages; protocol validity, budget compliance, compression, and byte determinism are
+compiler properties. These figures do **not** measure model quality, reasoning, generated
+code correctness, or end-to-end task success. See
+[`context-routing-eval.md`](context-routing-eval.md) for the complete claim boundary.
 
 ## Offline runtime demo
 
@@ -168,9 +321,10 @@ python -m contextopt status <events.jsonl>
 ```
 
 `status` reports the reconstructed phase, turns, tool calls, cumulative usage, pending
-model request, pending tools, terminal result, and the last projected event hash. A
-terminal run is not resumable. Running `resume` on it needs no workspace or model arguments
-and returns the existing durable result without appending an event:
+model request, pending tools, context configuration/fingerprint and latest receipt,
+terminal result, and the last projected event hash. A terminal run is not resumable.
+Running `resume` on it needs no workspace or model arguments and returns the existing
+durable result without appending an event:
 
 ```bash
 python -m contextopt resume <terminal-events.jsonl>
@@ -198,9 +352,11 @@ python -m contextopt resume <events.jsonl> \
 ```
 
 The API key is not fingerprinted or persisted. Model identity/settings, tool definitions,
-resolved workspace identity, permissions, and registered commands are fingerprinted; run
-limits and permissions are also compared directly. A non-terminal resume is rejected
-before adding `run.resumed` if these boundaries do not match.
+resolved workspace identity, permissions, registered commands, and context configuration
+are fingerprinted; run limits and permissions are also compared directly. The context
+policy, budget, recent-block count, compaction limit, and memory policy come from the
+original event log rather than resume-time flags. A non-terminal resume is rejected before
+adding `run.resumed` if these boundaries do not match.
 
 Schema-1 logs remain readable by `trace` and receive audit-only metadata from `status`.
 They cannot be reduced into resumable state or extended with schema-2 events.
@@ -210,7 +366,7 @@ They cannot be reduced into resumable state or extended with schema-2 events.
 The schema-2 event log is authoritative. A strict reducer validates legal state
 transitions and reconstructs:
 
-- initial task/configuration and complete normalized messages;
+- initial task/configuration, context identity, and complete normalized messages;
 - turns, cumulative token usage, and limits;
 - pending model requests and ordered pending tool calls;
 - sealed tool-execution plans and completed call outcomes;
@@ -366,10 +522,19 @@ This adapter is an integration boundary, not a published real-model benchmark. A
 comparison still requires fixed repository snapshots, prompts, tools, limits, model
 versions, repetitions, and independent hidden tests.
 
+For v0.3 runs, `model.requested.data.context` is the validated per-turn compiler receipt;
+legacy v0.2 logs without a context configuration continue to replay as full-history runs.
+
 ## Next runtime milestones
 
-1. Extract context candidates from code, test output, decisions, and trajectory events.
-2. Compile each model request through ContextOpt and persist its `ContextFrame` receipt.
-3. Add durable model-call idempotency hooks where providers expose them.
-4. Snapshot or reference workspace versions rather than requiring one unchanged path.
-5. Fork isolated workspaces and allocate a fixed budget across test-guided search branches.
+1. Add durable model-call idempotency hooks where providers expose them.
+2. Snapshot or reference workspace versions rather than requiring one unchanged path.
+3. Fork isolated workspaces, deduplicate equivalent states, and allocate a fixed budget
+   across test-guided search branches.
+4. Add multi-agent planner/coder/reviewer scheduling only after branch isolation and budget
+   accounting are measurable.
+5. Add trace/search visualization and a controlled real-model coding benchmark with fixed
+   snapshots, versions, repetitions, and independent hidden tests.
+
+The current runtime still has no multi-agent orchestration, branch search, container/VM
+sandbox, or published real-model benchmark.

@@ -4,26 +4,27 @@
 
 ForgeAgent is the runtime direction of this project: take a coding task, let a model inspect
 and change one workspace through bounded tools, feed every observation back into the next
-turn, and preserve an append-only trace of what happened. ContextOpt remains the repository,
-Python package, CLI, and context-selection engine that will eventually compile the bounded
-view for each ForgeAgent model call.
+turn, and preserve an append-only trace of what happened. ContextOpt is the repository,
+Python package, CLI, and live context-selection engine that now compiles the bounded view
+for every ForgeAgent model call.
 
 ```text
-Task ──> bounded AgentRunner ──> ModelClient ──> structured tool calls
-              ^                                      │
-              └──────────── tool observations <──────┘
-                             │
-                  workspace + visible tests
+Task ──> AgentRunner ──> ContextCompiler ──> ModelClient ──> tool calls
+              ^               ^                                │
+              │       observed-memory projection               │
+              └────────────── tool observations <───────────────┘
+                                      │
+                           workspace + visible tests
 
 Every boundary ──> durable schema-2 JSONL event log + verified state projection
 ```
 
-> **Status — v0.2b recoverable runtime:** the repository now contains a real single-agent
-> read/edit/test loop, a corruption-evident event chain, strict state reconstruction,
-> resumable interrupted runs, conservative tool reconciliation, deterministic scripted
-> evaluation, and an optional OpenAI-compatible adapter. It does **not** yet implement live
-> ContextOpt policies, learned memory, multi-agent scheduling, branch search, or an OS
-> sandbox.
+> **Status — v0.3 live context runtime:** the repository now contains a real single-agent
+> read/edit/test loop, recoverable event-sourced execution, and a deterministic live
+> context compiler with protocol-safe selection, tool-output compaction, version-aware
+> observed memory, and per-turn receipts. It does **not** yet implement multi-agent
+> scheduling, branch search, an OS sandbox, learned semantic memory, or a real-model coding
+> benchmark.
 
 ## Why this project exists
 
@@ -39,13 +40,14 @@ The project therefore has two connected layers:
 - **ContextOpt engine:** studies which state, code, memory, and trajectory items should
   enter a limited model context.
 
-The current runtime intentionally uses its message history directly. Connecting
-`ContextFrame` selection to live model requests is a later milestone; the project does not
-claim that the v0.1 optimizer already improves coding success.
+The runtime rebuilds candidates from its durable message history before every model call,
+then selects a provider-valid subset under an estimated-token budget. This is live runtime
+plumbing, but the project still does not claim that a policy improves model reasoning or
+coding success without a controlled real-model benchmark.
 
 ## What is implemented
 
-### ForgeAgent runtime — v0.2b
+### ForgeAgent runtime — v0.3
 
 - Provider-neutral messages, tool definitions, tool calls, responses, and token usage.
 - A bounded asynchronous `AgentRunner` with turn, tool-call, token, wall-clock, command,
@@ -75,12 +77,24 @@ claim that the v0.1 optimizer already improves coding success.
   runtime infrastructure failure.
 - A deterministic Runtime Conformance Eval covering read, edit, failing tests, passing
   tests, budgets, and partial traces after model failure.
+- A live `ContextCompiler` invoked before every model call, with `full`, `recent`, `topk`,
+  `density`, and graph-aware `submodular` routing policies.
+- Protocol-atomic candidate blocks: an assistant tool-call message and every corresponding
+  tool result are selected or evicted together, never split into an invalid request.
+- A deterministic estimated-token budget, mandatory task/system and newest blocks, and
+  head/tail compaction for oversized tool observations.
+- A `versioned-v1` observed-memory projection that invalidates stale same-path file
+  evidence, workspace search/listing results, and pre-write test results after recorded
+  workspace mutations.
+- A complete context receipt inside every new `model.requested` event, including selected
+  and evicted block ids, compaction/staleness flags, estimates, policy decisions, memory
+  identity, and request hashes.
 
 The event hash chain provides verifiable, corruption-evident integrity. It is not a
 signature or malicious-rewrite defense: someone who can replace the entire log can also
 recompute the complete chain because there is no secret or external trust anchor.
 
-### ContextOpt engine — v0.1
+### ContextOpt engine — v0.1 algorithms, v0.3 live integration
 
 - Immutable context candidates with provenance, token cost, dependencies, conflicts,
   freshness, topics, and duplicate groups.
@@ -88,13 +102,13 @@ recompute the complete chain because there is no secret or external trust anchor
   exhaustive oracle.
 - Deterministic paired synthetic experiments with hidden critical-fact labels.
 - Machine-readable selection receipts explaining every accepted and rejected candidate.
+- A model-free Context Routing/Compiler Conformance Eval on fixed, protocol-valid coding
+  traces with hidden-to-policy evidence probes.
 
 ## What is deliberately not implemented yet
 
 - Automatic workspace snapshots, rollback, migration to another workspace, or distributed
   coordination. Resume operates on the same configured workspace and validates what it can.
-- Context compaction, memory lifecycle, candidate extraction from runtime events, or a
-  `ContextPolicy` wired into model requests.
 - Planner/coder/reviewer role orchestration, parallel agents, PatchTree, beam search, or
   MCTS.
 - A container or virtual-machine security boundary. Workspace path checks and permission
@@ -102,7 +116,8 @@ recompute the complete chain because there is no secret or external trust anchor
   trusted host processes.
 - A general shell tool, autonomous package installation, or unrestricted network access.
 - A claim that the scripted demo measures model reasoning or real-world issue resolution.
-- A trace UI or statistically powered real-model coding benchmark.
+- Learned or cross-run semantic memory, a trace UI, or a statistically powered real-model
+  coding benchmark.
 - Exactly-once external side effects. Recovery is tool-specific and conservative;
   explicitly retrying a command can execute it again.
 
@@ -125,6 +140,20 @@ contextopt run "Fix merge_settings so only None inherits a default." \
   --test-command "python -m unittest discover -s tests -v" \
   --event-log <temporary-events.jsonl>
 ```
+
+Every new run enables live context compilation. Its CLI controls and defaults are:
+
+| Flag | Default | Meaning |
+|---|---:|---|
+| `--context-policy` | `submodular` | `full`, `recent`, `topk`, `density`, or `submodular` |
+| `--context-budget` | `16000` | Maximum deterministic estimated tokens in compiled history |
+| `--context-recent-blocks` | `2` | Newest protocol-atomic blocks forced into the request |
+| `--context-max-tool-output-tokens` | `2048` | Per-observation estimate before deterministic head/tail compaction |
+| `--context-memory` | `versioned-v1` | Observed evidence invalidation; use `none` to disable it |
+
+These are compiler estimates, not counts from a provider tokenizer. The chosen context
+configuration and its fingerprint are persisted with the run; `resume` reconstructs that
+configuration from the event log rather than accepting replacement context flags.
 
 The script drives this real sequence:
 
@@ -181,6 +210,27 @@ contextopt benchmark --instances 100 --items 14 --budget 900 \
   --policies topk,density,submodular,oracle
 ```
 
+Run the live compiler conformance comparison without calling a model:
+
+```bash
+contextopt context-eval --policies recent,submodular --budgets 1024 \
+  --repetitions 3 --output context-routing.json
+```
+
+On the three fixed fixtures currently checked into the evaluator, the 1,024-estimated-token
+result is:
+
+| Policy | Evidence recall | Protocol valid | Budget compliant |
+|---|---:|---:|---:|
+| Recent window | 0.222 | 1.000 | 1.000 |
+| Submodular | 0.778 | 1.000 | 1.000 |
+
+The report records `model_calls: 0`. Evidence recall only asks whether exact labelled
+evidence survived compilation; labels are available to the scorer but not the policy.
+This comparison is not model quality, coding accuracy, or evidence that either context
+would cause a model to solve more tasks. See the
+[context routing evaluation contract](docs/context-routing-eval.md).
+
 ## What the offline demo proves
 
 The Runtime Conformance Eval uses a scripted model that already contains the intended
@@ -194,9 +244,12 @@ actions. It verifies runtime plumbing, not intelligence:
 - every model and tool boundary remains in the JSONL trace, including partial failed runs.
 - state can be strictly replayed and interrupted tool paths can be resumed under the
   recovery contract.
+- every model request carries a deterministic context receipt and can be reconstructed
+  under the persisted context fingerprint.
 
 Because the solution path is scripted, this result must not be reported as model coding
-accuracy, SWE-bench performance, or evidence that one context policy beats another. See the
+accuracy or SWE-bench performance. The separate context conformance fixtures compare
+retained evidence, not downstream model behavior. See the
 [evaluation protocol](docs/evaluation.md).
 
 ## First ContextOpt result
@@ -220,12 +273,13 @@ surrogate-objective misalignment, not evidence of downstream Agent improvement.
 
 ```text
 src/contextopt/
-├── runtime/              # runner, recovery reducer, tool plans, events, limits
+├── runtime/              # runner, live context/memory, recovery, tools, events
+├── evaluation/           # model-free context routing/compiler conformance
 ├── models.py             # context candidates, constraints, receipts
 ├── policies/             # interchangeable selection algorithms
 ├── synthetic.py          # deterministic context microbench generation
 ├── benchmark.py          # paired optimizer metrics and reports
-└── cli.py                # run, status, resume, trace, pack, benchmark
+└── cli.py                # run/resume/status/trace, context-eval, pack, benchmark
 
 tests/                    # standard-library unit and integration tests
 examples/runtime_demo/    # offline scripted coding-loop demonstration
@@ -241,8 +295,9 @@ docs/                     # architecture, runtime, and evaluation contract
   evaluation, and optional model adapter.
 - **v0.2b — Recoverable execution:** current schema-2 hash chain, strict event replay,
   projection cache, run lease, interruption/resume, and tool reconciliation.
-- **v0.3 — Live context engine:** candidate extraction, compaction, memory invalidation,
-  ContextOpt policies, and per-turn context receipts.
+- **v0.3 — Live context engine (implemented):** candidate extraction, protocol-atomic
+  compaction, observed-memory invalidation, live ContextOpt policies, per-turn receipts,
+  and model-free compiler conformance fixtures.
 - **v0.4 — Test-guided search:** isolated branches, duplicate-state detection, adaptive
   budget allocation, and controlled policy comparisons.
 - **v1.0 — Agent DevTools:** real coding-task benchmark, trace/search visualization, and

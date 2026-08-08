@@ -471,7 +471,22 @@ def render_trace(events: tuple[dict[str, Any], ...]) -> str:
         data = event.get("data")
         payload = data if isinstance(data, dict) else {}
         detail = ""
-        if event_type == "model.responded":
+        if event_type == "model.requested":
+            detail = (
+                f" turn={payload.get('turn')} messages={payload.get('message_count')}"
+            )
+            context = payload.get("context")
+            if isinstance(context, dict):
+                selected = context.get("selected_block_ids")
+                evicted = context.get("evicted_block_ids")
+                detail += (
+                    f" policy={context.get('policy')}"
+                    f" est_tokens={context.get('estimated_selected_tokens')}"
+                    f"/{context.get('estimated_original_tokens')}"
+                    f" blocks={len(selected) if isinstance(selected, list) else '?'}"
+                    f" evicted={len(evicted) if isinstance(evicted, list) else '?'}"
+                )
+        elif event_type == "model.responded":
             tool_calls = payload.get("tool_calls", [])
             detail = f" turn={payload.get('turn')} calls={len(tool_calls)}"
         elif event_type in {"tool.completed", "tool.failed", "tool.reused"}:
