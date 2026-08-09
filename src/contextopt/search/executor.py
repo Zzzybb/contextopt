@@ -3,25 +3,32 @@
 ``BranchSearch`` itself is pure: it consumes candidate snapshots and test observations.
 This module is the narrow side-effect boundary for a local experiment. It materializes
 one complete snapshot per unique workspace fingerprint, runs a caller-supplied argv
-without a shell, bounds the report excerpt, and converts the exit status into the same
-``TestResult`` consumed by the search core.
+without a shell, starts it in a killable process group, removes common credential
+environment variables, bounds the report excerpt, and converts the exit status into
+the same ``TestResult`` consumed by the search core.
 
-The command is a trusted host process, not a sandbox. Callers must opt into it at the
-CLI with ``--allow-command`` and should use a disposable workspace or CI runner.
+The command is still a trusted host process, not a sandbox. Callers must opt into it at
+the CLI with ``--allow-command`` and should use a disposable workspace or CI runner.
 """
 
 from __future__ import annotations
 
+import ctypes
 import hashlib
 import os
+import shutil
+import signal
 import subprocess
 import tempfile
+import uuid
 from collections.abc import Iterable, Mapping
+from contextlib import suppress
+from ctypes import wintypes
 from dataclasses import dataclass
 from math import isfinite
 from pathlib import Path, PurePosixPath
 from time import perf_counter
-from typing import Any
+from typing import Any, Literal, cast
 
 from contextopt.search.branching import (
     BranchCase,
@@ -31,6 +38,8 @@ from contextopt.search.branching import (
     CandidatePatch,
     TestResult,
 )
+
+ExecutionSandbox = Literal["host", "docker"]
 
 
 def _non_empty(value: str, label: str) -> str:
@@ -58,15 +67,180 @@ def _bounded_output(stdout: bytes, stderr: bytes, limit: int) -> tuple[str, str]
     return digest, excerpt
 
 
+_SENSITIVE_ENV_NAMES = frozenset(
+    {
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AZURE_CLIENT_SECRET",
+        "CI_JOB_TOKEN",
+        "CONTEXTOPT_API_KEY",
+        "GITHUB_TOKEN",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        "OPENAI_API_KEY",
+    }
+)
+_SENSITIVE_ENV_SUFFIXES = (
+    "_ACCESS_TOKEN",
+    "_API_KEY",
+    "_PASSWORD",
+    "_PRIVATE_KEY",
+    "_SECRET",
+    "_TOKEN",
+)
+
+
+def _child_environment() -> dict[str, str]:
+    """Return a host-compatible environment without common credential variables."""
+
+    environment = os.environ.copy()
+    for name in tuple(environment):
+        upper = name.upper()
+        if upper in _SENSITIVE_ENV_NAMES or upper.endswith(_SENSITIVE_ENV_SUFFIXES):
+            environment.pop(name, None)
+    return environment
+
+
+def _new_process_group_kwargs() -> dict[str, Any]:
+    """Start a candidate command in a group that can be terminated on timeout."""
+
+    if os.name == "nt":
+        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+    return {"start_new_session": True}
+
+
+def _attach_windows_job(process: subprocess.Popen[bytes]) -> tuple[Any, Any] | None:
+    """Attach a Windows process to a kill-on-close Job Object when available."""
+
+    if os.name != "nt":
+        return None
+
+    kernel32: Any = ctypes.WinDLL("kernel32", use_last_error=True)
+
+    class BasicLimitInformation(ctypes.Structure):
+        _fields_ = [
+            ("PerProcessUserTimeLimit", ctypes.c_longlong),
+            ("PerJobUserTimeLimit", ctypes.c_longlong),
+            ("LimitFlags", wintypes.DWORD),
+            ("MinimumWorkingSetSize", ctypes.c_size_t),
+            ("MaximumWorkingSetSize", ctypes.c_size_t),
+            ("ActiveProcessLimit", wintypes.DWORD),
+            ("Affinity", ctypes.c_size_t),
+            ("PriorityClass", wintypes.DWORD),
+            ("SchedulingClass", wintypes.DWORD),
+        ]
+
+    class IoCounters(ctypes.Structure):
+        _fields_ = [
+            ("ReadOperationCount", ctypes.c_ulonglong),
+            ("WriteOperationCount", ctypes.c_ulonglong),
+            ("OtherOperationCount", ctypes.c_ulonglong),
+            ("ReadTransferCount", ctypes.c_ulonglong),
+            ("WriteTransferCount", ctypes.c_ulonglong),
+            ("OtherTransferCount", ctypes.c_ulonglong),
+        ]
+
+    class ExtendedLimitInformation(ctypes.Structure):
+        _fields_ = [
+            ("BasicLimitInformation", BasicLimitInformation),
+            ("IoInfo", IoCounters),
+            ("ProcessMemoryLimit", ctypes.c_size_t),
+            ("JobMemoryLimit", ctypes.c_size_t),
+            ("PeakProcessMemoryUsed", ctypes.c_size_t),
+            ("PeakJobMemoryUsed", ctypes.c_size_t),
+        ]
+
+    kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+    kernel32.SetInformationJobObject.argtypes = [
+        wintypes.HANDLE,
+        wintypes.INT,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+    ]
+    kernel32.AssignProcessToJobObject.argtypes = [
+        wintypes.HANDLE,
+        wintypes.HANDLE,
+    ]
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    job = kernel32.CreateJobObjectW(None, None)
+    if not job:
+        return None
+    information = ExtendedLimitInformation()
+    information.BasicLimitInformation.LimitFlags = 0x2000  # KILL_ON_JOB_CLOSE
+    configured = kernel32.SetInformationJobObject(
+        job,
+        9,  # JobObjectExtendedLimitInformation
+        ctypes.byref(information),
+        ctypes.sizeof(information),
+    )
+    assigned = configured and kernel32.AssignProcessToJobObject(
+        job,
+        process._handle,  # type: ignore[attr-defined]
+    )
+    if not assigned:
+        kernel32.CloseHandle(job)
+        return None
+    return kernel32, job
+
+
+def _close_windows_job(handle: tuple[Any, Any] | None) -> None:
+    if handle is not None:
+        handle[0].CloseHandle(handle[1])
+
+
+def _terminate_process_tree(process: subprocess.Popen[bytes]) -> None:
+    """Best-effort terminate the process group without weakening the timeout result."""
+
+    if process.poll() is not None:
+        return
+    if os.name == "nt":
+        taskkill = shutil.which("taskkill")
+        if taskkill is not None:
+            with suppress(OSError, subprocess.TimeoutExpired):
+                subprocess.run(
+                    [taskkill, "/PID", str(process.pid), "/T", "/F"],
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=5,
+                    check=False,
+                )
+        if process.poll() is None:
+            process.kill()
+    else:
+        killpg = os.killpg  # type: ignore[attr-defined]
+        getpgid = os.getpgid  # type: ignore[attr-defined]
+        sigterm = signal.SIGTERM
+        sigkill = signal.SIGKILL  # type: ignore[attr-defined]
+        try:
+            killpg(getpgid(process.pid), sigterm)
+        except (OSError, ProcessLookupError):
+            process.terminate()
+        try:
+            process.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            try:
+                killpg(getpgid(process.pid), sigkill)
+            except (OSError, ProcessLookupError):
+                process.kill()
+
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=5)
+
+
 @dataclass(frozen=True, slots=True)
 class ExecutableSearchConfig:
-    """Trusted local test command and bounded observation settings."""
+    """Trusted test command, bounded observations, and optional Docker isolation."""
 
     command: tuple[str, ...]
     suite: str = "visible-tests"
     test_name: str = "all-visible-tests"
     timeout_seconds: float = 120.0
     max_report_bytes: int = 64 * 1024
+    sandbox: ExecutionSandbox = "host"
+    container_image: str = "python:3.12-slim"
 
     def __post_init__(self) -> None:
         if isinstance(self.command, str):
@@ -87,6 +261,16 @@ class ExecutableSearchConfig:
             or self.max_report_bytes <= 0
         ):
             raise ValueError("max_report_bytes must be a positive integer")
+        if not isinstance(self.sandbox, str) or self.sandbox not in {
+            "host",
+            "docker",
+        }:
+            raise ValueError("sandbox must be 'host' or 'docker'")
+        object.__setattr__(
+            self,
+            "container_image",
+            _non_empty(self.container_image, "container_image"),
+        )
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> ExecutableSearchConfig:
@@ -98,6 +282,8 @@ class ExecutableSearchConfig:
             "test_name",
             "timeout_seconds",
             "max_report_bytes",
+            "sandbox",
+            "container_image",
         }
         unknown = set(data) - allowed
         if unknown:
@@ -113,6 +299,8 @@ class ExecutableSearchConfig:
             test_name=str(data.get("test_name", "all-visible-tests")),
             timeout_seconds=float(data.get("timeout_seconds", 120.0)),
             max_report_bytes=int(data.get("max_report_bytes", 64 * 1024)),
+            sandbox=cast(ExecutionSandbox, str(data.get("sandbox", "host"))),
+            container_image=str(data.get("container_image", "python:3.12-slim")),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -122,6 +310,8 @@ class ExecutableSearchConfig:
             "test_name": self.test_name,
             "timeout_seconds": self.timeout_seconds,
             "max_report_bytes": self.max_report_bytes,
+            "sandbox": self.sandbox,
+            "container_image": self.container_image,
         }
 
 
@@ -130,6 +320,55 @@ def _materialize(files: Iterable[tuple[str, str]], root: Path) -> None:
         target = root.joinpath(*PurePosixPath(relative).parts)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
+
+
+def _docker_command(
+    config: ExecutableSearchConfig, workspace: Path
+) -> tuple[list[str], str, str]:
+    docker = shutil.which("docker")
+    if docker is None:
+        raise OSError("docker executable was not found on PATH")
+    container_name = f"contextopt-{uuid.uuid4().hex[:20]}"
+    mount = f"type=bind,source={workspace.resolve()},destination=/workspace"
+    command = [
+        docker,
+        "run",
+        "--rm",
+        "--init",
+        "--name",
+        container_name,
+        "--network=none",
+        "--cap-drop=ALL",
+        "--security-opt=no-new-privileges",
+        "--read-only",
+        "--pids-limit",
+        "256",
+        "--memory",
+        "1g",
+        "--cpus",
+        "2",
+        "--tmpfs",
+        "/tmp:rw,noexec,nosuid,size=64m",
+        "--mount",
+        mount,
+        "--workdir",
+        "/workspace",
+        config.container_image,
+        *config.command,
+    ]
+    return command, docker, container_name
+
+
+def _remove_docker_container(docker: str, container_name: str) -> None:
+    with suppress(OSError, subprocess.TimeoutExpired):
+        subprocess.run(
+            [docker, "rm", "--force", container_name],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+            check=False,
+        )
 
 
 def evaluate_candidate(
@@ -141,42 +380,68 @@ def evaluate_candidate(
     with tempfile.TemporaryDirectory(prefix="contextopt-branch-") as temporary:
         workspace = Path(temporary)
         _materialize(candidate.files.items(), workspace)
+        windows_job: tuple[Any, Any] | None = None
+        sandbox_cleanup: tuple[str, str] | None = None
         try:
-            completed = subprocess.run(
-                list(config.command),
+            if config.sandbox == "docker":
+                command, docker, container_name = _docker_command(config, workspace)
+                sandbox_cleanup = (docker, container_name)
+                environment = _child_environment()
+            else:
+                command = list(config.command)
+                environment = _child_environment()
+            process = subprocess.Popen(
+                command,
                 cwd=workspace,
-                env=os.environ.copy(),
+                env=environment,
                 stdin=subprocess.DEVNULL,
-                capture_output=True,
-                timeout=config.timeout_seconds,
-                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                **_new_process_group_kwargs(),
             )
-            stdout = completed.stdout
-            stderr = completed.stderr
+            windows_job = _attach_windows_job(process)
+            try:
+                stdout, stderr = process.communicate(timeout=config.timeout_seconds)
+            except subprocess.TimeoutExpired as exc:
+                _close_windows_job(windows_job)
+                windows_job = None
+                _terminate_process_tree(process)
+                if sandbox_cleanup is not None:
+                    _remove_docker_container(*sandbox_cleanup)
+                    sandbox_cleanup = None
+                tail_stdout, tail_stderr = process.communicate()
+                stdout = tail_stdout or (
+                    exc.output if isinstance(exc.output, bytes) else b""
+                )
+                stderr = tail_stderr or (
+                    exc.stderr if isinstance(exc.stderr, bytes) else b""
+                )
+                digest, excerpt = _bounded_output(
+                    stdout, stderr, config.max_report_bytes
+                )
+                return TestResult(
+                    suite=config.suite,
+                    error=(
+                        "test command timed out after "
+                        f"{config.timeout_seconds:g}s; process group terminated"
+                    ),
+                    duration_ms=(perf_counter() - started) * 1_000,
+                    output_sha256=digest,
+                    output_excerpt=excerpt,
+                )
+            returncode = process.returncode
             digest, excerpt = _bounded_output(stdout, stderr, config.max_report_bytes)
-            duration_ms = (perf_counter() - started) * 1_000
-            if completed.returncode == 0:
+            if returncode == 0:
                 return TestResult(
                     suite=config.suite,
                     passed_tests=(config.test_name,),
-                    duration_ms=duration_ms,
+                    duration_ms=(perf_counter() - started) * 1_000,
                     output_sha256=digest,
                     output_excerpt=excerpt,
                 )
             return TestResult(
                 suite=config.suite,
                 failed_tests=(config.test_name,),
-                duration_ms=duration_ms,
-                output_sha256=digest,
-                output_excerpt=excerpt,
-            )
-        except subprocess.TimeoutExpired as exc:
-            stdout = exc.stdout if isinstance(exc.stdout, bytes) else b""
-            stderr = exc.stderr if isinstance(exc.stderr, bytes) else b""
-            digest, excerpt = _bounded_output(stdout, stderr, config.max_report_bytes)
-            return TestResult(
-                suite=config.suite,
-                error=f"test command timed out after {config.timeout_seconds:g}s",
                 duration_ms=(perf_counter() - started) * 1_000,
                 output_sha256=digest,
                 output_excerpt=excerpt,
@@ -187,6 +452,10 @@ def evaluate_candidate(
                 error=f"test command could not start: {type(exc).__name__}: {exc}",
                 duration_ms=(perf_counter() - started) * 1_000,
             )
+        finally:
+            _close_windows_job(windows_job)
+            if sandbox_cleanup is not None:
+                _remove_docker_container(*sandbox_cleanup)
 
 
 def evaluate_case(case: BranchCase, config: ExecutableSearchConfig) -> BranchCase:

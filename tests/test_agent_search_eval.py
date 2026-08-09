@@ -334,6 +334,24 @@ class AgentEvaluationTests(unittest.TestCase):
         self.assertEqual(report.runs[0].hidden_test_calls, 0)
         self.assertNotIn("hidden_files", report.fixtures[0].to_dict())
 
+    def test_docker_grader_identity_is_checkpointed_and_uses_container_python(
+        self,
+    ) -> None:
+        config = AgentEvalConfig(
+            fixtures=("two-sum",),
+            strategies=("single_pass",),
+            sandbox="docker",
+            container_image="python:3.12-slim@sha256:example",
+        )
+        self.assertEqual(AgentEvalConfig.from_dict(config.to_dict()), config)
+        execution = build_algorithm_fixtures()[0].execution_config_for(
+            sandbox=config.sandbox,
+            container_image=config.container_image,
+        )
+        self.assertEqual(execution.command[0], "python")
+        self.assertEqual(execution.sandbox, "docker")
+        self.assertEqual(execution.container_image, config.container_image)
+
     def test_openai_factory_is_fresh_and_role_specific_without_calling_network(
         self,
     ) -> None:

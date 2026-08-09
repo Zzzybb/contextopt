@@ -207,6 +207,21 @@ recompute the complete chain because there is no secret or external trust anchor
 - The orchestrate CLI command plus console/Markdown/HTML reports make role calls and the
   oracle gate measurable instead of treating a multi-agent transcript as evidence.
 
+### Candidate execution lifecycle boundary — v1.0
+
+- The executable candidate/test adapter launches each trusted command in a fresh process group
+  and terminates the group on timeout; Windows uses a kill-on-close Job Object when available.
+- Child processes inherit ordinary runtime variables needed to start tests, but common credential
+  variables such as `CONTEXTOPT_API_KEY`, `OPENAI_API_KEY`, `*_TOKEN`, `*_SECRET`, and `*_PASSWORD`
+  are removed before launch.
+- `sandbox="docker"` (CLI `--sandbox docker`) is an opt-in controlled path: it uses
+  `--network=none`, a read-only root, dropped Linux capabilities, no-new-privileges, bounded
+  pids/memory/CPU, and a writable `/workspace` mount. Pin `--container-image` to a digest for a
+  serious run; the default remains the trusted host path.
+- The host path prevents common process leaks and accidental credential exposure but is not a
+  container/VM sandbox; the Docker path is an isolation boundary only when the operator verifies
+  the Docker daemon, image, and host policy.
+
 ### Coding-agent strategy evaluation — v0.8
 
 - Four executable fixtures cover ACM-style Two Sum and interval merging repairs plus
@@ -318,9 +333,9 @@ recompute the complete chain because there is no secret or external trust anchor
   The serial OpenAI-compatible adapter emits a deterministic provider idempotency hook, but
   provider-side enforcement is not guaranteed.
   MCTS selects among generated candidates and does not generate patches itself.
-- A container or virtual-machine security boundary. Workspace path checks and permission
-  flags reduce accidental access, but are not an OS sandbox. Registered test commands are
-  trusted host processes.
+- A mandatory container or virtual-machine security boundary for every run. The opt-in Docker
+  executor provides a controlled path, but the default host executor remains trusted code and
+  workspace path checks, process-group cleanup, and credential scrubbing are not an OS sandbox.
 - A general shell tool, autonomous package installation, or unrestricted network access.
 - A claim that the scripted demo measures model reasoning or real-world issue resolution.
 - Embedding-based retrieval, automatic memory consolidation, learned confidence calibration,
@@ -869,6 +884,8 @@ The built-in HTTP transport cancellation is documented in [the v0.9 note](docs/p
 and [Chinese version](docs/pr/0001-v0.9-http-transport-cancellation.zh-CN.md).
 The opt-in provider-specific cancellation endpoint is documented in [the v1.0 note](docs/pr/0001-v1.0-provider-cancellation-hook.md)
 and [Chinese version](docs/pr/0001-v1.0-provider-cancellation-hook.zh-CN.md).
+The candidate process lifecycle and credential-scrubbing boundary are documented in [the v1.0 note](docs/pr/0001-v1.0-candidate-process-boundary.md)
+and [Chinese version](docs/pr/0001-v1.0-candidate-process-boundary.zh-CN.md).
 The real-provider workflow's secret boundary is documented in [the v0.9 note](docs/pr/0001-v0.9-real-provider-secret-scope.md)
 and [Chinese version](docs/pr/0001-v0.9-real-provider-secret-scope.zh-CN.md).
 The durable cross-run semantic-memory follow-up is documented in [the English PR note](docs/pr/0001-v0.9-semantic-memory.md)

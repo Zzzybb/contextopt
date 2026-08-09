@@ -39,6 +39,7 @@ from contextopt.search import (
     BranchSearchConfig,
     CandidatePatch,
     ExecutableSearchConfig,
+    ExecutionSandbox,
     OrchestrationConfig,
     PlannerConfig,
     ProposalConfig,
@@ -248,24 +249,46 @@ class AgentEvalFixture:
         ):
             raise ValueError("bad_files and good_files must be complete root snapshots")
 
-    @property
-    def execution_config(self) -> ExecutableSearchConfig:
+    def execution_config_for(
+        self,
+        *,
+        sandbox: ExecutionSandbox = "host",
+        container_image: str = "python:3.12-slim",
+    ) -> ExecutableSearchConfig:
+        interpreter = "python" if sandbox == "docker" else sys.executable
         return ExecutableSearchConfig(
-            command=(sys.executable, "-m", "unittest", "discover", "-s", "."),
+            command=(interpreter, "-m", "unittest", "discover", "-s", "."),
             suite=f"agent-eval:{self.fixture_id}",
             test_name=self.test_name,
+            sandbox=sandbox,
+            container_image=container_image,
+        )
+
+    @property
+    def execution_config(self) -> ExecutableSearchConfig:
+        return self.execution_config_for()
+
+    def hidden_execution_config_for(
+        self,
+        *,
+        sandbox: ExecutionSandbox = "host",
+        container_image: str = "python:3.12-slim",
+    ) -> ExecutableSearchConfig:
+        """Return a separate command that never enters the model-visible root."""
+
+        module_name = f"grader.oracle_{self.fixture_id.replace('-', '_')}"
+        interpreter = "python" if sandbox == "docker" else sys.executable
+        return ExecutableSearchConfig(
+            command=(interpreter, "-m", "unittest", module_name),
+            suite=f"agent-eval-hidden:{self.fixture_id}",
+            test_name=self.hidden_test_name,
+            sandbox=sandbox,
+            container_image=container_image,
         )
 
     @property
     def hidden_execution_config(self) -> ExecutableSearchConfig:
-        """Return a separate command that never enters the model-visible root."""
-
-        module_name = f"grader.oracle_{self.fixture_id.replace('-', '_')}"
-        return ExecutableSearchConfig(
-            command=(sys.executable, "-m", "unittest", module_name),
-            suite=f"agent-eval-hidden:{self.fixture_id}",
-            test_name=self.hidden_test_name,
-        )
+        return self.hidden_execution_config_for()
 
     def to_dict(self) -> dict[str, Any]:
         """Return fixture metadata without embedding every scripted response."""
@@ -613,6 +636,8 @@ class AgentEvalConfig:
     exploration_constant: float = 1.0
     include_hidden_tests: bool = True
     model_adapter: str = "scripted"
+    sandbox: ExecutionSandbox = "host"
+    container_image: str = "python:3.12-slim"
 
     def __post_init__(self) -> None:
         if not self.strategies:
@@ -661,6 +686,12 @@ class AgentEvalConfig:
             "custom",
         }:
             raise ValueError(f"unsupported agent model adapter: {self.model_adapter!r}")
+        if not isinstance(self.sandbox, str) or self.sandbox not in {
+            "host",
+            "docker",
+        }:
+            raise ValueError("sandbox must be 'host' or 'docker'")
+        _non_empty(self.container_image, "container_image")
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> AgentEvalConfig:
@@ -677,6 +708,8 @@ class AgentEvalConfig:
             "exploration_constant",
             "include_hidden_tests",
             "model_adapter",
+            "sandbox",
+            "container_image",
         }
         unknown = set(value) - allowed
         if unknown:
@@ -712,6 +745,11 @@ class AgentEvalConfig:
             model_adapter=_non_empty(
                 value.get("model_adapter", "scripted"), "model_adapter"
             ),
+            sandbox=cast(ExecutionSandbox, value.get("sandbox", "host")),
+            container_image=_non_empty(
+                value.get("container_image", "python:3.12-slim"),
+                "container_image",
+            ),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -727,6 +765,8 @@ class AgentEvalConfig:
             "exploration_constant": self.exploration_constant,
             "include_hidden_tests": self.include_hidden_tests,
             "model_adapter": self.model_adapter,
+            "sandbox": self.sandbox,
+            "container_image": self.container_image,
         }
 
 
@@ -1787,7 +1827,13 @@ def _hidden_outcome(
             ),
             files=combined,
         )
-        result = evaluate_candidate(candidate, fixture.hidden_execution_config)
+        result = evaluate_candidate(
+            candidate,
+            fixture.hidden_execution_config_for(
+                sandbox=config.sandbox,
+                container_image=config.container_image,
+            ),
+        )
         if result.is_success:
             return 1, True, None
         return 1, False, result.output_excerpt or result.error or "hidden oracle failed"
@@ -1847,7 +1893,10 @@ def _run_strategy_once(
                 f"model factory returned {len(models)} models for {strategy}; "
                 f"expected {expected_models}"
             )
-        execution = fixture.execution_config
+        execution = fixture.execution_config_for(
+            sandbox=config.sandbox,
+            container_image=config.container_image,
+        )
         branch = BranchSearchConfig(
             beam_width=2,
             max_depth=1,

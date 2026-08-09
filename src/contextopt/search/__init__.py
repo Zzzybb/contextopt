@@ -31,6 +31,7 @@ from contextopt.search.branching import (
 )
 from contextopt.search.executor import (
     ExecutableSearchConfig,
+    ExecutionSandbox,
     evaluate_candidate,
     evaluate_case,
     run_executable_search,
@@ -106,6 +107,7 @@ __all__ = [
     "BranchSearchReport",
     "CandidatePatch",
     "ExecutableSearchConfig",
+    "ExecutionSandbox",
     "MergeConflict",
     "MergePolicy",
     "MergeReport",

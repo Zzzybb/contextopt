@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from contextopt.cli import main
 from contextopt.search import (
@@ -116,6 +119,75 @@ class BranchExecutorTests(unittest.TestCase):
         self.assertFalse(result.is_success)
         self.assertIsNotNone(result.error)
         self.assertIn("timed out", result.error or "")
+
+    def test_candidate_commands_receive_sanitized_environment(self) -> None:
+        candidate = _case().by_id["good"]
+        with patch.dict(
+            os.environ,
+            {
+                "CONTEXTOPT_API_KEY": "must-not-leak",
+                "OPENAI_API_KEY": "must-not-leak-either",
+                "CONTEXTOPT_TEST_MARKER": "keep-me",
+            },
+            clear=False,
+        ):
+            result = evaluate_candidate(
+                candidate,
+                ExecutableSearchConfig(
+                    command=(
+                        sys.executable,
+                        "-c",
+                        (
+                            "import os; "
+                            "print(os.getenv('CONTEXTOPT_API_KEY', 'missing')); "
+                            "print(os.getenv('OPENAI_API_KEY', 'missing')); "
+                            "print(os.getenv('CONTEXTOPT_TEST_MARKER', 'missing'))"
+                        ),
+                    ),
+                    timeout_seconds=10,
+                ),
+            )
+        self.assertTrue(result.is_success)
+        output = result.output_excerpt or ""
+        self.assertNotIn("must-not-leak", output)
+        self.assertIn("missing", output)
+        self.assertIn("keep-me", output)
+
+    def test_timeout_terminates_descendant_processes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            marker = Path(temporary) / "descendant-survived.txt"
+            child = (
+                "import pathlib,sys,time; time.sleep(2.0); "
+                "pathlib.Path(sys.argv[1]).write_text('survived', encoding='utf-8')"
+            )
+            parent = (
+                "import subprocess,sys,time; "
+                f"subprocess.Popen([sys.executable, '-c', {child!r}, "
+                f"{str(marker)!r}]); "
+                "time.sleep(5)"
+            )
+            result = evaluate_candidate(
+                _case().by_id["good"],
+                ExecutableSearchConfig(
+                    command=(sys.executable, "-c", parent),
+                    timeout_seconds=0.5,
+                ),
+            )
+            self.assertIn("process group terminated", result.error or "")
+            time.sleep(2.4)
+            self.assertFalse(marker.exists())
+
+    def test_docker_sandbox_is_explicit_and_reports_missing_runtime(self) -> None:
+        config = ExecutableSearchConfig(
+            command=(sys.executable, "-c", "print('sandbox')"),
+            sandbox="docker",
+            container_image="python:3.12-slim@sha256:example",
+        )
+        self.assertEqual(ExecutableSearchConfig.from_dict(config.to_dict()), config)
+        with patch("contextopt.search.executor.shutil.which", return_value=None):
+            result = evaluate_candidate(_case().by_id["good"], config)
+        self.assertFalse(result.is_success)
+        self.assertIn("docker executable was not found", result.error or "")
 
     def test_cli_executes_a_serialized_case_only_with_explicit_permission(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

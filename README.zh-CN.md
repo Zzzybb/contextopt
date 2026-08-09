@@ -14,6 +14,15 @@
   幂等 identity 和失效/替代状态。
 - workspace 知识库：`knowledge-index` 将有界 UTF-8 源文件分块写入同一记忆账本，保留
   `source_refs`，重复运行复用不变块，并对变更/删除的块自动失效。
+
+候选测试执行器还会为每次命令建立独立进程组，超时时终止整个进程组；Windows 在主机允许时
+使用 kill-on-close Job Object。子进程保留运行测试所需的普通环境变量，但会在启动前清理
+`CONTEXTOPT_API_KEY`、`OPENAI_API_KEY`、`*_TOKEN`、`*_SECRET`、`*_PASSWORD` 等常见凭据变量。
+还可以显式使用 `sandbox="docker"`（CLI `--sandbox docker`）：候选在 `--network=none`、只读
+root、drop capabilities、no-new-privileges、有限 pids/内存/CPU 和可写 `/workspace` mount 中运行。
+正式运行应把 `--container-image` 固定到 digest；默认仍是受信任宿主机路径。宿主机路径能减少
+孤儿进程和意外密钥泄露，但不是 OS sandbox；Docker 路径也需要操作者验证 Docker daemon、镜像和
+主机策略。
 - provider 轨迹：可选的 `RecordingModel` / `ReplayModel` cassette，不保存凭据，持久化请求/响应，
   只有完整请求 hash 匹配时才允许离线重放。
 
@@ -402,6 +411,10 @@ python -m contextopt agent-eval \
   和 [英文版](docs/pr/0001-v0.9-http-transport-cancellation.md)
 - v1.0 provider-specific 远端取消 hook：[docs/pr/0001-v1.0-provider-cancellation-hook.zh-CN.md](docs/pr/0001-v1.0-provider-cancellation-hook.zh-CN.md)
   和 [英文版](docs/pr/0001-v1.0-provider-cancellation-hook.md)
+- v1.0 候选进程生命周期与凭据清理：[docs/pr/0001-v1.0-candidate-process-boundary.zh-CN.md](docs/pr/0001-v1.0-candidate-process-boundary.zh-CN.md)
+  和 [英文版](docs/pr/0001-v1.0-candidate-process-boundary.md)
+- v1.0 Docker 候选执行隔离：[docs/pr/0001-v1.0-docker-sandbox.zh-CN.md](docs/pr/0001-v1.0-docker-sandbox.zh-CN.md)
+  和 [英文版](docs/pr/0001-v1.0-docker-sandbox.md)
 - v0.9 真实 provider secret 作用域：[docs/pr/0001-v0.9-real-provider-secret-scope.zh-CN.md](docs/pr/0001-v0.9-real-provider-secret-scope.zh-CN.md)
   和 [英文版](docs/pr/0001-v0.9-real-provider-secret-scope.md)
 - v0.9 跨运行语义记忆：[docs/pr/0001-v0.9-semantic-memory.zh-CN.md](docs/pr/0001-v0.9-semantic-memory.zh-CN.md)

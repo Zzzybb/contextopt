@@ -89,8 +89,9 @@ then atomically replaces the target.
 completed tool observation, not an infrastructure failure. This distinction is necessary
 for an Agent to diagnose and repair code after reproducing a bug.
 
-These checks are not a container security boundary. Registered commands are trusted host
-processes.
+These checks are not a container security boundary on the default host path. The optional
+`ExecutableSearchConfig(sandbox="docker")` path adds a controlled Docker runner, but callers
+still need to pin/review the image and daemon policy; registered host commands remain trusted.
 
 ### Workspace knowledge index
 
@@ -270,8 +271,10 @@ beam baseline, or propagates visible-test quality through a deterministic UCT tr
 `search_policy="mcts"`. Both policies respect the candidate/depth/test budgets and stop at
 the first passing result unless configured to continue.
 The optional `ExecutableSearchConfig` adapter materializes a candidate in a disposable
-temporary workspace and runs a trusted argv without a shell; it is deliberately not an
-OS sandbox and does not replace the runtime's recovery/tool lease.
+temporary workspace and runs a trusted argv without a shell. It starts a fresh process group,
+cleans up that group on timeout, and strips common credential environment variables before
+launching the command. These are lifecycle and accidental-secret-leak controls, not an OS
+sandbox and do not replace the runtime's recovery/tool lease.
 
 Every decision is recorded as a small hash-chained event stream. The report includes the
 candidate nodes, test fingerprints, duplicate/prune reasons, accounting metrics, and a

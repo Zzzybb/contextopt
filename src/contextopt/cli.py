@@ -160,6 +160,8 @@ def _agent_eval_manifest(
             "timeout_seconds": args.model_timeout,
             "max_retries": args.model_retries,
             "api_key_env": args.api_key_env,
+            "sandbox": args.sandbox,
+            "container_image": args.container_image,
         },
         "transcript": {
             "mode": transcript_mode,
@@ -306,6 +308,8 @@ def _agent_eval(args: argparse.Namespace) -> int:
         exploration_constant=args.exploration_constant,
         include_hidden_tests=not args.no_hidden_tests,
         model_adapter=model_adapter,
+        sandbox=args.sandbox,
+        container_image=args.container_image,
     )
     _write(
         args.manifest,
@@ -484,6 +488,8 @@ def _branch_search(args: argparse.Namespace) -> int:
                 test_name=args.test_name,
                 timeout_seconds=args.test_timeout,
                 max_report_bytes=args.max_report_bytes,
+                sandbox=args.sandbox,
+                container_image=args.container_image,
             ),
         )
     report = BranchSearch(
@@ -547,6 +553,8 @@ def _search_session(args: argparse.Namespace) -> int:
             test_name=args.test_name,
             timeout_seconds=args.test_timeout,
             max_report_bytes=args.max_report_bytes,
+            sandbox=args.sandbox,
+            container_image=args.container_image,
         )
     elif not args.resume:
         raise ValueError("--test-command is required for a new search session")
@@ -750,6 +758,8 @@ def _orchestrate(args: argparse.Namespace) -> int:
             test_name=args.test_name,
             timeout_seconds=args.test_timeout,
             max_report_bytes=args.max_report_bytes,
+            sandbox=args.sandbox,
+            container_image=args.container_image,
         )
     planner = _build_role_model(args, "planner")
     solver = _build_role_model(args, "solver")
@@ -1282,6 +1292,19 @@ def build_parser() -> argparse.ArgumentParser:
     agent_eval.add_argument("--model-timeout", type=float, default=90.0)
     agent_eval.add_argument("--model-retries", type=int, default=2)
     agent_eval.add_argument("--temperature", type=float, default=0.0)
+    agent_eval.add_argument(
+        "--sandbox",
+        choices=("host", "docker"),
+        default="host",
+        help="trusted host process or Docker isolation for visible/hidden graders",
+    )
+    agent_eval.add_argument(
+        "--container-image",
+        default="python:3.12-slim",
+        help=(
+            "Docker image used with --sandbox docker; pin a digest for reproducibility"
+        ),
+    )
     agent_eval.add_argument("--output", help="write the complete JSON report")
     agent_eval.add_argument(
         "--manifest", help="write reproducibility metadata without API credentials"
@@ -1496,6 +1519,19 @@ def build_parser() -> argparse.ArgumentParser:
     session.add_argument("--test-name", default="all-visible-tests")
     session.add_argument("--test-timeout", type=float, default=120.0)
     session.add_argument("--max-report-bytes", type=int, default=64 * 1024)
+    session.add_argument(
+        "--sandbox",
+        choices=("host", "docker"),
+        default="host",
+        help="trusted host process or Docker isolation for candidate tests",
+    )
+    session.add_argument(
+        "--container-image",
+        default="python:3.12-slim",
+        help=(
+            "Docker image used with --sandbox docker; pin a digest for reproducibility"
+        ),
+    )
     session.add_argument("--max-rounds", type=int, default=3)
     session.add_argument("--max-model-calls", type=int, default=4)
     session.add_argument("--session-max-candidates", type=int, default=16)
@@ -1580,6 +1616,19 @@ def build_parser() -> argparse.ArgumentParser:
     orchestrate.add_argument("--test-name", default="all-visible-tests")
     orchestrate.add_argument("--test-timeout", type=float, default=120.0)
     orchestrate.add_argument("--max-report-bytes", type=int, default=64 * 1024)
+    orchestrate.add_argument(
+        "--sandbox",
+        choices=("host", "docker"),
+        default="host",
+        help="trusted host process or Docker isolation for candidate tests",
+    )
+    orchestrate.add_argument(
+        "--container-image",
+        default="python:3.12-slim",
+        help=(
+            "Docker image used with --sandbox docker; pin a digest for reproducibility"
+        ),
+    )
     orchestrate.add_argument("--max-rounds", type=int, default=3)
     orchestrate.add_argument("--max-model-calls", type=int, default=12)
     orchestrate.add_argument("--max-planner-calls", type=int, default=3)
@@ -1797,6 +1846,19 @@ def build_parser() -> argparse.ArgumentParser:
     branch_search.add_argument("--test-name", default="all-visible-tests")
     branch_search.add_argument("--test-timeout", type=float, default=120.0)
     branch_search.add_argument("--max-report-bytes", type=int, default=64 * 1024)
+    branch_search.add_argument(
+        "--sandbox",
+        choices=("host", "docker"),
+        default="host",
+        help="trusted host process or Docker isolation for candidate tests",
+    )
+    branch_search.add_argument(
+        "--container-image",
+        default="python:3.12-slim",
+        help=(
+            "Docker image used with --sandbox docker; pin a digest for reproducibility"
+        ),
+    )
     branch_search.add_argument("--output", help="write the complete JSON report")
     branch_search.add_argument("--markdown", help="write a Markdown search report")
     branch_search.add_argument("--html", help="write a self-contained SVG HTML report")

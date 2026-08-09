@@ -714,9 +714,22 @@ File tools reject absolute paths, drive-relative paths, parent traversal, backsl
 symbolic links, reserved device names, and access to `.git` or `.contextopt`. Output is
 bounded and recorded with capture metadata.
 
-These controls are defense in depth, not a process sandbox. A registered test command is a
-trusted host subprocess and may execute arbitrary code present in the workspace. Do not run
-untrusted repositories outside an actual container or virtual-machine boundary.
+The executable candidate/test adapter starts each command in a fresh process group and
+terminates that group on timeout; Windows additionally uses a kill-on-close Job Object when
+the host permits it. The child environment keeps normal execution variables such as `PATH` but
+removes common credential names including `CONTEXTOPT_API_KEY`, `OPENAI_API_KEY`, `*_TOKEN`,
+`*_SECRET`, and `*_PASSWORD`. These are lifecycle and accidental-secret-leak controls, not a
+process sandbox: a registered test command remains a trusted host subprocess and may execute
+arbitrary code present in the workspace. Do not run untrusted repositories outside an actual
+container or virtual-machine boundary.
+
+For an opt-in controlled path, `branch-search`, `search-session`, `orchestrate`, and
+`agent-eval` accept `--sandbox docker --container-image IMAGE`. The adapter runs the command
+with Docker `--network=none`, a read-only root, dropped capabilities, no-new-privileges,
+bounded pids/memory/CPU, a small `/tmp` tmpfs, and one writable `/workspace` mount; it uses
+`python` inside the image for the bundled ACM/math graders. Pin an image digest and review the
+Docker daemon/runner policy. This is a controlled integration boundary, not proof that every
+deployment is secure; the default remains the trusted host path.
 
 ## Event log
 
@@ -831,11 +844,13 @@ Remaining milestones are:
    `--cancellation-url`, but cannot prove server-side generation stopped without provider evidence.
 2. Run the strategy harness against multiple real model versions and independent hidden
    tests, preserving paired budgets and full ledgers.
-3. Add container/VM isolation and a controlled real-model coding benchmark with fixed
-   snapshots, versions, repetitions, and independent hidden tests.
+3. Exercise the opt-in Docker/VM path on a Docker-enabled runner and complete a controlled
+   real-model coding benchmark with fixed snapshots, image/model versions, repetitions, and
+   independent hidden tests.
 
-The repository still has no OS sandbox or published real-model benchmark. The explicit
-apply/rollback adapter is a local filesystem safety boundary, not a security boundary.
+The repository now has an opt-in Docker execution path, but no published real-model benchmark;
+the default host path and explicit apply/rollback adapter remain local safety boundaries, not
+universal security guarantees.
 
 The deterministic long-horizon recovery matrix is available as `python -m contextopt
 recovery-eval`. It demonstrates the covered event boundaries and conservative tool policies,

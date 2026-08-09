@@ -461,7 +461,9 @@ python -m contextopt robustness-eval \
 
 Remaining Level 4 work is intentionally broader than these bounded matrices: machine-loss and
 filesystem crash testing, provider timeouts/retryable failures, repeated tool-call ids across
-resumed sessions, OS isolation, and final hidden-test success on real coding tasks.
+resumed sessions, and final hidden-test success on real coding tasks. The candidate executor now
+has an opt-in Docker path (`--sandbox docker`) with bounded mounts/resources, but a Docker-enabled
+runner still has to exercise it; the default host path is not an OS security sandbox.
 
 ## Level 5: bounded parallel candidate scheduling and adaptive tree selection — implemented
 

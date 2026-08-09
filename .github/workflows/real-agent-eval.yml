@@ -17,6 +17,19 @@ on:
         required: false
         default: ""
         type: string
+      sandbox:
+        description: "Candidate grader sandbox: host or docker"
+        required: true
+        default: "host"
+        type: choice
+        options:
+          - host
+          - docker
+      container_image:
+        description: "Docker image when sandbox=docker (pin a digest for serious runs)"
+        required: true
+        default: "python:3.12-slim"
+        type: string
       repetitions:
         description: "Paired repetitions (3 is the default minimum)"
         required: true
@@ -69,6 +82,8 @@ jobs:
           EVAL_MODEL: ${{ inputs.model }}
           EVAL_BASE_URL: ${{ inputs.base_url }}
           EVAL_CANCELLATION_URL: ${{ inputs.cancellation_url }}
+          EVAL_SANDBOX: ${{ inputs.sandbox }}
+          EVAL_CONTAINER_IMAGE: ${{ inputs.container_image }}
           EVAL_FIXTURES: ${{ inputs.fixtures }}
           EVAL_STRATEGIES: ${{ inputs.strategies }}
           EVAL_REPETITIONS: ${{ inputs.repetitions }}
@@ -87,6 +102,8 @@ jobs:
             --html artifacts/agent-eval-real.html
             --checkpoint artifacts/agent-eval-real.checkpoint.json
             --manifest artifacts/agent-eval-real.manifest.json
+            --sandbox "$EVAL_SANDBOX"
+            --container-image "$EVAL_CONTAINER_IMAGE"
           )
           if [[ -n "$EVAL_CANCELLATION_URL" ]]; then
             args+=(--cancellation-url "$EVAL_CANCELLATION_URL")
