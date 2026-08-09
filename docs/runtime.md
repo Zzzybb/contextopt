@@ -5,7 +5,8 @@ The v0.3 runtime is a bounded, auditable and recoverable single-agent loop insid
 bounded context for every model call, and can resume a non-terminal run against the same
 validated model, tool, and context configuration. Its `versioned-v1` observed-memory
 projection is derived from the current transcript; it is not cross-run memory. An explicit
-`SemanticMemoryStore` can be attached as a separate advisory layer through memory tools.
+`SemanticMemoryStore` can be attached as a separate advisory layer through memory tools, or
+through the explicit `versioned-v1+semantic` context policy described below.
 
 ## Current execution contract
 
@@ -163,6 +164,7 @@ New `contextopt run` invocations accept these settings:
 | `--context-recent-blocks` | `2` |
 | `--context-max-tool-output-tokens` | `2048` |
 | `--context-memory` | `versioned-v1` |
+| `--memory-scope` | unset |
 
 For example:
 
@@ -250,10 +252,27 @@ to the lexical score and exposes that signal in the result; this is an auditable
 learned confidence calibration.
 
 This layer is deliberately lexical and provider-free. It has no embedding index, automatic
-consolidation, or learned confidence calibration. The model must ask for memory explicitly, and
-the result is an advisory hint—not proof that a mutable workspace still satisfies the remembered
-claim. A non-terminal `resume` must receive the same `--memory-store` path because the store
-identity is part of the tool configuration fingerprint.
+consolidation, or learned confidence calibration. The default `versioned-v1` policy still makes
+the model ask for memory explicitly. With the opt-in `versioned-v1+semantic` policy, the runner
+searches the attached store for at most three lexical matches, renders them as labelled advisory
+assistant blocks, and lets the normal context policy evict them under the same token budget. The
+receipt records `durable_memory_ids`, `durable_memory_selected_ids`, the complete candidate
+snapshots, and `durable_memory_store_fingerprint`; this is an auditable projection, not proof that
+a mutable workspace still satisfies a remembered claim. A non-terminal `resume` must receive the
+same `--memory-store` path and `--memory-scope` because the store configuration is part of the
+tool fingerprint. If a semantic model request is pending, recovery reuses the receipt snapshot
+even when the live store changed after the process stopped.
+
+To enable the automatic projection:
+
+```text
+contextopt run "Fix the parser" \
+  --workspace <temporary-workspace-copy> \
+  --memory-store .contextopt/memory.jsonl \
+  --memory-scope project:parser \
+  --context-memory versioned-v1+semantic \
+  --script examples/runtime_demo/script.json
+```
 
 For a fresh-process cross-run demonstration, use
 [`examples/semantic_memory_demo`](../examples/semantic_memory_demo/README.md). Its writer and
@@ -276,12 +295,14 @@ Every new `model.requested` event includes a `context` receipt. It contains:
 - each block's source message range, roles, mandatory/stale/compacted flags, and estimates;
 - compiled-message count and roles, memory fingerprint, workspace generation, and a
   compiled-message SHA-256.
+- semantic-context receipts additionally contain the durable candidate snapshot, its selected
+  ids, and the durable-store fingerprint used to derive the combined memory fingerprint.
 
 The event's outer `request_sha256` separately covers the compiled messages, tool
 definitions, and maximum output-token request. On resume, the runtime loads the persisted
 context configuration, verifies its fingerprint, reconstructs the transcript and observed
-memory, recompiles the pending request, and refuses to call the model if that outer request
-hash changed. Receipt deserialization also checks its block partition, estimates,
+memory, recompiles the pending request (from the semantic candidate snapshot when applicable),
+and refuses to call the model if that outer request hash changed. Receipt deserialization also checks its block partition, estimates,
 selected/evicted sets, roles, and `ContextFrame` for internal consistency. The reducer also
 recompiles every recorded context receipt from the authoritative transcript and rejects a
 self-consistent receipt that did not come from that state.

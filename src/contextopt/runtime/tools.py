@@ -203,12 +203,18 @@ class WorkspaceTools:
         limits: RunLimits | None = None,
         test_commands: Mapping[str, tuple[str, ...]] | None = None,
         memory_store: SemanticMemoryStore | None = None,
+        memory_scope: str | None = None,
     ) -> None:
         self._resolver = _WorkspaceResolver(Path(workspace))
         self.permissions = permissions or RunPermissions()
         self.limits = limits or RunLimits()
         self._test_commands = self._normalize_commands(test_commands or {})
         self._memory_store = memory_store
+        if memory_scope is not None and (
+            not isinstance(memory_scope, str) or not memory_scope.strip()
+        ):
+            raise ValueError("memory_scope must be a non-empty string when provided")
+        self._memory_scope = None if memory_scope is None else memory_scope.strip()
         self._handlers: dict[
             str, Callable[[ToolCall, Mapping[str, Any]], ToolOutcome]
         ] = {
@@ -231,6 +237,14 @@ class WorkspaceTools:
     @property
     def workspace(self) -> Path:
         return self._resolver.root
+
+    @property
+    def memory_store(self) -> SemanticMemoryStore | None:
+        return self._memory_store
+
+    @property
+    def memory_scope(self) -> str | None:
+        return self._memory_scope
 
     @property
     def definitions(self) -> tuple[ToolDefinition, ...]:
@@ -257,6 +271,7 @@ class WorkspaceTools:
                     if self._memory_store is None
                     else {
                         "path": str(self._memory_store.path),
+                        "scope": self._memory_scope,
                         "configuration_fingerprint": (
                             self._memory_store.configuration_fingerprint
                         ),

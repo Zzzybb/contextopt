@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from collections.abc import Coroutine
+from collections.abc import Coroutine, Mapping
 from contextlib import suppress
 from pathlib import Path
 from time import monotonic
@@ -14,7 +14,9 @@ from contextopt.runtime.context import (
     CompiledContext,
     ContextBudgetError,
     ContextCompiler,
+    ContextReceipt,
     compile_runtime_context,
+    durable_memory_matches_from_receipt,
 )
 from contextopt.runtime.errors import ModelError, RuntimeContractError
 from contextopt.runtime.events import EventLog, read_events
@@ -155,10 +157,66 @@ class AgentRunner:
     def _compile_context(self, state: RunProjection) -> CompiledContext | None:
         if self.context_compiler is None:
             return None
+        memory_store = self.tools.memory_store
+        durable_memory_matches = None
+        durable_memory_store_fingerprint = None
+        if (
+            state.pending_model is not None
+            and self.context_compiler.config.memory_policy == "versioned-v1+semantic"
+        ):
+            pending_request = next(
+                (
+                    event
+                    for event in reversed(read_events(self.event_log.path))
+                    if event.get("type") == "model.requested"
+                    and isinstance(event.get("data"), Mapping)
+                    and event["data"].get("turn") == state.pending_model.turn
+                ),
+                None,
+            )
+            if pending_request is None or not isinstance(
+                pending_request.get("data"), Mapping
+            ):
+                raise RuntimeContractError(
+                    "pending semantic model request is missing its event"
+                )
+            raw_context = pending_request["data"].get("context")
+            if not isinstance(raw_context, Mapping):
+                raise RuntimeContractError(
+                    "pending semantic model request is missing its context receipt"
+                )
+            try:
+                receipt = ContextReceipt.from_dict(raw_context)
+                metadata = receipt.frame.get("metadata")
+                if not isinstance(metadata, Mapping):
+                    raise ValueError(
+                        "semantic context receipt is missing frame metadata"
+                    )
+                durable_memory_matches = durable_memory_matches_from_receipt(
+                    metadata.get("durable_memory_matches")
+                )
+                durable_memory_store_fingerprint = metadata.get(
+                    "durable_memory_store_fingerprint"
+                )
+                if not isinstance(durable_memory_store_fingerprint, str):
+                    raise ValueError(
+                        "semantic context receipt is missing durable store fingerprint"
+                    )
+            except (TypeError, ValueError) as exc:
+                raise RuntimeContractError(
+                    f"pending semantic context receipt is invalid: {exc}"
+                ) from exc
+            # A pending request must be reconstructed from its persisted snapshot,
+            # even when the live store has changed since the process stopped.
+            memory_store = None
         return compile_runtime_context(
             self.context_compiler,
             state.messages,
             task=state.config.task,
+            memory_store=memory_store,
+            memory_scope=self.tools.memory_scope,
+            durable_memory_matches=durable_memory_matches,
+            durable_memory_store_fingerprint=durable_memory_store_fingerprint,
         )
 
     def _request(

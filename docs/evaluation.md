@@ -338,7 +338,15 @@ same tool-call id. It requires one event, proves the duplicate is a no-op, and c
 bounded feedback signal changes the subsequent score. This is an adaptive-ranking protocol
 check, not learned retrieval or model-use evidence.
 
-These checks measure persistence, provenance, permission boundaries, and retry safety. They do
+The live context suite additionally covers the opt-in `versioned-v1+semantic` projection: a fresh
+store is searched before a model request, at most three candidates are rendered as ordinary
+advisory blocks, a deliberately tight budget evicts them without dropping the user task, and the
+receipt snapshot recompiles identically without a live store. An interrupted pending request is
+also resumed after the store changes; the request reuses its persisted candidate snapshot rather
+than silently switching to the new retrieval view.
+
+These checks measure persistence, provenance, permission boundaries, retry safety, bounded
+candidate selection, and replay determinism. They do
 not measure semantic recall, embedding quality, summarization quality, or whether a model uses a
 remembered item to produce a better patch. The current implementation intentionally uses a
 provider-free lexical scorer; any learned retrieval or memory-consolidation claim belongs to a

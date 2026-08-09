@@ -21,6 +21,7 @@ from contextopt.runtime.protocol import (
 )
 from contextopt.runtime.recovery import replay_events
 from contextopt.runtime.runner import AgentRunner
+from contextopt.runtime.semantic_memory import SemanticMemoryStore
 from contextopt.runtime.tools import WorkspaceTools
 
 
@@ -100,6 +101,199 @@ def _compiler(*, budget: int = 1_024) -> ContextCompiler:
 
 
 class RuntimeContextIntegrationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_opt_in_semantic_candidates_are_injected_and_audited(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            workspace = root / "workspace"
+            workspace.mkdir()
+            store = SemanticMemoryStore(root / "memory.jsonl")
+            saved = store.put(
+                "Parser overflow is fixed by checking the accumulator invariant "
+                "before subtraction.",
+                scope="project:acm",
+                kind="fact",
+                tags=("parser", "overflow"),
+                confidence=0.9,
+            )
+            event_path = root / "events.jsonl"
+            limits = RunLimits(max_turns=2, max_tool_calls=2)
+            compiler = ContextCompiler(
+                ContextCompilerConfig(
+                    policy="submodular",
+                    budget_tokens=4_096,
+                    recent_blocks=0,
+                    memory_policy="versioned-v1+semantic",
+                )
+            )
+            model = ScriptedModel(
+                [{"response": {"content": "I used the durable parser note."}}],
+                name="semantic-context-fixture:v1",
+            )
+            tools = WorkspaceTools(
+                workspace,
+                limits=limits,
+                memory_store=store,
+                memory_scope="project:acm",
+            )
+            event_log = EventLog(event_path, "semantic-context-run")
+            try:
+                result = await AgentRunner(
+                    model=model,
+                    tools=tools,
+                    event_log=event_log,
+                    limits=limits,
+                    context_compiler=compiler,
+                ).run("Fix the parser overflow in parser.py.")
+            finally:
+                event_log.close()
+                tools.close()
+
+            self.assertEqual(result.status, "completed")
+            self.assertEqual(len(model.requests), 1)
+            self.assertTrue(
+                any(
+                    message.role == "assistant"
+                    and "[contextopt durable memory candidate]" in message.content
+                    for message in model.requests[0].messages
+                )
+            )
+            self.assertIn(
+                saved.entry.memory_id,
+                {
+                    memory_id
+                    for memory_id in (
+                        next(
+                            event["data"]["context"]
+                            for event in read_events(event_path)
+                            if event["type"] == "model.requested"
+                        )["frame"]["metadata"]["durable_memory_selected_ids"]
+                    )
+                },
+            )
+
+    async def test_pending_semantic_request_replays_snapshot_after_store_changes(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            workspace = root / "workspace"
+            workspace.mkdir()
+            memory_path = root / "memory.jsonl"
+            store = SemanticMemoryStore(memory_path)
+            saved = store.put(
+                "The two-sum hash-map invariant keeps lookup linear.",
+                scope="project:acm",
+                kind="fact",
+                tags=("two-sum",),
+            )
+            store.close()
+            event_path = root / "events.jsonl"
+            limits = RunLimits(max_turns=2, max_tool_calls=2)
+            compiler = ContextCompiler(
+                ContextCompilerConfig(
+                    policy="submodular",
+                    budget_tokens=4_096,
+                    recent_blocks=0,
+                    memory_policy="versioned-v1+semantic",
+                )
+            )
+
+            class _PendingModel:
+                name = "semantic-pending-fixture:v1"
+
+                def __init__(self, *, block: bool) -> None:
+                    self.block = block
+                    self.started = asyncio.Event()
+                    self.requests: list[ModelRequest] = []
+
+                @property
+                def configuration_fingerprint(self) -> str:
+                    return stable_hash({"adapter": self.name})
+
+                def resume_from_turn(self, completed_turns: int) -> None:
+                    if completed_turns != 0:
+                        raise AssertionError("pending fixture should resume turn one")
+
+                async def complete(self, request: ModelRequest) -> ModelResponse:
+                    self.requests.append(request)
+                    self.started.set()
+                    if self.block:
+                        await asyncio.Future()
+                    return ModelResponse(
+                        content="replayed semantic context",
+                        usage=TokenUsage(input_tokens=5, output_tokens=2),
+                        response_id="semantic-pending-response",
+                    )
+
+                async def request_cancellation(self, request: ModelRequest) -> str:
+                    return "acknowledged"
+
+            first_model = _PendingModel(block=True)
+            first_log = EventLog(event_path, "semantic-pending-run")
+            first_tools = WorkspaceTools(
+                workspace,
+                limits=limits,
+                memory_store=SemanticMemoryStore(memory_path),
+                memory_scope="project:acm",
+            )
+            first_runner = AgentRunner(
+                model=first_model,
+                tools=first_tools,
+                event_log=first_log,
+                limits=limits,
+                context_compiler=compiler,
+            )
+            pending_task = asyncio.create_task(
+                first_runner.run("Explain the two-sum hash-map invariant.")
+            )
+            await asyncio.wait_for(first_model.started.wait(), timeout=5)
+            pending_task.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await pending_task
+            first_log.close()
+            first_tools.close()
+
+            changed_store = SemanticMemoryStore(memory_path)
+            changed_store.put(
+                "The two-sum hash-map invariant is also useful for duplicate handling.",
+                scope="project:acm",
+                kind="procedure",
+                tags=("two-sum",),
+            )
+            changed_store.close()
+
+            resumed_model = _PendingModel(block=False)
+            resumed_log = EventLog(
+                event_path,
+                "semantic-pending-run",
+                repair_truncated=True,
+            )
+            resumed_tools = WorkspaceTools(
+                workspace,
+                limits=limits,
+                memory_store=SemanticMemoryStore(memory_path),
+                memory_scope="project:acm",
+            )
+            try:
+                result = await AgentRunner(
+                    model=resumed_model,
+                    tools=resumed_tools,
+                    event_log=resumed_log,
+                    limits=limits,
+                    context_compiler=compiler,
+                ).resume()
+            finally:
+                resumed_log.close()
+                resumed_tools.close()
+
+            self.assertEqual(result.status, "completed")
+            self.assertEqual(len(resumed_model.requests), 1)
+            request_text = "\n".join(
+                message.content for message in resumed_model.requests[0].messages
+            )
+            self.assertIn(saved.entry.memory_id, request_text)
+            self.assertNotIn("duplicate handling", request_text)
+
     async def test_cached_write_reuse_keeps_memory_generation_stable(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

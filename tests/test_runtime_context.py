@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import tempfile
 import unittest
+from pathlib import Path
 
 from contextopt.runtime.context import (
     ContextBlockAnnotation,
@@ -8,11 +10,14 @@ from contextopt.runtime.context import (
     ContextCompiler,
     ContextCompilerConfig,
     ContextReceipt,
+    compile_runtime_context,
+    durable_memory_matches_from_receipt,
     estimate_message_tokens,
     estimate_messages_tokens,
     estimate_text_tokens,
 )
 from contextopt.runtime.protocol import AgentMessage, ToolCall
+from contextopt.runtime.semantic_memory import SemanticMemoryStore
 
 
 def _assistant_call(*call_ids: str, name: str = "read_file") -> AgentMessage:
@@ -379,6 +384,109 @@ class ContextCompilerTests(unittest.TestCase):
         self.assertNotEqual(
             first.receipt.messages_sha256, second.receipt.messages_sha256
         )
+
+    def test_opt_in_semantic_candidates_are_budgeted_and_replayable(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = SemanticMemoryStore(Path(temp_dir) / "memory.jsonl")
+            store.put(
+                "Parser overflow is fixed by checking the accumulator invariant "
+                "before subtraction.",
+                scope="project:acm",
+                kind="fact",
+                tags=("parser", "overflow"),
+                confidence=0.9,
+                source_refs=("src/parser.py",),
+            )
+            compiler = ContextCompiler(
+                ContextCompilerConfig(
+                    policy="submodular",
+                    budget_tokens=4_096,
+                    recent_blocks=0,
+                    memory_policy="versioned-v1+semantic",
+                )
+            )
+            messages = (
+                AgentMessage(role="system", content="You are a coding agent."),
+                AgentMessage(
+                    role="user", content="Fix the parser overflow in parser.py."
+                ),
+            )
+
+            live = compile_runtime_context(
+                compiler,
+                messages,
+                task="parser overflow parser.py",
+                memory_store=store,
+                memory_scope="project:acm",
+            )
+            metadata = live.receipt.frame["metadata"]
+            self.assertEqual(
+                metadata["durable_memory_ids"],
+                [metadata["durable_memory_matches"][0]["entry"]["memory_id"]],
+            )
+            self.assertEqual(
+                metadata["durable_memory_selected_ids"],
+                metadata["durable_memory_ids"],
+            )
+            self.assertIn(
+                "[contextopt durable memory candidate]", live.messages[-1].content
+            )
+            self.assertEqual(len(live.receipt.memory_fingerprint), 64)
+            self.assertEqual(
+                live.receipt.estimated_selected_tokens,
+                live.receipt.frame["used_tokens"],
+            )
+
+            replay = compile_runtime_context(
+                compiler,
+                messages,
+                task="parser overflow parser.py",
+                durable_memory_matches=durable_memory_matches_from_receipt(
+                    metadata["durable_memory_matches"]
+                ),
+                durable_memory_store_fingerprint=metadata[
+                    "durable_memory_store_fingerprint"
+                ],
+            )
+            self.assertEqual(replay, live)
+            store.close()
+
+    def test_semantic_candidates_can_be_evicted_but_receipt_keeps_snapshot(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = SemanticMemoryStore(Path(temp_dir) / "memory.jsonl")
+            store.put(
+                "Use the extended Euclid invariant when proving gcd termination.",
+                scope="project:math",
+                kind="procedure",
+                tags=("gcd", "proof"),
+            )
+            user = AgentMessage(role="user", content="Prove gcd termination.")
+            compiler = ContextCompiler(
+                ContextCompilerConfig(
+                    policy="density",
+                    budget_tokens=estimate_message_tokens(user),
+                    recent_blocks=0,
+                    memory_policy="versioned-v1+semantic",
+                )
+            )
+            compiled = compile_runtime_context(
+                compiler,
+                (user,),
+                task="gcd termination proof",
+                memory_store=store,
+                memory_scope="project:math",
+            )
+            metadata = compiled.receipt.frame["metadata"]
+            self.assertEqual(compiled.messages, (user,))
+            self.assertEqual(metadata["durable_memory_selected_ids"], [])
+            self.assertEqual(len(metadata["durable_memory_matches"]), 1)
+            self.assertEqual(
+                compiled.receipt.estimated_selected_tokens,
+                estimate_message_tokens(user),
+            )
+            store.close()
 
 
 if __name__ == "__main__":

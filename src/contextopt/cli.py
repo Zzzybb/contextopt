@@ -741,6 +741,7 @@ def _run_agent(args: argparse.Namespace) -> int:
             limits=limits,
             test_commands=commands,
             memory_store=memory_store,
+            memory_scope=args.memory_scope,
         )
         model = _build_model(args)
         event_log = EventLog(event_path, run_id)
@@ -812,6 +813,7 @@ def _resume_agent(args: argparse.Namespace) -> int:
             limits=state.config.limits,
             test_commands=commands,
             memory_store=memory_store,
+            memory_scope=args.memory_scope,
         )
         model = _build_model(args)
         event_log = EventLog(event_path, state.run_id, repair_truncated=True)
@@ -1407,8 +1409,16 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--memory-store",
         help=(
-            "append-only JSONL store exposed through memory_search; memory_save and "
-            "memory_feedback also require --allow-write"
+            "append-only JSONL store exposed through memory_search; use "
+            "--context-memory versioned-v1+semantic for bounded automatic candidates; "
+            "memory_save and memory_feedback also require --allow-write"
+        ),
+    )
+    run.add_argument(
+        "--memory-scope",
+        help=(
+            "optional semantic-memory scope for automatic context candidates; "
+            "global entries remain visible"
         ),
     )
     run.add_argument("--max-turns", type=int, default=20)
@@ -1444,9 +1454,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument(
         "--context-memory",
-        choices=("none", "versioned-v1"),
+        choices=("none", "versioned-v1", "versioned-v1+semantic"),
         default="versioned-v1",
-        help="deterministic evidence-validity signals supplied to context routing",
+        help=(
+            "context memory policy: observed evidence only, or opt-in bounded "
+            "semantic candidates from --memory-store"
+        ),
     )
     run.set_defaults(handler=_run_agent)
 
@@ -1459,6 +1472,13 @@ def build_parser() -> argparse.ArgumentParser:
     resume.add_argument(
         "--memory-store",
         help="the same semantic-memory JSONL store configured for the original run",
+    )
+    resume.add_argument(
+        "--memory-scope",
+        help=(
+            "the same optional semantic-memory scope used by the original run; "
+            "required for an equivalent tool configuration when it was set"
+        ),
     )
     resume.add_argument(
         "--test-command",

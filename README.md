@@ -42,7 +42,8 @@ Every boundary ──> durable schema-2 JSONL event log + verified state project
 > calls remain sequential; this is still at-least-once provider execution, not exactly-once.
 > An OS sandbox, learned semantic memory, and a statistically powered real-model coding benchmark
 > remain outside the current claim boundary. The v0.9 follow-up now adds an explicit,
-> provider-free lexical semantic-memory notebook with audited save/search tools; it is not
+> provider-free lexical semantic-memory notebook with audited save/search tools plus an opt-in,
+> budgeted semantic-context projection; it is not
 > learned retrieval or a coding-quality claim. The bounded `recovery-eval` matrix now injects
 > process-like stops across durable model/tool boundaries and verifies fresh-run recovery,
 > reconciliation, duplicate-effect accounting, and explicit operator pauses.
@@ -247,9 +248,14 @@ recompute the complete chain because there is no secret or external trust anchor
   automatically appends invalidation events for active memories citing that exact workspace
   path, including the crash-reconcile path. Explicit invalidation remains available for facts
   that become stale for non-file reasons.
-- The store is advisory: the agent must call the tools explicitly, `global` entries can be
-  inherited by a project scope, and it is not silently injected into every prompt or allowed to
-  override the current workspace ledger.
+- An explicit `--context-memory versioned-v1+semantic` mode retrieves at most three lexical
+  candidates before each model request. They are ordinary advisory assistant blocks: the live
+  context policy may evict them under the same token budget, and the receipt stores their full
+  snapshot plus the durable-store fingerprint for deterministic recovery.
+- The store is advisory: default `versioned-v1` runs still require an explicit tool call, while
+  the opt-in semantic context mode performs only the bounded candidate projection described
+  above. `global` entries can be inherited by a project scope, and neither path overrides the
+  current workspace ledger.
 
 ### ContextOpt engine — v0.1 algorithms, v0.3 live integration
 
@@ -284,7 +290,7 @@ recompute the complete chain because there is no secret or external trust anchor
 - A claim that the scripted demo measures model reasoning or real-world issue resolution.
 - Embedding-based retrieval, automatic memory consolidation, learned confidence calibration,
   or a statistically powered real-model coding benchmark. The v0.9 memory store is an
-  explicit lexical notebook with source-aware invalidation; the harness is still a
+  explicit lexical notebook with source-aware invalidation and opt-in context candidates; the harness is still a
   deterministic scripted comparison by default and does not pretend memory receipts or
   protocol acceptance are model coding accuracy.
 - Exactly-once external side effects. Recovery is tool-specific and conservative;
@@ -318,7 +324,8 @@ Every new run enables live context compilation. Its CLI controls and defaults ar
 | `--context-budget` | `16000` | Maximum deterministic estimated tokens in compiled history |
 | `--context-recent-blocks` | `2` | Newest protocol-atomic blocks forced into the request |
 | `--context-max-tool-output-tokens` | `2048` | Per-observation estimate before deterministic head/tail compaction |
-| `--context-memory` | `versioned-v1` | Observed evidence invalidation; use `none` to disable it |
+| `--context-memory` | `versioned-v1` | Observed evidence invalidation; use `none` to disable it, or `versioned-v1+semantic` for bounded durable candidates |
+| `--memory-scope` | unset | Optional project scope for automatic durable candidates; `global` entries remain visible |
 
 These are compiler estimates, not counts from a provider tokenizer. The chosen context
 configuration and its fingerprint are persisted with the run; `resume` reconstructs that
@@ -326,15 +333,18 @@ configuration from the event log rather than accepting replacement context flags
 
 ### Opt-in cross-run memory
 
-Attach a durable semantic notebook to a run by passing `--memory-store`. The runtime exposes
-`memory_search` to the model, while `memory_save` and `memory_invalidate` additionally require
-`--allow-write`:
+Attach a durable semantic notebook to a run by passing `--memory-store`. The default keeps
+retrieval explicit through `memory_search`; opt into bounded automatic candidates with
+`--context-memory versioned-v1+semantic`. `memory_save` and `memory_invalidate` additionally
+require `--allow-write`:
 
 ```bash
 contextopt run "Fix the parser" \
   --workspace <temporary-workspace-copy> \
   --script examples/runtime_demo/script.json \
   --memory-store .contextopt/memory.jsonl \
+  --memory-scope project:parser \
+  --context-memory versioned-v1+semantic \
   --allow-write --allow-command \
   --test-command "python -m unittest discover -s tests -v" \
   --event-log <temporary-events.jsonl>
@@ -343,9 +353,13 @@ contextopt run "Fix the parser" \
 The store uses the same append-only event and lease machinery as the runtime trace. Entries
 carry a kind, scope, tags, confidence, and source references; writes are deduplicated by a
 content-derived identity, and later entries can supersede or invalidate earlier ones. Retrieval
-is deterministic lexical matching, not embeddings or a learned summarizer. Search results are
-evidence for the next model turn, not proof about mutable files. A resumed run must be given the
-same memory-store path so its tool configuration fingerprint remains compatible.
+is deterministic lexical matching, not embeddings or a learned summarizer. In semantic context
+mode, up to three matches are rendered as clearly labelled advisory assistant blocks and compete
+for the normal context budget; an eviction is visible in `durable_memory_selected_ids`. Search
+results are evidence for the next model turn, not proof about mutable files. A resumed run must
+be given the same memory-store path and `--memory-scope` so its tool configuration fingerprint
+remains compatible; a pending semantic request replays the candidate snapshot in its receipt even
+if the live store changed after the process stopped.
 
 The complete two-run offline demonstration is in
 [`examples/semantic_memory_demo`](examples/semantic_memory_demo/README.md): one fresh Agent
@@ -686,7 +700,8 @@ docs/                     # architecture, runtime, and evaluation contract
   explicit non-replayable-tool pause/resolution, and JSON/Markdown/HTML/manifest artifacts.
 - **v0.9 follow-up — Durable semantic memory (implemented):** opt-in append-only cross-run
   memory tools with lexical retrieval, provenance, invalidation/supersession, idempotent writes,
-  lease protection, bilingual documentation, and a deterministic retrieval-conformance artifact.
+  lease protection, bilingual documentation, a deterministic retrieval-conformance artifact, and
+  opt-in budgeted semantic context candidates with receipt snapshots.
   This is memory plumbing, not a learned quality claim.
 
 The v0.8 follow-up is documented in [the role-context addendum](docs/pr/0001-v0.8-context-memory-addendum.md)
@@ -742,6 +757,8 @@ The source-aware invalidation follow-up is documented in the [English PR note](d
 and [Chinese version](docs/pr/0001-v0.9-source-aware-memory-invalidation.zh-CN.md).
 The idempotent feedback loop is documented in the [English PR note](docs/pr/0001-v0.9-memory-feedback.md)
 and [Chinese version](docs/pr/0001-v0.9-memory-feedback.zh-CN.md).
+The opt-in semantic context projection is documented in [the English PR note](docs/pr/0001-v0.9-semantic-memory-context.md)
+and [Chinese version](docs/pr/0001-v0.9-semantic-memory-context.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers. The
   manual workflow is the reproducibility entry point; the checked-in scripted artifacts remain

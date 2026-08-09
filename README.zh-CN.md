@@ -37,8 +37,9 @@ planner 和 reviewer 仍然顺序调用，仍不声称 exactly-once。还可以�
 `unsupported` 或 `failed:*`。默认的串行 OpenAI-compatible adapter 可以关闭本地活动 HTTP response，
 因此在本地传输确实被打断时记录 `acknowledged`；但通用 Chat Completions 没有标准 abort
 endpoint，不能据此证明 provider 已停止服务端生成。
-当前 v0.9 已经提供显式、可审计的跨运行语义记忆 notebook；它仍然不是 embedding
-检索、自动总结或学习型置信度校准。OS sandbox 和统计严谨的真实模型评测仍在后续计划中。
+当前 v0.9 已经提供显式、可审计的跨运行语义记忆 notebook，以及一个可选的、受预算约束的
+自动候选上下文模式；它仍然不是 embedding 检索、自动总结或学习型置信度校准。OS sandbox
+和统计严谨的真实模型评测仍在后续计划中。
 
 另外新增了 `recovery-eval` 长程恢复矩阵：在 `model.requested`、`model.responded`、
 `tool.started`、`tool.completed` 等 durable 边界注入 process-like stop，再用全新的
@@ -60,8 +61,11 @@ OpenAI-compatible adapter 默认通过 `Idempotency-Key` 发送它，但是否�
 `memory_feedback`。检索是可复现的 lexical 匹配，写入按内容 identity 幂等，`memory_save`
 可以显式 supersede 旧记忆，`memory_invalidate` 可以写入失效原因。`memory_feedback` 用
 tool-call id 做幂等键，把 helpful / not_helpful 信号以有界的排序调整写回，但不会修改记忆
-正文。它是下一轮的
-提示和 provenance，不是当前 workspace 文件状态的证明，也不会自动塞进每一轮 prompt。
+正文。默认模式下 Agent 仍需显式调用 `memory_search`；如果显式设置
+`--context-memory versioned-v1+semantic`，每轮最多会把 3 条命中渲染成带标签的 advisory
+assistant block，并和普通上下文一起竞争 token 预算。候选可能被淘汰，receipt 会保存完整候选
+快照和 store fingerprint，因此挂起请求可以在 store 变化后重放原候选。它不是当前 workspace
+文件状态的证明，也不会覆盖观察记忆账本。
 如果记忆带有 `source_refs`，成功的 `create_file` / `replace_text` 会在对应文件变更后
 自动追加失效事件；进程在写入后、记忆失效前停止时，reconcile 也会补做这一步。非文件
 原因导致的过期仍可通过 `memory_invalidate` 显式记录。
@@ -108,14 +112,18 @@ contextopt run "修复 parser" \
   --workspace <temporary-workspace-copy> \
   --script examples/runtime_demo/script.json \
   --memory-store .contextopt/memory.jsonl \
+  --memory-scope project:parser \
+  --context-memory versioned-v1+semantic \
   --allow-write --allow-command \
   --test-command "python -m unittest discover -s tests -v" \
   --event-log <temporary-events.jsonl>
 ~~~
 
 不加 `--allow-write` 时仍可搜索但不能保存或失效；记忆结果会进入普通 tool observation 和事件
-账本，因此能在 trace 中检查查询内容、命中项、revision 和 memory id。当前实现不依赖
-embedding service，也不宣称 memory 本身已经提升真实模型成功率。
+账本，因此能在 trace 中检查查询内容、命中项、revision 和 memory id。semantic context 模式
+会把最多 3 条候选作为普通上下文 block，`durable_memory_selected_ids` 显示实际保留的条目。
+当前实现不依赖 embedding service，也不宣称 memory 本身已经提升真实模型成功率。resume 时
+需要传入同一条 store 路径和 `--memory-scope`。
 
 完整的“两次全新运行”离线演示在
 [`examples/semantic_memory_demo`](examples/semantic_memory_demo/README.md)：第一次运行保存
@@ -299,6 +307,8 @@ python -m contextopt agent-eval \
   和 [英文版](docs/pr/0001-v0.9-source-aware-memory-invalidation.md)
 - v0.9 幂等 memory feedback：[docs/pr/0001-v0.9-memory-feedback.zh-CN.md](docs/pr/0001-v0.9-memory-feedback.zh-CN.md)
   和 [英文版](docs/pr/0001-v0.9-memory-feedback.md)
+- v0.9 有界 durable 记忆上下文：[docs/pr/0001-v0.9-semantic-memory-context.zh-CN.md](docs/pr/0001-v0.9-semantic-memory-context.zh-CN.md)
+  和 [英文版](docs/pr/0001-v0.9-semantic-memory-context.md)
 - v0.7 编排补充的中文回顾：[docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md](docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、

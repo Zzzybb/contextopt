@@ -17,6 +17,7 @@ from contextopt.runtime.context import (
     ContextCompilerConfig,
     ContextReceipt,
     compile_runtime_context,
+    durable_memory_matches_from_receipt,
 )
 from contextopt.runtime.protocol import (
     AgentMessage,
@@ -1016,12 +1017,33 @@ def reduce_event(
                     "context receipt fingerprint does not match run config"
                 )
             try:
+                context_config = ContextCompilerConfig.from_dict(
+                    state.config.context_config
+                )
+                durable_memory_matches = None
+                durable_memory_store_fingerprint = None
+                if context_config.memory_policy == "versioned-v1+semantic":
+                    metadata = receipt.frame.get("metadata")
+                    if not isinstance(metadata, Mapping):
+                        raise ValueError(
+                            "semantic context receipt is missing frame metadata"
+                        )
+                    durable_memory_matches = durable_memory_matches_from_receipt(
+                        metadata.get("durable_memory_matches")
+                    )
+                    raw_fingerprint = metadata.get("durable_memory_store_fingerprint")
+                    if not isinstance(raw_fingerprint, str):
+                        raise ValueError(
+                            "semantic context receipt is missing durable store "
+                            "fingerprint"
+                        )
+                    durable_memory_store_fingerprint = raw_fingerprint
                 expected_context = compile_runtime_context(
-                    ContextCompiler(
-                        ContextCompilerConfig.from_dict(state.config.context_config)
-                    ),
+                    ContextCompiler(context_config),
                     state.messages,
                     task=state.config.task,
+                    durable_memory_matches=durable_memory_matches,
+                    durable_memory_store_fingerprint=durable_memory_store_fingerprint,
                 )
             except (TypeError, ValueError) as exc:
                 raise RecoveryError(
@@ -1048,7 +1070,10 @@ def reduce_event(
                 receipt.memory_fingerprint is not None
                 and receipt.workspace_generation is not None
             )
-            if memory_policy == "versioned-v1" and not has_memory_identity:
+            if (
+                memory_policy in {"versioned-v1", "versioned-v1+semantic"}
+                and not has_memory_identity
+            ):
                 raise RecoveryError(
                     "versioned context receipt is missing its memory identity"
                 )
@@ -1078,6 +1103,14 @@ def reduce_event(
                     "context receipt message_count does not match selected blocks"
                 )
             source_roles = [role for block in receipt.blocks for role in block.roles]
+            if context_config.memory_policy == "versioned-v1+semantic":
+                durable_count = len(durable_memory_matches or ())
+                if durable_count:
+                    if source_roles[-durable_count:] != ["assistant"] * durable_count:
+                        raise RecoveryError(
+                            "semantic context receipt durable blocks are invalid"
+                        )
+                    source_roles = source_roles[:-durable_count]
             if source_roles != [message.role for message in state.messages]:
                 raise RecoveryError(
                     "context receipt blocks do not cover the projected transcript"
