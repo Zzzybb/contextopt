@@ -154,7 +154,15 @@ contextopt run "修复 parser" \
 `--replay-transcript PATH` 即可，不需要 API key。重放必须使用相同的请求序列，hash 不匹配
 时会 fail closed。
 `orchestrate` 则使用 `--record-transcript-dir DIR` / `--replay-transcript-dir DIR`，分别保存
- planner、solver、reviewer 三条 cassette；角色重放故意要求 visible-test 观察也一致。
+planner、solver、reviewer 三条 cassette；角色重放故意要求 visible-test 观察也一致。
+`agent-eval` 也支持按矩阵单元保存 provider 轨迹：真实模型运行时传入
+`--record-transcript-dir DIR`，会写出
+`{fixture}/{strategy}/repetition-{n}/{role}.jsonl`；新的运行传入
+`--replay-transcript-dir DIR` 即可不需要 API key 离线重放。重放仍会执行 visible 和独立
+hidden oracle，但它是离线复现而不是新的 provider 测量；每次矩阵录制都应使用新目录。
+实现细节见双语 PR 说明
+[英文版](docs/pr/0001-v1.0-agent-eval-transcript-matrix.md) /
+[中文版](docs/pr/0001-v1.0-agent-eval-transcript-matrix.zh-CN.md)。
 
 完整的“两次全新运行”离线演示在
 [`examples/semantic_memory_demo`](examples/semantic_memory_demo/README.md)：第一次运行保存

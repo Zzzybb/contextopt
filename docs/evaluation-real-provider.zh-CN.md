@@ -14,6 +14,22 @@
    工作流会拒绝少于 3 次的 repetition，以满足 Level 3 探索性对比规则。
 4. 工作流完成后下载上传的 artifact bundle。
 
+如果想把本地真实模型矩阵保存成可审计的轨迹，可以使用 cassette：
+
+```text
+python -m contextopt agent-eval --fixtures all --repetitions 3 \
+  --model <model-name> --base-url <endpoint> \
+  --record-transcript-dir .contextopt/provider-matrix \
+  --output agent-eval-real.json --manifest agent-eval-real.manifest.json
+python -m contextopt agent-eval --fixtures all --repetitions 3 \
+  --replay-transcript-dir .contextopt/provider-matrix \
+  --output agent-eval-replay.json --manifest agent-eval-replay.manifest.json
+```
+
+目录会为每个 fixture、strategy、repetition 和 role 保存一条严格 JSONL cassette。
+重放会校验完整的规范化请求 hash；缺失或变化的请求会 fail closed。它是离线复现已
+记录运行的方式，不是新的 provider 测量；每次矩阵录制都应使用新的目录。
+
 当前 revision 中，`all` 会展开为 `two-sum`、`extended-gcd`、`merge-intervals`、
 `modular-inverse`。确定性的三次重复控制基线位于
 [experiments/v1.0-acm-math-4-fixtures](../experiments/v1.0-acm-math-4-fixtures/README.zh-CN.md)；

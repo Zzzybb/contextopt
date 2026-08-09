@@ -129,6 +129,13 @@ def _safe_endpoint(value: str | None) -> str | None:
 def _agent_eval_manifest(
     args: argparse.Namespace, config: AgentEvalConfig, model_adapter: str
 ) -> dict[str, Any]:
+    transcript_mode = (
+        "record"
+        if args.record_transcript_dir
+        else "replay"
+        if args.replay_transcript_dir
+        else None
+    )
     return {
         "schema_version": "1",
         "kind": "contextopt.agent-eval.manifest",
@@ -146,6 +153,15 @@ def _agent_eval_manifest(
             "timeout_seconds": args.model_timeout,
             "max_retries": args.model_retries,
             "api_key_env": args.api_key_env,
+        },
+        "transcript": {
+            "mode": transcript_mode,
+            "directory": args.record_transcript_dir or args.replay_transcript_dir,
+            "layout": (
+                "{fixture}/{strategy}/repetition-{n}/{role}.jsonl"
+                if transcript_mode
+                else None
+            ),
         },
         "repository_revision": os.environ.get("CONTEXTOPT_GIT_REVISION")
         or os.environ.get("GITHUB_SHA"),
@@ -231,7 +247,24 @@ def _agent_eval(args: argparse.Namespace) -> int:
     fixtures = available_fixture_ids if "all" in raw_fixtures else raw_fixtures
     model_factory = None
     model_adapter = "scripted"
-    if args.model:
+    if args.record_transcript_dir and not args.model:
+        raise ValueError("--model is required when recording agent-eval transcripts")
+    if args.replay_transcript_dir:
+        if args.model or args.base_url:
+            raise ValueError(
+                "--model and --base-url cannot be combined with replay transcripts"
+            )
+        model_factory = build_openai_model_factory(
+            base_url=None,
+            api_key=None,
+            model=None,
+            planner_model=args.planner_model,
+            solver_model=args.solver_model,
+            reviewer_model=args.reviewer_model,
+            replay_transcript_dir=args.replay_transcript_dir,
+        )
+        model_adapter = "replay"
+    elif args.model:
         if not args.base_url:
             raise ValueError("--base-url is required when --model is supplied")
         api_key = os.environ.get(args.api_key_env)
@@ -249,6 +282,7 @@ def _agent_eval(args: argparse.Namespace) -> int:
             timeout_seconds=args.model_timeout,
             max_retries=args.model_retries,
             temperature=args.temperature,
+            record_transcript_dir=args.record_transcript_dir,
         )
         model_adapter = "openai-compatible"
     config = AgentEvalConfig(
@@ -1156,6 +1190,21 @@ def build_parser() -> argparse.ArgumentParser:
     )
     agent_eval.add_argument(
         "--resume", action="store_true", help="resume completed cells from --checkpoint"
+    )
+    transcript_group = agent_eval.add_mutually_exclusive_group()
+    transcript_group.add_argument(
+        "--record-transcript-dir",
+        help=(
+            "record one provider cassette per fixture/strategy/repetition/role; "
+            "requires --model"
+        ),
+    )
+    transcript_group.add_argument(
+        "--replay-transcript-dir",
+        help=(
+            "replay one provider cassette per fixture/strategy/repetition/role "
+            "without provider credentials"
+        ),
     )
     agent_eval.set_defaults(handler=_agent_eval)
 

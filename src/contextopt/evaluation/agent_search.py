@@ -17,6 +17,7 @@ still useful as a deterministic contract test before plugging in a real provider
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import os
 import sys
@@ -33,6 +34,7 @@ from typing import Any, Literal, cast
 from contextopt.runtime.errors import ModelError, RuntimeContractError
 from contextopt.runtime.model import OpenAICompatibleModel, ScriptedModel
 from contextopt.runtime.protocol import ModelClient
+from contextopt.runtime.transcript import RecordingModel, ReplayModel
 from contextopt.search import (
     BranchSearchConfig,
     CandidatePatch,
@@ -49,9 +51,7 @@ from contextopt.search import (
 )
 
 AgentStrategy = Literal["single_pass", "best_of_n", "orchestrated"]
-AgentModelFactory = Callable[
-    ["AgentEvalFixture", AgentStrategy], tuple[ModelClient, ...]
-]
+AgentModelFactory = Callable[..., tuple[ModelClient, ...]]
 _STRATEGIES: tuple[AgentStrategy, ...] = (
     "single_pass",
     "best_of_n",
@@ -74,10 +74,21 @@ _REAL_MODEL_CLAIM_BOUNDARY = (
     "provider latency, provider "
     "reliability, security isolation, or production safety."
 )
+_REPLAY_MODEL_CLAIM_BOUNDARY = (
+    "This report replays a previously recorded provider transcript. It measures the "
+    "same fixed-fixture control-policy outputs and local accounting under a strict "
+    "request-hash match; it does not make a fresh provider call or establish current "
+    "model capability, provider latency, provider reliability, security isolation, "
+    "or production safety."
+)
 
 
 def _claim_boundary(adapter: str) -> str:
-    return _CLAIM_BOUNDARY if adapter == "scripted" else _REAL_MODEL_CLAIM_BOUNDARY
+    if adapter == "scripted":
+        return _CLAIM_BOUNDARY
+    if adapter == "replay":
+        return _REPLAY_MODEL_CLAIM_BOUNDARY
+    return _REAL_MODEL_CLAIM_BOUNDARY
 
 
 def _non_empty(value: Any, label: str) -> str:
@@ -643,7 +654,12 @@ class AgentEvalConfig:
             raise ValueError("exploration_constant must be positive")
         if not isinstance(self.include_hidden_tests, bool):
             raise ValueError("include_hidden_tests must be a boolean")
-        if self.model_adapter not in {"scripted", "openai-compatible", "custom"}:
+        if self.model_adapter not in {
+            "scripted",
+            "openai-compatible",
+            "replay",
+            "custom",
+        }:
             raise ValueError(f"unsupported agent model adapter: {self.model_adapter!r}")
 
     @classmethod
@@ -1624,33 +1640,93 @@ def _strategy_models(
 
 def build_openai_model_factory(
     *,
-    base_url: str,
-    api_key: str,
-    model: str,
+    base_url: str | None,
+    api_key: str | None,
+    model: str | None,
     planner_model: str | None = None,
     solver_model: str | None = None,
     reviewer_model: str | None = None,
     timeout_seconds: float = 90.0,
     max_retries: int = 2,
     temperature: float | None = 0.0,
+    record_transcript_dir: str | Path | None = None,
+    replay_transcript_dir: str | Path | None = None,
 ) -> AgentModelFactory:
     """Build a fresh OpenAI-compatible model tuple for every matrix cell.
 
     The factory keeps provider credentials outside the persisted report.  A new adapter
     is created for every fixture/strategy/repetition so a failed trajectory cannot leak
-    cursor or conversation state into the next paired cell.
+    cursor or conversation state into the next paired cell.  When a transcript
+    directory is supplied, each cell is stored below
+    ``{fixture}/{strategy}/repetition-{n}/{role}.jsonl``; replay mode does not require
+    provider credentials.
     """
 
-    if not model:
-        raise ValueError("model must not be empty")
+    if record_transcript_dir is not None and replay_transcript_dir is not None:
+        raise ValueError(
+            "record_transcript_dir and replay_transcript_dir are mutually exclusive"
+        )
+    replay_root = (
+        Path(replay_transcript_dir).resolve(strict=False)
+        if replay_transcript_dir is not None
+        else None
+    )
+    record_root = (
+        Path(record_transcript_dir).resolve(strict=False)
+        if record_transcript_dir is not None
+        else None
+    )
+    if replay_root is None:
+        if not base_url:
+            raise ValueError("base_url must not be empty")
+        if not api_key:
+            raise ValueError("api_key must not be empty")
+        if not model:
+            raise ValueError("model must not be empty")
+    else:
+        # Replay never constructs the provider adapter.  These placeholders keep the
+        # role factory shape identical while allowing an offline run with no secrets.
+        base_url = base_url or "http://replay.invalid/v1"
+        api_key = api_key or "replay-not-used"
+        model = model or "replayed-provider"
+    assert base_url is not None
+    assert api_key is not None
+    assert model is not None
     names = {
         "planner": planner_model or model,
         "solver": solver_model or model,
         "reviewer": reviewer_model or model,
     }
 
-    def create(role: str) -> OpenAICompatibleModel:
-        return OpenAICompatibleModel(
+    def cassette_path(
+        fixture: AgentEvalFixture,
+        strategy: AgentStrategy,
+        repetition: int,
+        role: str,
+        root: Path,
+    ) -> Path:
+        if repetition < 0:
+            raise ValueError("repetition must be non-negative")
+        return (
+            root
+            / fixture.fixture_id
+            / strategy
+            / f"repetition-{repetition}"
+            / f"{role}.jsonl"
+        )
+
+    def create(
+        fixture: AgentEvalFixture,
+        strategy: AgentStrategy,
+        repetition: int,
+        role: str,
+    ) -> ModelClient:
+        if replay_root is not None:
+            return ReplayModel(
+                cassette_path(fixture, strategy, repetition, role, replay_root),
+                name=f"replay:{names[role]}",
+            )
+        model_client = OpenAICompatibleModel(
             base_url=base_url,
             api_key=api_key,
             model=names[role],
@@ -1658,13 +1734,28 @@ def build_openai_model_factory(
             max_retries=max_retries,
             temperature=temperature,
         )
+        if record_root is None:
+            return model_client
+        path = cassette_path(fixture, strategy, repetition, role, record_root)
+        if path.exists() and path.stat().st_size:
+            raise ValueError(
+                "record transcript path already contains data; use a fresh directory: "
+                f"{path}"
+            )
+        return RecordingModel(model_client, path)
 
     def factory(
-        _fixture: AgentEvalFixture, strategy: AgentStrategy
+        fixture: AgentEvalFixture,
+        strategy: AgentStrategy,
+        repetition: int = 0,
     ) -> tuple[ModelClient, ...]:
         if strategy == "orchestrated":
-            return (create("planner"), create("solver"), create("reviewer"))
-        return (create("solver"),)
+            return (
+                create(fixture, strategy, repetition, "planner"),
+                create(fixture, strategy, repetition, "solver"),
+                create(fixture, strategy, repetition, "reviewer"),
+            )
+        return (create(fixture, strategy, repetition, "solver"),)
 
     return factory
 
@@ -1702,6 +1793,39 @@ def _hidden_outcome(
         return 1, False, f"{type(exc).__name__}: {str(exc)[:800]}"
 
 
+def _models_from_factory(
+    model_factory: AgentModelFactory,
+    fixture: AgentEvalFixture,
+    strategy: AgentStrategy,
+    repetition: int,
+) -> tuple[ModelClient, ...]:
+    """Call both legacy two-argument and repetition-aware factories safely."""
+
+    try:
+        parameters = tuple(inspect.signature(model_factory).parameters.values())
+    except (TypeError, ValueError):
+        parameters = ()
+    positional = tuple(
+        parameter
+        for parameter in parameters
+        if parameter.kind
+        in {inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD}
+    )
+    accepts_varargs = any(
+        parameter.kind == inspect.Parameter.VAR_POSITIONAL for parameter in parameters
+    )
+    accepts_keyword_repetition = any(
+        parameter.name == "repetition"
+        and parameter.kind == inspect.Parameter.KEYWORD_ONLY
+        for parameter in parameters
+    )
+    if accepts_varargs or len(positional) >= 3:
+        return model_factory(fixture, strategy, repetition)
+    if accepts_keyword_repetition:
+        return model_factory(fixture, strategy, repetition=repetition)
+    return model_factory(fixture, strategy)
+
+
 def _run_strategy_once(
     fixture: AgentEvalFixture,
     strategy: AgentStrategy,
@@ -1713,7 +1837,7 @@ def _run_strategy_once(
         models = (
             _strategy_models(fixture, strategy)
             if model_factory is None
-            else model_factory(fixture, strategy)
+            else _models_from_factory(model_factory, fixture, strategy, repetition)
         )
         expected_models = 3 if strategy == "orchestrated" else 1
         if len(models) != expected_models:

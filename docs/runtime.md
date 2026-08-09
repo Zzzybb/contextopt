@@ -136,6 +136,15 @@ while `--replay-transcript-dir DIR` loads the three role-specific streams. Role 
 deliberately strict: a changed visible-test observation (including timing fields) is a
 different request and must be recorded again rather than silently reusing a stale review.
 
+The `agent-eval` matrix uses the same boundary at a finer granularity. Pass
+`--record-transcript-dir DIR` alongside a real `--model` to write one cassette per
+`fixture/strategy/repetition/role`; pass `--replay-transcript-dir DIR` on a fresh run to
+replay the complete matrix without an API key. The directory layout is
+`{fixture}/{strategy}/repetition-{n}/{role}.jsonl`. A replay run is labeled as replayed
+in its claim boundary and still executes the visible and independent hidden oracles; it
+does not make a provider call. Recording requires a fresh directory so an interrupted
+cell cannot be silently appended to a new trajectory.
+
 ## Coding-agent strategy evaluation harness
 
 The repository also ships a model-free outer-loop comparison for the control policies that

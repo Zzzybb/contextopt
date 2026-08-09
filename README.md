@@ -568,6 +568,15 @@ and fails closed on a hash mismatch.
 For `orchestrate`, use `--record-transcript-dir DIR` / `--replay-transcript-dir DIR` to keep
 separate planner, solver, and reviewer cassettes; role replay intentionally requires the same
 visible-test observations as the recorded trajectory.
+The `agent-eval` matrix supports the same boundary at cell granularity: add
+`--record-transcript-dir DIR` to a real-model run to write
+`{fixture}/{strategy}/repetition-{n}/{role}.jsonl`, then use
+`--replay-transcript-dir DIR` on a fresh run without an API key. Replay still executes the
+visible and independent hidden oracles, but it is an offline reproduction rather than a
+new provider measurement; use a fresh recording directory for each matrix.
+The implementation is documented in the bilingual PR note
+[`agent-eval-transcript-matrix`](docs/pr/0001-v1.0-agent-eval-transcript-matrix.md) /
+[`中文版`](docs/pr/0001-v1.0-agent-eval-transcript-matrix.zh-CN.md).
 
 Run the v0.4 test-guided branch-search demo and write all three report formats:
 

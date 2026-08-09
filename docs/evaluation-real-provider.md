@@ -17,6 +17,23 @@ use the equivalent local CLI command in the README.
    exploratory comparison rule.
 4. Download the uploaded artifact bundle after the job finishes.
 
+For a local run, preserve the provider boundary as auditable cassettes:
+
+```text
+python -m contextopt agent-eval --fixtures all --repetitions 3 \
+  --model <model-name> --base-url <endpoint> \
+  --record-transcript-dir .contextopt/provider-matrix \
+  --output agent-eval-real.json --manifest agent-eval-real.manifest.json
+python -m contextopt agent-eval --fixtures all --repetitions 3 \
+  --replay-transcript-dir .contextopt/provider-matrix \
+  --output agent-eval-replay.json --manifest agent-eval-replay.manifest.json
+```
+
+The directory contains one strict JSONL cassette for every fixture, strategy,
+repetition, and role. Replay checks the complete normalized request hash and fails closed
+on a missing or changed request; it is an offline reproduction of the recorded run, not a
+new provider measurement. Use a fresh recording directory for each matrix.
+
 At the current revision, `all` expands to `two-sum`, `extended-gcd`, `merge-intervals`, and
 `modular-inverse`. The deterministic three-repetition control baseline is checked in under
 [`experiments/v1.0-acm-math-4-fixtures`](../experiments/v1.0-acm-math-4-fixtures/README.md);

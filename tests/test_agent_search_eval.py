@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import tempfile
 import threading
 import unittest
@@ -11,6 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from types import TracebackType
 from typing import Any
+from unittest.mock import patch
 
 from contextopt.cli import main
 from contextopt.evaluation import (
@@ -450,6 +452,143 @@ class AgentEvaluationTests(unittest.TestCase):
                 keys = [request["idempotency_key"] for request in server.requests]
                 self.assertEqual(len(keys), len(set(keys)))
                 self.assertTrue(all(key.startswith("contextopt-") for key in keys))
+
+    def test_provider_matrix_transcript_round_trip_is_cell_and_repetition_scoped(
+        self,
+    ) -> None:
+        fixture = build_algorithm_fixtures()[0]
+        config = AgentEvalConfig(
+            strategies=("single_pass",),
+            fixtures=(fixture.fixture_id,),
+            repetitions=2,
+            include_hidden_tests=True,
+            model_adapter="openai-compatible",
+        )
+        with (
+            tempfile.TemporaryDirectory() as temp_dir,
+            _DynamicProviderServer(fixture.good_files) as server,
+        ):
+            record_dir = Path(temp_dir) / "recorded"
+            recording_factory = build_openai_model_factory(
+                base_url=server.base_url,
+                api_key="provider-smoke-secret",
+                model="provider-smoke-model",
+                record_transcript_dir=record_dir,
+            )
+            recorded = run_agent_evaluation(config, model_factory=recording_factory)
+            self.assertTrue(all(run.success for run in recorded.runs))
+            self.assertEqual(len(server.requests), 2)
+            for repetition in range(2):
+                cassette = (
+                    record_dir
+                    / fixture.fixture_id
+                    / "single_pass"
+                    / f"repetition-{repetition}"
+                    / "solver.jsonl"
+                )
+                self.assertTrue(cassette.exists())
+                self.assertEqual(
+                    len(cassette.read_text(encoding="utf-8").splitlines()), 1
+                )
+
+            replay_factory = build_openai_model_factory(
+                base_url=None,
+                api_key=None,
+                model=None,
+                replay_transcript_dir=record_dir,
+            )
+            replayed = run_agent_evaluation(
+                AgentEvalConfig(
+                    strategies=("single_pass",),
+                    fixtures=(fixture.fixture_id,),
+                    repetitions=2,
+                    include_hidden_tests=True,
+                    model_adapter="replay",
+                ),
+                model_factory=replay_factory,
+            )
+            self.assertTrue(all(run.success for run in replayed.runs))
+            self.assertIn(
+                "replays a previously recorded provider transcript",
+                replayed.claim_boundary,
+            )
+            recorded_payload = recorded.to_dict()
+            replayed_payload = replayed.to_dict()
+            for payload in (recorded_payload, replayed_payload):
+                for run in payload["runs"]:
+                    run.pop("duration_ms", None)
+            self.assertEqual(replayed_payload["runs"], recorded_payload["runs"])
+            self.assertEqual(len(server.requests), 2)
+
+    def test_cli_agent_eval_can_record_and_replay_matrix_transcripts(self) -> None:
+        fixture = build_algorithm_fixtures()[0]
+        with (
+            tempfile.TemporaryDirectory() as temp_dir,
+            _DynamicProviderServer(fixture.good_files) as server,
+            patch.dict(
+                os.environ, {"CONTEXTOPT_TEST_PROVIDER_KEY": "provider-smoke-secret"}
+            ),
+        ):
+            root = Path(temp_dir)
+            record_dir = root / "recorded"
+            record_manifest = root / "record.manifest.json"
+            replay_manifest = root / "replay.manifest.json"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-eval",
+                            "--strategies",
+                            "single_pass",
+                            "--fixtures",
+                            fixture.fixture_id,
+                            "--repetitions",
+                            "2",
+                            "--model",
+                            "provider-smoke-model",
+                            "--base-url",
+                            server.base_url,
+                            "--api-key-env",
+                            "CONTEXTOPT_TEST_PROVIDER_KEY",
+                            "--record-transcript-dir",
+                            str(record_dir),
+                            "--manifest",
+                            str(record_manifest),
+                        ]
+                    ),
+                    0,
+                )
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-eval",
+                            "--strategies",
+                            "single_pass",
+                            "--fixtures",
+                            fixture.fixture_id,
+                            "--repetitions",
+                            "2",
+                            "--replay-transcript-dir",
+                            str(record_dir),
+                            "--manifest",
+                            str(replay_manifest),
+                        ]
+                    ),
+                    0,
+                )
+            self.assertEqual(len(server.requests), 2)
+            self.assertEqual(
+                json.loads(record_manifest.read_text(encoding="utf-8"))["transcript"][
+                    "mode"
+                ],
+                "record",
+            )
+            replay_manifest_payload = json.loads(
+                replay_manifest.read_text(encoding="utf-8")
+            )
+            self.assertEqual(replay_manifest_payload["provider"]["adapter"], "replay")
+            self.assertEqual(replay_manifest_payload["transcript"]["mode"], "replay")
+            self.assertIsNone(replay_manifest_payload["provider"]["model"])
 
     def test_report_roundtrip_and_tamper_detection(self) -> None:
         payload = self.report.to_dict()
