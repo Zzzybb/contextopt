@@ -345,6 +345,19 @@ The complete two-run offline demonstration is in
 writes a procedure, a second fresh Agent searches the same store, and the reader trace shows the
 retrieval evidence.
 
+Evaluate the retrieval boundary itself:
+
+```bash
+python -m contextopt memory-eval \
+  --output experiments/v0.9-semantic-memory/report.json \
+  --markdown experiments/v0.9-semantic-memory/report.md \
+  --html experiments/v0.9-semantic-memory/report.html
+```
+
+The fixed report keeps hit@1/hit@k, MRR, negative-query pass rate, scope isolation, invalidated
+memory exclusion, and repeated-search determinism separate from coding success. The committed
+artifact is documented in [`experiments/v0.9-semantic-memory`](experiments/v0.9-semantic-memory/README.md).
+
 The script drives this real sequence:
 
 ```text
@@ -631,7 +644,7 @@ tests/                    # standard-library unit and integration tests
 examples/runtime_demo/    # offline scripted coding-loop demonstration
 examples/semantic_memory_demo/ # two-run durable memory demonstration
 examples/auth_context.json
-experiments/              # checked-in optimizer configurations and raw results
+experiments/              # checked-in optimizer configurations, evals, and raw results
 docs/                     # architecture, runtime, and evaluation contract
 ```
 
@@ -666,8 +679,8 @@ docs/                     # architecture, runtime, and evaluation contract
   explicit non-replayable-tool pause/resolution, and JSON/Markdown/HTML/manifest artifacts.
 - **v0.9 follow-up — Durable semantic memory (implemented):** opt-in append-only cross-run
   memory tools with lexical retrieval, provenance, invalidation/supersession, idempotent writes,
-  lease protection, and bilingual documentation. This is memory plumbing, not a learned quality
-  claim.
+  lease protection, bilingual documentation, and a deterministic retrieval-conformance artifact.
+  This is memory plumbing, not a learned quality claim.
 
 The v0.8 follow-up is documented in [the role-context addendum](docs/pr/0001-v0.8-context-memory-addendum.md)
 and its [Chinese translation](docs/pr/0001-v0.8-context-memory-addendum.zh-CN.md). The parallel
@@ -714,6 +727,10 @@ The real-provider workflow's secret boundary is documented in [the v0.9 note](do
 and [Chinese version](docs/pr/0001-v0.9-real-provider-secret-scope.zh-CN.md).
 The durable cross-run semantic-memory follow-up is documented in [the English PR note](docs/pr/0001-v0.9-semantic-memory.md)
 and [Chinese version](docs/pr/0001-v0.9-semantic-memory.zh-CN.md).
+The retrieval metrics and committed dashboard are in
+[`experiments/v0.9-semantic-memory`](experiments/v0.9-semantic-memory/README.md), with the
+evaluation-specific [English PR note](docs/pr/0001-v0.9-semantic-memory-evaluation.md) and
+[Chinese version](docs/pr/0001-v0.9-semantic-memory-evaluation.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers. The
   manual workflow is the reproducibility entry point; the checked-in scripted artifacts remain

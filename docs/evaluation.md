@@ -334,6 +334,22 @@ remembered item to produce a better patch. The current implementation intentiona
 provider-free lexical scorer; any learned retrieval or memory-consolidation claim belongs to a
 future experiment with held-out tasks and an explicit ablation.
 
+Reproduce the fixed retrieval artifact with:
+
+```text
+python -m contextopt memory-eval \
+  --repetitions 3 --limit 3 \
+  --output experiments/v0.9-semantic-memory/report.json \
+  --markdown experiments/v0.9-semantic-memory/report.md \
+  --html experiments/v0.9-semantic-memory/report.html
+```
+
+The committed fixture reports hit@1/hit@k, MRR, negative-query pass, scope isolation,
+invalidated-entry exclusion, and deterministic replay. These metrics establish the retrieval
+plumbing and its safety boundaries; they are intentionally not promoted to model-use or patch-
+success claims. See the [English artifact note](../experiments/v0.9-semantic-memory/README.md)
+and [Chinese note](../experiments/v0.9-semantic-memory/README.zh-CN.md).
+
 ## Level 3: controlled real-model coding tasks — harness ready, runs pending
 
 Use the same model snapshot, system prompt, tools, repository commit, maximum turns, token

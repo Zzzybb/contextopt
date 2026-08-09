@@ -24,6 +24,7 @@ from contextopt.evaluation import (
     AgentEvalConfig,
     ContextRoutingEvalConfig,
     RecoveryEvalConfig,
+    SemanticMemoryEvalConfig,
     build_openai_model_factory,
     render_agent_evaluation_console,
     render_agent_evaluation_html,
@@ -33,9 +34,13 @@ from contextopt.evaluation import (
     render_recovery_console,
     render_recovery_html,
     render_recovery_markdown,
+    render_semantic_memory_console,
+    render_semantic_memory_html,
+    render_semantic_memory_markdown,
     run_agent_evaluation,
     run_context_routing_evaluation,
     run_recovery_evaluation,
+    run_semantic_memory_evaluation,
 )
 from contextopt.models import ContextItem, ObjectiveWeights, SelectionProblem
 from contextopt.policies import POLICIES, create_policy
@@ -294,6 +299,20 @@ def _recovery_eval(args: argparse.Namespace) -> int:
         + "\n",
     )
     return 0 if report.failed_count == 0 else 1
+
+
+def _semantic_memory_eval(args: argparse.Namespace) -> int:
+    report = run_semantic_memory_evaluation(
+        SemanticMemoryEvalConfig(
+            repetitions=args.repetitions,
+            limit=args.limit,
+        )
+    )
+    print(render_semantic_memory_console(report), end="\n")
+    _write(args.output, json.dumps(report, indent=2, sort_keys=True) + "\n")
+    _write(args.markdown, render_semantic_memory_markdown(report))
+    _write(args.html, render_semantic_memory_html(report))
+    return 0
 
 
 def _load_branch_case(path: str) -> BranchCase:
@@ -1035,6 +1054,29 @@ def build_parser() -> argparse.ArgumentParser:
         "--manifest", help="write recovery protocol metadata without secrets"
     )
     recovery_eval.set_defaults(handler=_recovery_eval)
+
+    memory_eval = subparsers.add_parser(
+        "memory-eval",
+        help="measure deterministic cross-run semantic-memory retrieval conformance",
+    )
+    memory_eval.add_argument(
+        "--repetitions",
+        type=int,
+        default=3,
+        help="repeated searches per fixed query (minimum 2)",
+    )
+    memory_eval.add_argument(
+        "--limit",
+        type=int,
+        default=3,
+        help="maximum results returned for each query",
+    )
+    memory_eval.add_argument("--output", help="write the complete JSON report")
+    memory_eval.add_argument("--markdown", help="write the summary as Markdown")
+    memory_eval.add_argument(
+        "--html", help="write a self-contained retrieval dashboard"
+    )
+    memory_eval.set_defaults(handler=_semantic_memory_eval)
 
     propose = subparsers.add_parser(
         "propose-case",

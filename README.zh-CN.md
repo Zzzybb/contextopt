@@ -116,6 +116,19 @@ embedding service，也不宣称 memory 本身已经提升真实模型成功率�
 [`examples/semantic_memory_demo`](examples/semantic_memory_demo/README.md)：第一次运行保存
 procedure，第二次运行打开同一个 store 查询，reader trace 会显示命中词、memory id 和 revision。
 
+还可以单独评测记忆检索边界：
+
+~~~text
+python -m contextopt memory-eval \
+  --output experiments/v0.9-semantic-memory/report.json \
+  --markdown experiments/v0.9-semantic-memory/report.md \
+  --html experiments/v0.9-semantic-memory/report.html
+~~~
+
+固定报告把 hit@1/hit@k、MRR、负查询通过率、scope 隔离、失效记忆排除和重复检索确定性与
+代码成功率分开；提交中的产物说明在
+[`experiments/v0.9-semantic-memory`](experiments/v0.9-semantic-memory/README.zh-CN.md)。
+
 ## 离线验证
 
 项目需要 Python 3.11 或更高版本，没有运行时依赖：
@@ -275,6 +288,8 @@ python -m contextopt agent-eval \
   和 [英文版](docs/pr/0001-v0.9-real-provider-secret-scope.md)
 - v0.9 跨运行语义记忆：[docs/pr/0001-v0.9-semantic-memory.zh-CN.md](docs/pr/0001-v0.9-semantic-memory.zh-CN.md)
   和 [英文版](docs/pr/0001-v0.9-semantic-memory.md)
+- v0.9 语义记忆检索评测：[docs/pr/0001-v0.9-semantic-memory-evaluation.zh-CN.md](docs/pr/0001-v0.9-semantic-memory-evaluation.zh-CN.md)
+  和 [英文版](docs/pr/0001-v0.9-semantic-memory-evaluation.md)
 - v0.7 编排补充的中文回顾：[docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md](docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、

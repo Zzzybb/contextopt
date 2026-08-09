@@ -244,6 +244,11 @@ For a fresh-process cross-run demonstration, use
 reader scripts make the boundary visible without an API key: the first run saves a procedure,
 the second run searches the same store, and both traces remain independently auditable.
 
+The retrieval-only conformance command is `python -m contextopt memory-eval`; it repeats fixed
+queries and reports hit@k/MRR, scope isolation, invalidation exclusion, negative-query behavior,
+and deterministic replay. Its raw JSON, Markdown, and HTML outputs are checked in under
+[`experiments/v0.9-semantic-memory`](../experiments/v0.9-semantic-memory/README.md).
+
 ### Per-turn receipt and recovery contract
 
 Every new `model.requested` event includes a `context` receipt. It contains:

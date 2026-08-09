@@ -36,3 +36,8 @@ jobs:
           --critical 3
           --budget 800
           --seed 42
+      - name: Smoke semantic-memory evaluation
+        run: >-
+          python -m contextopt memory-eval
+          --repetitions 2
+          --limit 3

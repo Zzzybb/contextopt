@@ -1,0 +1,359 @@
+{
+  "claim_boundary": "This is a provider-free memory retrieval and persistence conformance fixture. It measures hit@k, reciprocal rank, scope isolation, invalidation exclusion, and deterministic replay; it does not measure embedding quality, model use of memory, or coding success.",
+  "config": {
+    "limit": 3,
+    "repetitions": 3
+  },
+  "embedding_used": false,
+  "evaluation": "semantic-memory-retrieval-conformance",
+  "fixture": {
+    "cases": [
+      {
+        "case_id": "global-cas-procedure",
+        "excluded_memory_ids": [],
+        "expected_memory_ids": [
+          "mem-4a8791a4e05db52d8ec3d3561b92db29"
+        ],
+        "limit": 3,
+        "query": "latest sha256 replace_text",
+        "scope": "project:parser",
+        "tags": [
+          "cas"
+        ]
+      },
+      {
+        "case_id": "parser-protocol-rule",
+        "excluded_memory_ids": [],
+        "expected_memory_ids": [
+          "mem-7511087f673775ccad6c18a4c5f8f0e0"
+        ],
+        "limit": 3,
+        "query": "duplicate tool call ids",
+        "scope": "project:parser",
+        "tags": [
+          "protocol"
+        ]
+      },
+      {
+        "case_id": "math-bezout-rule",
+        "excluded_memory_ids": [],
+        "expected_memory_ids": [
+          "mem-20cb070444648663015c7a415ce891eb"
+        ],
+        "limit": 3,
+        "query": "negative Bezout",
+        "scope": "project:math",
+        "tags": [
+          "number-theory"
+        ]
+      },
+      {
+        "case_id": "scope-isolation",
+        "excluded_memory_ids": [],
+        "expected_memory_ids": [],
+        "limit": 3,
+        "query": "visible tests bounded timeout",
+        "scope": "project:math",
+        "tags": []
+      },
+      {
+        "case_id": "invalidated-rule-excluded",
+        "excluded_memory_ids": [
+          "mem-d22cbcce5db49b8c7e1eacc297d74c4d"
+        ],
+        "expected_memory_ids": [],
+        "limit": 3,
+        "query": "old allowed",
+        "scope": "project:parser",
+        "tags": []
+      }
+    ],
+    "entries": [
+      {
+        "confidence": 0.95,
+        "content_sha256": "f60b73b1a9f0407acefba6f830e0d6a6761ab779915ebdfb575ede79495014a3",
+        "created_seq": 1,
+        "invalidation_reason": null,
+        "kind": "procedure",
+        "memory_id": "mem-4a8791a4e05db52d8ec3d3561b92db29",
+        "schema_version": "1",
+        "scope": "global",
+        "source_refs": [
+          "memory-eval"
+        ],
+        "source_run_id": null,
+        "status": "active",
+        "supersedes": null,
+        "tags": [
+          "cas",
+          "editing"
+        ],
+        "text": "Before replace_text, read the file and use its latest sha256.",
+        "updated_seq": 1
+      },
+      {
+        "confidence": 0.92,
+        "content_sha256": "5a5419da9153fe7e1dd697caeb573726b700f8a2cde894207e9bc2a1d9de73d5",
+        "created_seq": 2,
+        "invalidation_reason": null,
+        "kind": "decision",
+        "memory_id": "mem-7511087f673775ccad6c18a4c5f8f0e0",
+        "schema_version": "1",
+        "scope": "project:parser",
+        "source_refs": [
+          "memory-eval"
+        ],
+        "source_run_id": null,
+        "status": "active",
+        "supersedes": null,
+        "tags": [
+          "parser",
+          "protocol"
+        ],
+        "text": "Parser rejects duplicate tool call ids before execution.",
+        "updated_seq": 2
+      },
+      {
+        "confidence": 0.9,
+        "content_sha256": "5033af1f96207eddc08ccbe680fbaa4be349222ee40966e33b480357e0175cb2",
+        "created_seq": 3,
+        "invalidation_reason": null,
+        "kind": "fact",
+        "memory_id": "mem-20cb070444648663015c7a415ce891eb",
+        "schema_version": "1",
+        "scope": "project:math",
+        "source_refs": [
+          "memory-eval"
+        ],
+        "source_run_id": null,
+        "status": "active",
+        "supersedes": null,
+        "tags": [
+          "acm",
+          "number-theory"
+        ],
+        "text": "Extended gcd must satisfy the Bezout identity for negative inputs.",
+        "updated_seq": 3
+      },
+      {
+        "confidence": 0.8,
+        "content_sha256": "49bc5ee0239f2ad5f29ef57d2713b3b3fe8e8a76667a4d79440d894b5cb7128b",
+        "created_seq": 4,
+        "invalidation_reason": null,
+        "kind": "procedure",
+        "memory_id": "mem-e33c7a1a23ca2f063c1d589ed938c584",
+        "schema_version": "1",
+        "scope": "project:parser",
+        "source_refs": [
+          "memory-eval"
+        ],
+        "source_run_id": null,
+        "status": "active",
+        "supersedes": null,
+        "tags": [
+          "runtime",
+          "tests"
+        ],
+        "text": "Run visible tests with a bounded timeout before the final response.",
+        "updated_seq": 4
+      },
+      {
+        "confidence": 0.5,
+        "content_sha256": "58d41e338bc038f93caa90caf2754915eaff6c43bebb36fe0132f6ece8568be7",
+        "created_seq": 5,
+        "invalidation_reason": "replaced by the stricter parser rule",
+        "kind": "failure",
+        "memory_id": "mem-d22cbcce5db49b8c7e1eacc297d74c4d",
+        "schema_version": "1",
+        "scope": "project:parser",
+        "source_refs": [
+          "memory-eval"
+        ],
+        "source_run_id": null,
+        "status": "invalidated",
+        "supersedes": null,
+        "tags": [
+          "parser",
+          "stale"
+        ],
+        "text": "Old parser behavior allowed duplicate tool call ids.",
+        "updated_seq": 6
+      }
+    ],
+    "fingerprint": "d5bc5ef8580eec7a3faf7552d11c6fff518f83dfee07d42caf6a050625104b5c"
+  },
+  "model_calls": 0,
+  "retrieval": "deterministic-lexical-v1",
+  "runs": [
+    {
+      "case_id": "global-cas-procedure",
+      "deterministic": true,
+      "excluded_memory_ids": [],
+      "excluded_returned_count": 0,
+      "expected_memory_ids": [
+        "mem-4a8791a4e05db52d8ec3d3561b92db29"
+      ],
+      "hit_at_1": true,
+      "hit_at_k": true,
+      "limit": 3,
+      "matched_terms": [
+        [
+          "latest",
+          "replace_text",
+          "sha256"
+        ]
+      ],
+      "negative_pass": null,
+      "query": "latest sha256 replace_text",
+      "rank": 1,
+      "repetition_digests": [
+        "bc2875a8d82b7f001dcf0f3d380061ea2e48883843ffc38020ed6e4ff230e9a9",
+        "bc2875a8d82b7f001dcf0f3d380061ea2e48883843ffc38020ed6e4ff230e9a9",
+        "bc2875a8d82b7f001dcf0f3d380061ea2e48883843ffc38020ed6e4ff230e9a9"
+      ],
+      "result_memory_ids": [
+        "mem-4a8791a4e05db52d8ec3d3561b92db29"
+      ],
+      "scope": "project:parser",
+      "scope_leakage_count": 0,
+      "scores": [
+        0.8225
+      ]
+    },
+    {
+      "case_id": "parser-protocol-rule",
+      "deterministic": true,
+      "excluded_memory_ids": [],
+      "excluded_returned_count": 0,
+      "expected_memory_ids": [
+        "mem-7511087f673775ccad6c18a4c5f8f0e0"
+      ],
+      "hit_at_1": true,
+      "hit_at_k": true,
+      "limit": 3,
+      "matched_terms": [
+        [
+          "call",
+          "duplicate",
+          "ids",
+          "tool"
+        ]
+      ],
+      "negative_pass": null,
+      "query": "duplicate tool call ids",
+      "rank": 1,
+      "repetition_digests": [
+        "e29dd5bbb7a798bb526a7f25a74d04d26c81730a59c4e78aa24f5c4b383e803b",
+        "e29dd5bbb7a798bb526a7f25a74d04d26c81730a59c4e78aa24f5c4b383e803b",
+        "e29dd5bbb7a798bb526a7f25a74d04d26c81730a59c4e78aa24f5c4b383e803b"
+      ],
+      "result_memory_ids": [
+        "mem-7511087f673775ccad6c18a4c5f8f0e0"
+      ],
+      "scope": "project:parser",
+      "scope_leakage_count": 0,
+      "scores": [
+        0.988
+      ]
+    },
+    {
+      "case_id": "math-bezout-rule",
+      "deterministic": true,
+      "excluded_memory_ids": [],
+      "excluded_returned_count": 0,
+      "expected_memory_ids": [
+        "mem-20cb070444648663015c7a415ce891eb"
+      ],
+      "hit_at_1": true,
+      "hit_at_k": true,
+      "limit": 3,
+      "matched_terms": [
+        [
+          "bezout",
+          "negative"
+        ]
+      ],
+      "negative_pass": null,
+      "query": "negative Bezout",
+      "rank": 1,
+      "repetition_digests": [
+        "11479531221006c98e6e4646b80cc814178bcd69e8e5eb84a4bbc3e5cdd05744",
+        "11479531221006c98e6e4646b80cc814178bcd69e8e5eb84a4bbc3e5cdd05744",
+        "11479531221006c98e6e4646b80cc814178bcd69e8e5eb84a4bbc3e5cdd05744"
+      ],
+      "result_memory_ids": [
+        "mem-20cb070444648663015c7a415ce891eb"
+      ],
+      "scope": "project:math",
+      "scope_leakage_count": 0,
+      "scores": [
+        0.815
+      ]
+    },
+    {
+      "case_id": "scope-isolation",
+      "deterministic": true,
+      "excluded_memory_ids": [],
+      "excluded_returned_count": 0,
+      "expected_memory_ids": [],
+      "hit_at_1": null,
+      "hit_at_k": null,
+      "limit": 3,
+      "matched_terms": [],
+      "negative_pass": true,
+      "query": "visible tests bounded timeout",
+      "rank": null,
+      "repetition_digests": [
+        "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      ],
+      "result_memory_ids": [],
+      "scope": "project:math",
+      "scope_leakage_count": 0,
+      "scores": []
+    },
+    {
+      "case_id": "invalidated-rule-excluded",
+      "deterministic": true,
+      "excluded_memory_ids": [
+        "mem-d22cbcce5db49b8c7e1eacc297d74c4d"
+      ],
+      "excluded_returned_count": 0,
+      "expected_memory_ids": [],
+      "hit_at_1": null,
+      "hit_at_k": null,
+      "limit": 3,
+      "matched_terms": [],
+      "negative_pass": true,
+      "query": "old allowed",
+      "rank": null,
+      "repetition_digests": [
+        "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      ],
+      "result_memory_ids": [],
+      "scope": "project:parser",
+      "scope_leakage_count": 0,
+      "scores": []
+    }
+  ],
+  "schema_version": "1",
+  "store_fingerprint": "fdae32ad0c6fa4a62daea2116dbea1821beb594388a48cbef04b9e8a8e051b6b",
+  "store_revision": 6,
+  "summary": {
+    "case_count": 5,
+    "deterministic_rate": 1.0,
+    "hit_at_1_rate": 1.0,
+    "hit_at_k_rate": 1.0,
+    "invalidated_exclusion_rate": 1.0,
+    "mean_reciprocal_rank": 1.0,
+    "negative_case_count": 2,
+    "negative_pass_rate": 1.0,
+    "positive_case_count": 3,
+    "scope_isolation_rate": 1.0,
+    "total_excluded_returned": 0,
+    "total_scope_leakage": 0
+  }
+}
