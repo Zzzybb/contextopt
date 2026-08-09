@@ -176,6 +176,51 @@ class KnowledgeIndexTests(unittest.TestCase):
             self.assertEqual(payload["skipped_files"][0]["path"], "large.py")
             self.assertIn("Claim boundary", markdown_path.read_text(encoding="utf-8"))
 
+    def test_run_can_auto_index_before_compiling_context(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "workspace"
+            workspace.mkdir()
+            (workspace / "parser.py").write_text(
+                "def parse(value):\n    return value.strip()\n", encoding="utf-8"
+            )
+            script = root / "script.json"
+            script.write_text(
+                json.dumps({"steps": [{"response": {"content": "done"}}]}),
+                encoding="utf-8",
+            )
+            memory_store = root / "memory.jsonl"
+            report_path = root / "knowledge.json"
+            markdown_path = root / "knowledge.md"
+            with redirect_stdout(StringIO()):
+                exit_code = main(
+                    [
+                        "run",
+                        "Fix parser whitespace",
+                        "--workspace",
+                        str(workspace),
+                        "--script",
+                        str(script),
+                        "--memory-store",
+                        str(memory_store),
+                        "--memory-scope",
+                        "project:auto",
+                        "--context-memory",
+                        "versioned-v1+semantic",
+                        "--auto-index-knowledge",
+                        "--knowledge-index-report",
+                        str(report_path),
+                        "--knowledge-index-markdown",
+                        str(markdown_path),
+                    ]
+                )
+            self.assertEqual(exit_code, 0)
+            payload = json.loads(report_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["files_indexed"], 1)
+            self.assertIn("knowledge index", markdown_path.read_text(encoding="utf-8"))
+            with SemanticMemoryStore(memory_store) as store:
+                self.assertTrue(store.search("parser strip", scope="project:auto"))
+
     def test_config_rejects_unbounded_chunk_size(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

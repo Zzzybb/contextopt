@@ -875,6 +875,28 @@ def _context_compiler_from_args(args: argparse.Namespace) -> ContextCompiler:
     )
 
 
+def _auto_index_knowledge(
+    args: argparse.Namespace,
+    workspace: Path,
+    memory_store: SemanticMemoryStore | None,
+) -> None:
+    if not args.auto_index_knowledge:
+        return
+    if memory_store is None:
+        raise ValueError("--memory-store is required with --auto-index-knowledge")
+    if not args.memory_scope:
+        raise ValueError("--memory-scope is required with --auto-index-knowledge")
+    report = index_workspace(
+        memory_store,
+        KnowledgeIndexConfig(workspace=workspace, scope=args.memory_scope),
+    )
+    _write(
+        args.knowledge_index_report,
+        json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n",
+    )
+    _write(args.knowledge_index_markdown, render_knowledge_index_markdown(report))
+
+
 def _run_agent(args: argparse.Namespace) -> int:
     workspace = Path(args.workspace).resolve(strict=True)
     if not workspace.is_dir():
@@ -910,6 +932,7 @@ def _run_agent(args: argparse.Namespace) -> int:
             if args.memory_store is None
             else SemanticMemoryStore(args.memory_store)
         )
+        _auto_index_knowledge(args, workspace, memory_store)
         tools = WorkspaceTools(
             workspace,
             permissions=permissions,
@@ -1738,6 +1761,22 @@ def build_parser() -> argparse.ArgumentParser:
             "optional semantic-memory scope for automatic context candidates; "
             "global entries remain visible"
         ),
+    )
+    run.add_argument(
+        "--auto-index-knowledge",
+        action="store_true",
+        help=(
+            "index bounded workspace source files before the run; requires "
+            "--memory-store and --memory-scope"
+        ),
+    )
+    run.add_argument(
+        "--knowledge-index-report",
+        help="write the auto-index JSON report",
+    )
+    run.add_argument(
+        "--knowledge-index-markdown",
+        help="write the auto-index Markdown report",
     )
     run.add_argument("--max-turns", type=int, default=20)
     run.add_argument("--max-tool-calls", type=int, default=50)

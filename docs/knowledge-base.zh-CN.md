@@ -43,6 +43,24 @@ contextopt run "Fix the parser" \
 检索是 lexical 且不依赖 provider，所以这里证明的是 provenance、新鲜度、有界上下文和恢复，
 不是 embedding 质量或代码成功率。
 
+新建单 Agent 运行时，也可以在第一次模型调用前自动刷新索引：
+
+~~~text
+contextopt run "Fix the parser" \
+  --workspace ./workspace \
+  --memory-store .contextopt/memory.jsonl \
+  --memory-scope project:parser \
+  --context-memory versioned-v1+semantic \
+  --auto-index-knowledge \
+  --knowledge-index-report .contextopt/knowledge-index.json \
+  --script examples/runtime_demo/script.json
+~~~
+
+`--auto-index-knowledge` 必须同时提供 `--memory-store` 和 `--memory-scope`。它会在
+`AgentRunner` 打开工具前执行，因此第一次编译请求就能看到最新源码投影；后续写操作仍由
+正常的 source-aware 失效逻辑处理。`resume` 不会自动重新索引，因为修改 pending request
+所依赖的 durable store 必须是显式配置决定。
+
 ## 可复现边界
 
 JSON 报告记录规范化配置、文件数量、创建/复用/失效分块数量、跳过原因、active chunk id 和

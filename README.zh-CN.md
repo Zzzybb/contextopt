@@ -188,7 +188,9 @@ contextopt knowledge-index \
 会追加 `memory.invalidated` 事件。给 `run` 或 `orchestrate` 传入同一个 store，并打开
 `--context-memory versioned-v1+semantic`，正常上下文预算就会在 durable 经验之外最多选择
 3 条相关代码/文档块。它是带 provenance 的 lexical 源码投影，不是 embedding benchmark，
-也不能证明模型一定使用了每条检索结果。详见[知识库说明](docs/knowledge-base.zh-CN.md)。
+也不能证明模型一定使用了每条检索结果。新建 `run` 还可以传入
+`--auto-index-knowledge`，在第一次模型调用前刷新索引；它要求显式的 `--memory-store` 和
+`--memory-scope`，而 `resume` 会把重新索引留给操作者。详见[知识库说明](docs/knowledge-base.zh-CN.md)。
 
 还可以单独评测记忆检索边界：
 

@@ -47,6 +47,25 @@ selected IDs. A model still has to inspect current files and run tests. Retrieva
 provider-free, so this feature demonstrates provenance, freshness, bounded context, and recovery,
 not embedding quality or coding success.
 
+For a new single-agent run, the index can be refreshed immediately before the first model call:
+
+```text
+contextopt run "Fix the parser" \
+  --workspace ./workspace \
+  --memory-store .contextopt/memory.jsonl \
+  --memory-scope project:parser \
+  --context-memory versioned-v1+semantic \
+  --auto-index-knowledge \
+  --knowledge-index-report .contextopt/knowledge-index.json \
+  --script examples/runtime_demo/script.json
+```
+
+`--auto-index-knowledge` requires both `--memory-store` and `--memory-scope`. It runs before
+`AgentRunner` opens its tools, so the first compiled request can see the fresh source projection;
+later writes still use normal source-aware invalidation. `resume` deliberately does not re-index
+automatically because changing the durable store is an explicit configuration decision for a
+pending request.
+
 ## Reproducibility boundary
 
 The JSON report records the normalized config, file counts, created/reused/invalidated chunk

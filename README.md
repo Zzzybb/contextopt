@@ -419,6 +419,9 @@ workspace-relative `source_ref`. Re-running the command reuses identical chunks 
 select at most three relevant code/document chunks alongside durable experience. This is a
 lexical, provenance-aware source projection, not an embedding benchmark or proof that the
 model used every retrieved chunk. See the [knowledge-base guide](docs/knowledge-base.md).
+For a new `run`, `--auto-index-knowledge` performs that refresh before the first model call;
+it requires an explicit `--memory-store` and `--memory-scope`, and `resume` intentionally leaves
+re-indexing to the operator.
 
 The multi-agent path uses the same boundary for planner, solver, and reviewer:
 
