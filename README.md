@@ -804,6 +804,8 @@ The provider-free automatic candidate matrix is documented in [the English PR no
 and [Chinese version](docs/pr/0001-v0.9-semantic-context-evaluation.zh-CN.md).
 The multi-agent semantic-memory integration is documented in [the English PR note](docs/pr/0001-v0.9-orchestration-semantic-memory.md)
 and [Chinese version](docs/pr/0001-v0.9-orchestration-semantic-memory.zh-CN.md).
+The local OpenAI-compatible adapter smoke is documented in [the English PR note](docs/pr/0001-v0.9-provider-adapter-smoke.md)
+and [Chinese version](docs/pr/0001-v0.9-provider-adapter-smoke.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers. The
   manual workflow is the reproducibility entry point; the checked-in scripted artifacts remain

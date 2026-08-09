@@ -3,9 +3,14 @@ from __future__ import annotations
 import io
 import json
 import tempfile
+import threading
 import unittest
+from collections.abc import Mapping
 from contextlib import redirect_stdout
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from types import TracebackType
+from typing import Any
 
 from contextopt.cli import main
 from contextopt.evaluation import (
@@ -22,6 +27,94 @@ from contextopt.evaluation import (
     wilson_interval,
     write_agent_evaluation_checkpoint,
 )
+
+
+class _DynamicProviderServer:
+    """Tiny local Chat Completions endpoint for the real-adapter harness path."""
+
+    def __init__(self, fixture_files: Mapping[str, str]) -> None:
+        self.fixture_files = dict(fixture_files)
+        self.requests: list[dict[str, Any]] = []
+        self._lock = threading.Lock()
+        state = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self) -> None:
+                length = int(self.headers.get("Content-Length", "0"))
+                payload = json.loads(self.rfile.read(length).decode("utf-8"))
+                with state._lock:
+                    state.requests.append(
+                        {
+                            "path": self.path,
+                            "authorization": self.headers.get("Authorization"),
+                            "idempotency_key": self.headers.get("Idempotency-Key"),
+                            "payload": payload,
+                        }
+                    )
+                content = json.dumps(
+                    {
+                        "candidates": [
+                            {
+                                "id": "provider-smoke-good",
+                                "parent_id": "root",
+                                "hypothesis": (
+                                    "apply the complete known-good fixture snapshot"
+                                ),
+                                "files": state.fixture_files,
+                                "evidence": ["visible tests are the oracle"],
+                            }
+                        ]
+                    },
+                    ensure_ascii=False,
+                )
+                response = json.dumps(
+                    {
+                        "id": "provider-smoke-response",
+                        "choices": [
+                            {
+                                "message": {"role": "assistant", "content": content},
+                                "finish_reason": "stop",
+                            }
+                        ],
+                        "usage": {
+                            "prompt_tokens": 12,
+                            "completion_tokens": 8,
+                        },
+                    }
+                ).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(response)))
+                self.end_headers()
+                self.wfile.write(response)
+
+            def log_message(self, _format: str, *args: object) -> None:
+                del args
+
+        self._server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self._server.daemon_threads = True
+        port = int(self._server.server_address[1])
+        self.base_url = f"http://127.0.0.1:{port}/v1"
+        self._thread = threading.Thread(
+            target=self._server.serve_forever,
+            kwargs={"poll_interval": 0.01},
+            daemon=True,
+        )
+
+    def __enter__(self) -> _DynamicProviderServer:
+        self._thread.start()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        del exc_type, exc_value, traceback
+        self._server.shutdown()
+        self._server.server_close()
+        self._thread.join(timeout=5)
 
 
 class AgentEvaluationFixtureTests(unittest.TestCase):
@@ -127,6 +220,36 @@ class AgentEvaluationTests(unittest.TestCase):
         self.assertIsNot(
             models[0], factory(build_algorithm_fixtures()[0], "orchestrated")[0]
         )
+
+    def test_real_adapter_matrix_path_works_with_local_compatible_provider(
+        self,
+    ) -> None:
+        fixture = build_algorithm_fixtures()[0]
+        with _DynamicProviderServer(fixture.good_files) as server:
+            factory = build_openai_model_factory(
+                base_url=server.base_url,
+                api_key="provider-smoke-secret",
+                model="provider-smoke-model",
+            )
+            report = run_agent_evaluation(
+                AgentEvalConfig(
+                    strategies=("single_pass",),
+                    fixtures=(fixture.fixture_id,),
+                    repetitions=1,
+                    include_hidden_tests=True,
+                    model_adapter="openai-compatible",
+                ),
+                model_factory=factory,
+            )
+        self.assertEqual(report.runs[0].status, "accepted")
+        self.assertTrue(report.runs[0].success)
+        self.assertTrue(report.runs[0].hidden_success)
+        self.assertEqual(len(server.requests), 1)
+        request = server.requests[0]
+        self.assertEqual(request["path"], "/v1/chat/completions")
+        self.assertEqual(request["authorization"], "Bearer provider-smoke-secret")
+        self.assertTrue(request["idempotency_key"].startswith("contextopt-"))
+        self.assertEqual(request["payload"]["model"], "provider-smoke-model")
 
     def test_report_roundtrip_and_tamper_detection(self) -> None:
         payload = self.report.to_dict()

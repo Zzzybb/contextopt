@@ -28,3 +28,7 @@ planner/solver/reviewer 编排。报告包含 visible-test 成功率、独立 hi
 这仍然是固定小样本的探索性 benchmark，不是通用能力结论、统计充分的研究、延迟 SLA、
 provider 稳定性测试或安全评测。hidden grader 源码不会进入模型可见快照，manifest 记录
 provider 身份但不会写入 API key。
+
+CI 会通过 `tests/test_agent_search_eval.py` 中的本地确定性 HTTP fixture 走同一个
+OpenAI-compatible adapter 边界，校验请求格式、authorization、idempotency header 和
+oracle gate；这个 smoke 不访问真实 provider，也不代表模型质量。

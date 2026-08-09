@@ -353,6 +353,8 @@ python -m contextopt agent-eval \
   和 [英文版](docs/pr/0001-v0.9-semantic-context-evaluation.md)
 - v0.9 编排接入语义记忆：[docs/pr/0001-v0.9-orchestration-semantic-memory.zh-CN.md](docs/pr/0001-v0.9-orchestration-semantic-memory.zh-CN.md)
   和 [英文版](docs/pr/0001-v0.9-orchestration-semantic-memory.md)
+- v0.9 provider adapter 本地 smoke：[docs/pr/0001-v0.9-provider-adapter-smoke.zh-CN.md](docs/pr/0001-v0.9-provider-adapter-smoke.zh-CN.md)
+  和 [英文版](docs/pr/0001-v0.9-provider-adapter-smoke.md)
 - v0.7 编排补充的中文回顾：[docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md](docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、

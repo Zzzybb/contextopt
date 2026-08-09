@@ -33,3 +33,8 @@ This is still a fixed small-sample exploratory benchmark. It is not a general ca
 statistically powered study, latency SLA, provider reliability test, or security evaluation.
 The hidden grader source is excluded from model-visible snapshots, and the manifest records
 provider identity without writing the API key.
+
+CI exercises the same OpenAI-compatible adapter boundary with a local deterministic HTTP
+fixture in `tests/test_agent_search_eval.py`; that smoke validates request shape, authorization
+and idempotency headers, and oracle gating without claiming model quality or contacting a real
+provider.
