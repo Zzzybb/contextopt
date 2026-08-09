@@ -616,6 +616,9 @@ python -m contextopt agent-eval-compare \
 The analyzer is descriptive and refuses protocol drift; it is not a powered generalization
 claim. Its bilingual PR note is [`model-matrix-analysis`](docs/pr/0001-v1.0-model-matrix-analysis.md)
 and [`中文版`](docs/pr/0001-v1.0-model-matrix-analysis.zh-CN.md).
+To see the complete collection-to-analysis path without a provider key, run the
+[provider-free demo](examples/model_matrix_demo/README.md):
+`python scripts/run_model_matrix_demo.py`.
 The optional manifest records the adapter, model names, endpoint origin/path, runtime settings,
 evaluation configuration, and an explicitly supplied revision (`CONTEXTOPT_GIT_REVISION` or
 `GITHUB_SHA`) without writing the API key.

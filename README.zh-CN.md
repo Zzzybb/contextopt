@@ -359,6 +359,8 @@ python -m contextopt agent-eval-compare \
 分析器只做描述性汇总，并会拒绝协议漂移，不能当作有统计功效的泛化结论。实现见双语
 PR 说明[英文版](docs/pr/0001-v1.0-model-matrix-analysis.md) /
 [中文版](docs/pr/0001-v1.0-model-matrix-analysis.zh-CN.md)。
+如果不想配置 provider key，可直接运行[无 provider key 的完整演示](examples/model_matrix_demo/README.zh-CN.md)：
+`python scripts/run_model_matrix_demo.py`。
 `--manifest` 会记录 adapter、模型名、去掉 query/fragment 的 endpoint、运行时设置、
 评测配置和显式提供的 revision（`CONTEXTOPT_GIT_REVISION` 或 `GITHUB_SHA`），不会写入 API key。
 `--checkpoint` 会在每个 fixture/strategy/repetition cell 完成后原子写入；provider 或进程
