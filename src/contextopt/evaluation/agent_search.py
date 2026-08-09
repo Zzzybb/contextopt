@@ -372,6 +372,111 @@ def build_algorithm_fixtures() -> tuple[AgentEvalFixture, ...]:
         "    unittest.main()\n"
     )
 
+    interval_tests = (
+        "import unittest\n"
+        "from merge_intervals import merge_intervals\n\n\n"
+        "class MergeIntervalsTests(unittest.TestCase):\n"
+        "    def test_overlapping_ranges(self):\n"
+        "        self.assertEqual(\n"
+        "            merge_intervals([[1, 3], [2, 6], [8, 10], [9, 12]]),\n"
+        "            [[1, 6], [8, 12]],\n"
+        "        )\n\n"
+        "    def test_adjacent_ranges_merge(self):\n"
+        "        self.assertEqual(merge_intervals([[1, 2], [2, 3]]), [[1, 3]])\n\n"
+        "    def test_empty_input(self):\n"
+        "        self.assertEqual(merge_intervals([]), [])\n\n\n"
+        "if __name__ == '__main__':\n"
+        "    unittest.main()\n"
+    )
+    interval_root = """def merge_intervals(intervals):
+    # TODO: return sorted, merged inclusive ranges without mutating input.
+    return []
+"""
+    interval_bad = """def merge_intervals(intervals):
+    # Sorting alone leaves overlapping ranges split.
+    return sorted(intervals)
+"""
+    interval_good = """def merge_intervals(intervals):
+    ordered = sorted(
+        (list(interval) for interval in intervals),
+        key=lambda item: (item[0], item[1]),
+    )
+    merged = []
+    for start, end in ordered:
+        if not merged or start > merged[-1][1]:
+            merged.append([start, end])
+        else:
+            merged[-1][1] = max(merged[-1][1], end)
+    return merged
+"""
+    interval_hidden = (
+        "import unittest\n"
+        "from merge_intervals import merge_intervals\n\n\n"
+        "class HiddenMergeIntervalsTests(unittest.TestCase):\n"
+        "    def test_negative_nested_and_input_immutability(self):\n"
+        "        source = [(-5, -1), (-3, 2), (4, 4), (5, 9), (7, 10)]\n"
+        "        before = list(source)\n"
+        "        self.assertEqual(\n"
+        "            merge_intervals(source), [[-5, 2], [4, 4], [5, 10]]\n"
+        "        )\n"
+        "        self.assertEqual(source, before)\n\n"
+        "    def test_nested_range_does_not_extend_end(self):\n"
+        "        self.assertEqual(merge_intervals([[1, 10], [2, 3]]), [[1, 10]])\n\n\n"
+        "if __name__ == '__main__':\n"
+        "    unittest.main()\n"
+    )
+
+    inverse_tests = (
+        "import unittest\n"
+        "from modular_inverse import mod_inverse\n\n\n"
+        "class ModularInverseTests(unittest.TestCase):\n"
+        "    def test_coprime_values(self):\n"
+        "        self.assertEqual(mod_inverse(3, 11), 4)\n"
+        "        self.assertEqual(mod_inverse(10, 17), 12)\n\n"
+        "    def test_non_coprime_value(self):\n"
+        "        self.assertIsNone(mod_inverse(6, 15))\n\n"
+        "    def test_invalid_modulus(self):\n"
+        "        self.assertIsNone(mod_inverse(3, 1))\n\n\n"
+        "if __name__ == '__main__':\n"
+        "    unittest.main()\n"
+    )
+    inverse_root = """def mod_inverse(a, modulus):
+    # TODO: return x with (a*x) % modulus == 1, or None.
+    return None
+"""
+    inverse_bad = """def mod_inverse(a, modulus):
+    # The residue itself is not generally a multiplicative inverse.
+    return a % modulus if modulus > 1 else None
+"""
+    inverse_good = """def mod_inverse(a, modulus):
+    if modulus <= 1:
+        return None
+    a %= modulus
+    old_r, remainder = a, modulus
+    old_s, coefficient = 1, 0
+    while remainder:
+        quotient = old_r // remainder
+        old_r, remainder = remainder, old_r - quotient * remainder
+        old_s, coefficient = coefficient, old_s - quotient * coefficient
+    if old_r != 1:
+        return None
+    return old_s % modulus
+"""
+    inverse_hidden = (
+        "import unittest\n"
+        "from modular_inverse import mod_inverse\n\n\n"
+        "class HiddenModularInverseTests(unittest.TestCase):\n"
+        "    def test_negative_and_large_values(self):\n"
+        "        self.assertEqual(mod_inverse(-3, 11), 7)\n"
+        "        result = mod_inverse(1234567, 1000000007)\n"
+        "        self.assertIsNotNone(result)\n"
+        "        self.assertEqual((1234567 * result) % 1000000007, 1)\n\n"
+        "    def test_even_pair_is_not_invertible(self):\n"
+        "        self.assertIsNone(mod_inverse(2, 4))\n\n\n"
+        "if __name__ == '__main__':\n"
+        "    unittest.main()\n"
+    )
+
     return (
         AgentEvalFixture(
             fixture_id="two-sum",
@@ -418,6 +523,62 @@ def build_algorithm_fixtures() -> tuple[AgentEvalFixture, ...]:
             },
             hidden_test_name="extended-gcd-hidden-tests",
         ),
+        AgentEvalFixture(
+            fixture_id="merge-intervals",
+            category="acm-algorithm",
+            title="Merge overlapping intervals",
+            task=(
+                "Implement merge_intervals(intervals), returning sorted inclusive "
+                "ranges with overlaps and touching endpoints merged without mutating "
+                "input."
+            ),
+            root_files={
+                "merge_intervals.py": interval_root,
+                "test_merge_intervals.py": interval_tests,
+            },
+            bad_files={
+                "merge_intervals.py": interval_bad,
+                "test_merge_intervals.py": interval_tests,
+            },
+            good_files={
+                "merge_intervals.py": interval_good,
+                "test_merge_intervals.py": interval_tests,
+            },
+            test_name="merge-intervals-visible-tests",
+            hidden_files={
+                "grader/__init__.py": "",
+                "grader/oracle_merge_intervals.py": interval_hidden,
+            },
+            hidden_test_name="merge-intervals-hidden-tests",
+        ),
+        AgentEvalFixture(
+            fixture_id="modular-inverse",
+            category="mathematics",
+            title="Modular multiplicative inverse",
+            task=(
+                "Implement mod_inverse(a, modulus), returning a residue x in the "
+                "range [0, modulus) with a*x == 1 modulo modulus, or None when no "
+                "inverse exists."
+            ),
+            root_files={
+                "modular_inverse.py": inverse_root,
+                "test_modular_inverse.py": inverse_tests,
+            },
+            bad_files={
+                "modular_inverse.py": inverse_bad,
+                "test_modular_inverse.py": inverse_tests,
+            },
+            good_files={
+                "modular_inverse.py": inverse_good,
+                "test_modular_inverse.py": inverse_tests,
+            },
+            test_name="modular-inverse-visible-tests",
+            hidden_files={
+                "grader/__init__.py": "",
+                "grader/oracle_modular_inverse.py": inverse_hidden,
+            },
+            hidden_test_name="modular-inverse-hidden-tests",
+        ),
     )
 
 
@@ -426,7 +587,12 @@ class AgentEvalConfig:
     """Paired budgets and matrix selection for the coding-agent evaluation."""
 
     strategies: tuple[AgentStrategy, ...] = _STRATEGIES
-    fixtures: tuple[str, ...] = ("two-sum", "extended-gcd")
+    fixtures: tuple[str, ...] = (
+        "two-sum",
+        "extended-gcd",
+        "merge-intervals",
+        "modular-inverse",
+    )
     repetitions: int = 1
     max_rounds: int = 2
     max_model_calls: int = 6
@@ -502,7 +668,10 @@ class AgentEvalConfig:
                 f"agent evaluation config has unknown fields: {sorted(unknown)!r}"
             )
         strategies = value.get("strategies", list(_STRATEGIES))
-        fixtures = value.get("fixtures", ["two-sum", "extended-gcd"])
+        fixtures = value.get(
+            "fixtures",
+            ["two-sum", "extended-gcd", "merge-intervals", "modular-inverse"],
+        )
         if not isinstance(strategies, list) or not isinstance(fixtures, list):
             raise ValueError("strategies and fixtures must be arrays")
         return cls(

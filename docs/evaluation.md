@@ -271,11 +271,12 @@ fixtures:
   same visible-test oracle and branch-search rules;
 - `orchestrated`: planner, solver, and reviewer with a bounded retry and oracle gate.
 
-The checked-in fixtures are an ACM-style Two Sum repair and an extended Euclidean
-algorithm repair. Each fixture includes a complete failing root snapshot, a deliberately
-weak candidate, a passing candidate, a standard-library visible-test command, and an
-independent hidden grader under `grader/` that is never included in the model-visible root
-snapshot. The CLI can write machine-readable JSON, Markdown, and a self-contained HTML dashboard:
+The checked-in fixtures are ACM-style Two Sum and interval-merging repairs plus extended-gcd
+and modular-inverse mathematics repairs. Each fixture includes a complete failing root
+snapshot, a deliberately weak candidate, a passing candidate, a standard-library visible-test
+command, and an independent hidden grader under `grader/` that is never included in the
+model-visible root snapshot. The CLI can write machine-readable JSON, Markdown, and a
+self-contained HTML dashboard:
 
     python -m contextopt agent-eval --fixtures all --repetitions 1 \
       --output agent-eval.json --markdown agent-eval.md --html agent-eval.html \

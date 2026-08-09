@@ -122,7 +122,8 @@ class AgentEvaluationFixtureTests(unittest.TestCase):
         fixtures = build_algorithm_fixtures()
 
         self.assertEqual(
-            [fixture.fixture_id for fixture in fixtures], ["two-sum", "extended-gcd"]
+            [fixture.fixture_id for fixture in fixtures],
+            ["two-sum", "extended-gcd", "merge-intervals", "modular-inverse"],
         )
         self.assertEqual(
             {fixture.category for fixture in fixtures}, {"acm-algorithm", "mathematics"}

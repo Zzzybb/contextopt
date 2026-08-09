@@ -252,8 +252,9 @@ python -m contextopt agent-eval \
   --output agent-eval.json --markdown agent-eval.md
 ~~~
 
-默认包含 `two-sum`（ACM 算法）和 `extended-gcd`（数论/数学）两个可执行 fixture，
-比较 `single_pass`、`best_of_n` 与 `orchestrated`。每个 fixture 都有完整根快照、
+默认包含 `two-sum`、`merge-intervals` 两个 ACM 算法 fixture，以及 `extended-gcd`、
+`modular-inverse` 两个数论/数学 fixture，比较 `single_pass`、`best_of_n` 与
+`orchestrated`。每个 fixture 都有完整根快照、
 故意失败的候选、正确候选、可见测试和不进入模型快照的独立隐藏 grader；报告会分开
 记录 visible success、hidden success、模型/角色调用、候选数、实际测试进程、缓存复用
 和 token 用量；同时给出描述性 Wilson 95% 区间，以及按相同 fixture/repetition 配对的
@@ -361,6 +362,8 @@ python -m contextopt agent-eval \
   和 [英文版](docs/pr/0001-v0.9-provider-adapter-smoke.md)
 - v0.9 终态语义记忆反馈闭环：[docs/pr/0001-v0.9-semantic-memory-feedback-loop.zh-CN.md](docs/pr/0001-v0.9-semantic-memory-feedback-loop.zh-CN.md)
   和 [英文版](docs/pr/0001-v0.9-semantic-memory-feedback-loop.md)
+- v1.0 ACM/数学 fixture 任务集扩展：[docs/pr/0001-v1.0-acm-math-fixture-suite.zh-CN.md](docs/pr/0001-v1.0-acm-math-fixture-suite.zh-CN.md)
+  和 [英文版](docs/pr/0001-v1.0-acm-math-fixture-suite.md)
 - v0.7 编排补充的中文回顾：[docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md](docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、

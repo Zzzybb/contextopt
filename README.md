@@ -200,9 +200,10 @@ recompute the complete chain because there is no secret or external trust anchor
 
 ### Coding-agent strategy evaluation — v0.8
 
-- Two executable fixtures cover an ACM-style Two Sum repair and the extended Euclidean
-  algorithm, each with a deliberately failing complete root snapshot, visible tests, and
-  an independent hidden grader that is never included in model prompts.
+- Four executable fixtures cover ACM-style Two Sum and interval merging repairs plus
+  extended-gcd and modular-inverse mathematics repairs. Each has a deliberately failing
+  complete root snapshot, visible tests, and an independent hidden grader that is never
+  included in model prompts.
 - `agent-eval` runs paired `single_pass`, `best_of_n`, and `orchestrated` strategies under
   explicit round, model-call, candidate, and visible-test budgets, then records independent
   hidden-test calls after visible acceptance.
@@ -510,10 +511,11 @@ python -m contextopt agent-eval \
   --output agent-eval.json --markdown agent-eval.md
 ```
 
-The default matrix contains the `two-sum` ACM fixture and the `extended-gcd` mathematics
-fixture. It compares a deliberately weak one-candidate baseline with Best-of-N and the
-oracle-gated role loop. Reports separate visible success from hidden-grader success; the
-default scripted run is a control-policy conformance result, not a model-quality claim.
+The default matrix contains `two-sum` and `merge-intervals` ACM fixtures plus `extended-gcd`
+and `modular-inverse` mathematics fixtures. It compares a deliberately weak one-candidate
+baseline with Best-of-N and the oracle-gated role loop. Reports separate visible success from
+hidden-grader success; the default scripted run is a control-policy conformance result, not a
+model-quality claim.
 
 For an exploratory OpenAI-compatible run, provide the model and API key environment variable:
 
@@ -813,6 +815,8 @@ The local OpenAI-compatible adapter smoke is documented in [the English PR note]
 and [Chinese version](docs/pr/0001-v0.9-provider-adapter-smoke.zh-CN.md).
 The opt-in terminal semantic-memory feedback loop is documented in [the English PR note](docs/pr/0001-v0.9-semantic-memory-feedback-loop.md)
 and [Chinese version](docs/pr/0001-v0.9-semantic-memory-feedback-loop.zh-CN.md).
+The expanded ACM/math fixture suite is documented in [the English PR note](docs/pr/0001-v1.0-acm-math-fixture-suite.md)
+and [Chinese version](docs/pr/0001-v1.0-acm-math-fixture-suite.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers. The
   manual workflow is the reproducibility entry point; the checked-in scripted artifacts remain

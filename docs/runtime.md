@@ -99,7 +99,8 @@ python -m contextopt agent-eval --fixtures all --repetitions 1 \
   --checkpoint agent-eval.checkpoint.json
 ```
 
-The two fixtures are complete ACM/math workspaces. `single_pass` gets one intentionally
+The four fixtures are complete ACM/math workspaces: Two Sum, interval merging, extended-gcd,
+and modular inverse. `single_pass` gets one intentionally
 weak candidate, `best_of_n` gets a bad and a good candidate in one response, and
 `orchestrated` receives a failing first round followed by a reviewer-gated retry. Every
 candidate is materialized in a disposable workspace and tested by the same standard-

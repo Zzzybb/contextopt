@@ -26,6 +26,7 @@ from contextopt.evaluation import (
     RecoveryEvalConfig,
     SemanticContextEvalConfig,
     SemanticMemoryEvalConfig,
+    build_algorithm_fixtures,
     build_openai_model_factory,
     render_agent_evaluation_console,
     render_agent_evaluation_html,
@@ -217,7 +218,10 @@ def _agent_eval(args: argparse.Namespace) -> int:
     raw_fixtures = tuple(
         name.strip() for name in args.fixtures.split(",") if name.strip()
     )
-    fixtures = ("two-sum", "extended-gcd") if "all" in raw_fixtures else raw_fixtures
+    available_fixture_ids = tuple(
+        fixture.fixture_id for fixture in build_algorithm_fixtures()
+    )
+    fixtures = available_fixture_ids if "all" in raw_fixtures else raw_fixtures
     model_factory = None
     model_adapter = "scripted"
     if args.model:
@@ -1034,7 +1038,10 @@ def build_parser() -> argparse.ArgumentParser:
     agent_eval.add_argument(
         "--fixtures",
         default="all",
-        help="all or comma-separated fixture ids (two-sum,extended-gcd)",
+        help=(
+            "all or comma-separated fixture ids "
+            "(two-sum,extended-gcd,merge-intervals,modular-inverse)"
+        ),
     )
     agent_eval.add_argument("--repetitions", type=int, default=1)
     agent_eval.add_argument("--max-rounds", type=int, default=2)
