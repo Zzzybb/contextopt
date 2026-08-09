@@ -54,6 +54,21 @@ bundle 包含 JSON ledger、Markdown 摘要、自包含 HTML dashboard、manifes
 或者用同样的 workflow 参数重新运行；不要把不同模型、prompt、fixture 或预算配置混在一份
 对比里。
 
+如果需要可重复地跑多模型，可以使用独立的手动 workflow
+`.github/workflows/real-agent-model-matrix.yml`。它的 `models` 输入是一个至少包含两个带
+label 模型 ID 的 JSON 数组：
+
+```json
+[{"label":"model-a","model":"gpt-4o-mini"},{"label":"model-b","model":"gpt-4.1-mini"}]
+```
+
+这个 workflow 会为每个模型并行跑一份完全相同的三次或更多 repetition bundle，分别保存
+provider cassette 和 manifest，然后在最后的 `agent-eval-compare` job 中下载并合并。它会拒绝
+重复或不安全的 label，也会拒绝少于三次 repetition，最终上传每个模型的证据和配对后的
+JSON/Markdown/HTML 矩阵。角色模型覆盖、fixture、策略、sandbox 和 endpoint 对所有 cell
+保持一致，因此分析器可以在合并前拒绝协议漂移。这个 workflow 仍然是手动触发，并且必须有
+`CONTEXTOPT_API_KEY` secret；只有操作者真正运行后才会产生结果。
+
 当至少收集到两份匹配的模型 bundle 后，再运行独立的协议校验比较步骤：
 
 ```text

@@ -59,6 +59,22 @@ and atomic checkpoint. If a provider call or runner stops, rerun the same matrix
 `--resume --checkpoint` or use the same workflow inputs and inspect the new run separately; do
 not combine different model, prompt, fixture, or budget configurations into one comparison.
 
+For a repeatable multi-model run, use the separate manual
+`.github/workflows/real-agent-model-matrix.yml` workflow. Its `models` input is a JSON array with
+at least two labelled model IDs:
+
+```json
+[{"label":"model-a","model":"gpt-4o-mini"},{"label":"model-b","model":"gpt-4.1-mini"}]
+```
+
+The workflow fans out one identical three-or-more-repetition bundle per model, records a separate
+provider cassette and manifest for each, then downloads the bundles into a final
+`agent-eval-compare` job. It refuses duplicate or unsafe labels, rejects fewer than three
+repetitions, and uploads both the per-model evidence and the matched JSON/Markdown/HTML matrix.
+Role-model overrides, fixture selection, strategy selection, sandbox, and endpoint are shared by
+all cells so the analyzer can reject protocol drift before pooling. The workflow is manual and
+still requires the `CONTEXTOPT_API_KEY` secret; it never claims a result until an operator runs it.
+
 After collecting at least two matched model bundles, run the separate protocol-checked
 comparison step:
 

@@ -632,6 +632,15 @@ run on pull requests: configure the `CONTEXTOPT_API_KEY` repository/environment 
 endpoint and model in **Actions → real-agent-eval → Run workflow**, and download the uploaded
 JSON/Markdown/HTML/manifest/checkpoint bundle.
 
+For a matched multi-model run, use the manual
+[`real-agent-model-matrix` workflow](.github/workflows/real-agent-model-matrix.yml). Enter at least
+two labelled models as JSON, for example
+`[{"label":"model-a","model":"gpt-4o-mini"},{"label":"model-b","model":"gpt-4.1-mini"}]`.
+It fans out the same three-or-more-repetition protocol, records a cassette and manifest per model,
+and uploads a final `agent-eval-compare` JSON/Markdown/HTML artifact. The workflow validates labels,
+requires the `CONTEXTOPT_API_KEY` secret, and shares endpoint, role overrides, fixtures, strategies,
+budgets, and sandbox across cells so protocol drift is rejected before the descriptive comparison.
+
 For a completed single-agent trajectory, the `run`, `search-session`, `propose-case`, and `resume`
 commands can write an opt-in provider cassette with `--record-transcript PATH`; a fresh offline
 run can use `--replay-transcript PATH` without an API key. Replay requires the same request sequence
@@ -913,6 +922,8 @@ The exact paired-outcome McNemar diagnostic is documented in [the v1.0 note](doc
 and [Chinese version](docs/pr/0001-v1.0-paired-mcnemar-evidence.zh-CN.md).
 The matched multi-model artifact analyzer is documented in [the v1.0 note](docs/pr/0001-v1.0-model-matrix-analysis.md)
 and [Chinese version](docs/pr/0001-v1.0-model-matrix-analysis.zh-CN.md).
+The manual multi-model provider workflow is documented in [the v1.0 note](docs/pr/0001-v1.0-real-provider-model-matrix.md)
+and [Chinese version](docs/pr/0001-v1.0-real-provider-model-matrix.zh-CN.md).
 The cross-platform CI type-check fix is documented in [the v1.0 note](docs/pr/0001-v1.0-ci-cross-platform-typecheck.md)
 and [Chinese version](docs/pr/0001-v1.0-ci-cross-platform-typecheck.zh-CN.md).
 The real-provider workflow's secret boundary is documented in [the v0.9 note](docs/pr/0001-v0.9-real-provider-secret-scope.md)
