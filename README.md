@@ -177,6 +177,13 @@ recompute the complete chain because there is no secret or external trust anchor
   model/candidate budget. Lane request/response hashes, context receipts, token usage, validation
   failures, and `max_provider_in_flight` are persisted; valid snapshots are namespaced before
   oracle evaluation. Width `1` is the deterministic sequential baseline.
+- `speculative_solver_stop_on_valid` (or the CLI flag
+  `--speculative-solver-stop-on-valid`) turns that fan-out into a first-parseable-candidate
+  race: the winner is durably recorded, unfinished lanes receive cancellation requests, and
+  the visible-test oracle still decides correctness. `solver.speculative.winner` and
+  `solver.speculative.cancelled` events expose the latency/cost trade-off. Cancellation is
+  explicitly best-effort because a provider may finish an HTTP request after its local task
+  is cancelled.
 - The orchestrate CLI command plus console/Markdown/HTML reports make role calls and the
   oracle gate measurable instead of treating a multi-agent transcript as evidence.
 
@@ -210,6 +217,10 @@ recompute the complete chain because there is no secret or external trust anchor
 - JSON, Markdown, self-contained HTML, and a protocol manifest are checked in under
   [`experiments/v0.9-recovery-matrix`](experiments/v0.9-recovery-matrix/README.md), with a
   Chinese explanation and a strict claim boundary.
+- A deterministic first-valid cancellation fixture is checked in under
+  [`experiments/v0.9-speculative-cancellation`](experiments/v0.9-speculative-cancellation/README.md).
+  It makes the winner/cancelled-lane ledger and configured-width budget accounting visible
+  without pretending to measure remote provider aborts.
 
 ### ContextOpt engine — v0.1 algorithms, v0.3 live integration
 
@@ -227,11 +238,13 @@ recompute the complete chain because there is no secret or external trust anchor
 - Automatic workspace snapshots, migration to another workspace, or distributed
   coordination. `apply-best` and `rollback-best` are explicit local operator actions over
   the files named in the session baseline; they are not transparent workspace versioning.
-- A general speculative role graph and cancellation-aware winner-takes-all policy are not
-  claimed. The current `speculative_solver_width` fan-out is limited to the
-  solver role; planner/reviewer calls remain sequential. A completed solver response is written
-  into the pending lane map before the group is reduced, so resume reuses durable lanes and only
-  retries lanes without a response (there is still a small crash window before that write).
+- A general speculative role graph is not claimed. The current `speculative_solver_width`
+  fan-out is limited to the solver role; planner/reviewer calls remain sequential. The opt-in
+  `speculative_solver_stop_on_valid` policy records the first protocol-valid candidate and
+  requests cancellation for the remaining lanes, but it does not claim that a remote provider
+  stopped work. A completed solver response is written into the pending lane map before the
+  group is reduced, so resume reuses durable lanes and only retries lanes without a response
+  (there is still a small crash window before that write).
   The serial OpenAI-compatible adapter emits a deterministic provider idempotency hook, but
   provider-side enforcement is not guaranteed.
   MCTS selects among generated candidates and does not generate patches itself.

@@ -383,13 +383,24 @@ level. MCTS traverses an already generated, parent-linked candidate tree. An opt
 `merge_policy=disjoint` also performs bounded three-way reconciliation of independent solver
 snapshots before the oracle. The orchestration layer additionally supports
 `speculative_solver_width > 1`: it fans out solver calls, validates each response, namespaces
-valid snapshots, and records lane-level hashes/usage/failures. Planner and reviewer calls remain
-sequential; provider-side cancellation and exactly-once semantics remain outside this milestone:
+valid snapshots, and records lane-level hashes/usage/failures. The optional
+`speculative_solver_stop_on_valid` policy records the first protocol-valid winner and requests
+best-effort cancellation for unfinished lanes; it does not convert a local task cancellation
+into a remote provider abort. Planner and reviewer calls remain sequential; exactly-once
+semantics remain outside this milestone:
 
 - single-path Agent;
 - independent best-of-N;
 - fixed beam search;
 - adaptive branch scheduling.
+
+For the first-valid speculative mode, the report must be read with two separate accounting
+lines: `solver_calls`/`model_calls` charge the configured width, while
+`cancelled_solver_lanes` and `max_provider_in_flight` show the observed local scheduling
+effect. A `solver.speculative.winner` only means the response passed the candidate protocol;
+visible tests and reviewer approval remain the correctness gate. Provider cost/latency claims
+require an adapter that reports actual remote cancellation, which the default serial HTTP
+adapter does not claim.
 
 When enabled, merge evidence records every considered pair, merged candidate id, and conflicting
 path hashes. A conflict never produces a partial candidate, and merged snapshots still consume

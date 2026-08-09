@@ -214,6 +214,7 @@ class OrchestrationConfig:
     max_test_calls: int = 16
     max_parallel_tests: int = 1
     speculative_solver_width: int = 1
+    speculative_solver_stop_on_valid: bool = False
     scheduler_policy: SchedulerPolicy = "fixed"
     merge_policy: MergePolicy = "disabled"
     max_total_tokens: int = 100_000
@@ -238,6 +239,7 @@ class OrchestrationConfig:
             "max_test_calls",
             "max_parallel_tests",
             "speculative_solver_width",
+            "speculative_solver_stop_on_valid",
             "scheduler_policy",
             "max_total_tokens",
         ):
@@ -245,6 +247,12 @@ class OrchestrationConfig:
             if name == "scheduler_policy":
                 if value not in {"fixed", "adaptive"}:
                     raise ValueError(f"unsupported scheduler policy: {value!r}")
+                continue
+            if name == "speculative_solver_stop_on_valid":
+                if not isinstance(value, bool):
+                    raise ValueError(
+                        "speculative_solver_stop_on_valid must be a boolean"
+                    )
                 continue
             if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
                 raise ValueError(f"{name} must be a positive integer")
@@ -266,6 +274,7 @@ class OrchestrationConfig:
             "max_test_calls",
             "max_parallel_tests",
             "speculative_solver_width",
+            "speculative_solver_stop_on_valid",
             "scheduler_policy",
             "merge_policy",
             "max_total_tokens",
@@ -297,6 +306,7 @@ class OrchestrationConfig:
                 "max_test_calls",
                 "max_parallel_tests",
                 "speculative_solver_width",
+                "speculative_solver_stop_on_valid",
                 "scheduler_policy",
                 "merge_policy",
                 "max_total_tokens",
@@ -1208,6 +1218,12 @@ class OrchestrationReport:
             "test_reuses": self.test_reuses,
             "cached_observations": len(self.observations),
             "max_provider_in_flight": self.max_provider_in_flight,
+            "speculative_winners": sum(
+                event.type == "solver.speculative.winner" for event in self.events
+            ),
+            "cancelled_solver_lanes": sum(
+                event.type == "solver.speculative.cancelled" for event in self.events
+            ),
             "pending_solver_responses": (
                 0
                 if self.pending_solver_responses is None
@@ -1424,10 +1440,16 @@ class OrchestrationReport:
             feedback=tuple(feedback),
         )
         metrics = value.get("metrics")
-        if metrics is not None and (
-            not isinstance(metrics, Mapping) or dict(metrics) != dict(report.metrics)
-        ):
-            raise ValueError("orchestration metrics are inconsistent")
+        if metrics is not None:
+            if not isinstance(metrics, Mapping):
+                raise ValueError("orchestration metrics are inconsistent")
+            expected_metrics = dict(report.metrics)
+            supplied_metrics = dict(metrics)
+            if set(supplied_metrics) - set(expected_metrics) or any(
+                supplied_metrics[key] != expected_metrics[key]
+                for key in supplied_metrics
+            ):
+                raise ValueError("orchestration metrics are inconsistent")
         return report
 
     def to_dict(self) -> dict[str, Any]:
@@ -2313,6 +2335,9 @@ class OrchestrationRunner:
                 "proposal_config": config.to_dict(),
                 "plan_fingerprint": stable_hash(plan.to_dict()),
                 "speculative_width": width,
+                "stop_on_valid": (
+                    state.config.speculative_solver_stop_on_valid and width > 1
+                ),
                 "max_parallel_solver_calls": width,
                 "speculative_lanes": lane_payloads,
                 "reused_lanes": sorted(stored_responses),
@@ -2361,17 +2386,105 @@ class OrchestrationRunner:
         if checkpoint is not None and stored_responses:
             write_orchestration_checkpoint(working, checkpoint)
 
-        tasks = [
-            asyncio.create_task(call_lane(lane, request))
-            for lane, request, _receipt in prepared
-            if lane not in stored_responses
-        ]
+        stop_on_valid = state.config.speculative_solver_stop_on_valid and width > 1
+        winner_lane: int | None = None
+        cancelled_lanes: set[int] = set()
+
+        def _parse_valid_response(response: ModelResponse) -> BranchCase | None:
+            try:
+                return parse_proposal_response(
+                    response, working.task, working.base_files, config
+                )
+            except (RuntimeContractError, ValueError):
+                return None
+
+        def _winner_event(
+            current: OrchestrationReport,
+            lane: int,
+            response: ModelResponse,
+            *,
+            source: str,
+            candidate_count: int,
+        ) -> OrchestrationReport:
+            return _event(
+                current,
+                "solver.speculative.winner",
+                {
+                    "lane": lane,
+                    "turn": turn,
+                    "source": source,
+                    "response_sha256": stable_hash(response.to_dict()),
+                    "candidate_count": candidate_count,
+                    "selection": "first_parseable_candidate",
+                    "provider_cancellation": "best_effort",
+                },
+            )
+
+        def _cancelled_event(
+            current: OrchestrationReport,
+            lane: int,
+            *,
+            cancellation_mode: str,
+        ) -> OrchestrationReport:
+            return _event(
+                current,
+                "solver.speculative.cancelled",
+                {
+                    "lane": lane,
+                    "turn": turn,
+                    "winner_lane": winner_lane,
+                    "reason": "first_valid_lane",
+                    "cancellation_mode": cancellation_mode,
+                    "provider_cancellation": "best_effort",
+                },
+            )
+
+        # A durable response from a previous process may already be a valid
+        # candidate.  Reuse it as the winner and avoid starting missing lanes.
+        if stop_on_valid:
+            for lane in sorted(stored_responses):
+                parsed = _parse_valid_response(stored_responses[lane])
+                if parsed is None:
+                    continue
+                winner_lane = lane
+                working = _winner_event(
+                    working,
+                    lane,
+                    stored_responses[lane],
+                    source="checkpoint",
+                    candidate_count=len(parsed.candidates),
+                )
+                break
+
+        task_by_lane = (
+            {
+                lane: asyncio.create_task(call_lane(lane, request))
+                for lane, request, _receipt in prepared
+                if lane not in stored_responses and winner_lane is None
+            }
+            if winner_lane is None
+            else {}
+        )
+        tasks = list(task_by_lane.values())
+        if winner_lane is not None:
+            for lane, _request, _receipt in prepared:
+                if lane in stored_responses:
+                    continue
+                cancelled_lanes.add(lane)
+                working = _cancelled_event(
+                    working, lane, cancellation_mode="not_started"
+                )
+            if checkpoint is not None:
+                write_orchestration_checkpoint(working, checkpoint)
+
         fresh_results: list[tuple[int, ModelResponse | None, Exception | None]] = []
+        processed_lanes: set[int] = set()
         try:
             for completed in asyncio.as_completed(tasks):
                 result = await completed
                 fresh_results.append(result)
                 result_lane, result_response, result_error = result
+                processed_lanes.add(result_lane)
                 if result_response is not None:
                     stored_responses[result_lane] = result_response
                     working = _event(
@@ -2390,6 +2503,20 @@ class OrchestrationRunner:
                             "max_provider_in_flight": max_provider_in_flight,
                         },
                     )
+                    if stop_on_valid:
+                        parsed = _parse_valid_response(result_response)
+                        if parsed is not None:
+                            winner_lane = result_lane
+                            working = _winner_event(
+                                working,
+                                result_lane,
+                                result_response,
+                                source="fresh",
+                                candidate_count=len(parsed.candidates),
+                            )
+                            if checkpoint is not None:
+                                write_orchestration_checkpoint(working, checkpoint)
+                            break
                 elif result_error is not None:
                     working = _event(
                         working,
@@ -2405,6 +2532,34 @@ class OrchestrationRunner:
                     )
                 if checkpoint is not None:
                     write_orchestration_checkpoint(working, checkpoint)
+
+            if winner_lane is not None:
+                # Results that have not crossed the durable event boundary are
+                # intentionally discarded.  A provider may still finish work in
+                # the background, so the ledger calls this best-effort cancellation
+                # rather than claiming an exactly-once remote abort.
+                for lane, task in task_by_lane.items():
+                    if lane in processed_lanes:
+                        continue
+                    if not task.done():
+                        task.cancel()
+                    cancelled_lanes.add(lane)
+                await asyncio.gather(*tasks, return_exceptions=True)
+                for lane in sorted(cancelled_lanes):
+                    if any(
+                        event.type == "solver.speculative.cancelled"
+                        and event.data.get("lane") == lane
+                        and event.data.get("turn") == turn
+                        for event in working.events
+                    ):
+                        continue
+                    working = _cancelled_event(
+                        working,
+                        lane,
+                        cancellation_mode="task_cancel_requested",
+                    )
+                    if checkpoint is not None:
+                        write_orchestration_checkpoint(working, checkpoint)
         except BaseException:
             for task in tasks:
                 if not task.done():
@@ -2598,6 +2753,9 @@ class OrchestrationRunner:
                 "valid_lanes": [lane for lane, _case in lane_cases],
                 "rejected_lanes": lane_errors,
                 "speculative_variants": [item.to_dict() for item in lane_calls],
+                "stop_on_valid": stop_on_valid,
+                "winner_lane": winner_lane,
+                "cancelled_lanes": sorted(cancelled_lanes),
                 "max_provider_in_flight": max_provider_in_flight,
             },
         )
@@ -2972,6 +3130,8 @@ def render_orchestration_console(report: OrchestrationReport) -> str:
         f"max_in_flight={report.max_in_flight} "
         f"max_provider_in_flight={report.max_provider_in_flight} "
         f"pending_solver_lanes={report.metrics['pending_solver_responses']} "
+        f"speculative_winners={report.metrics['speculative_winners']} "
+        f"cancelled_solver_lanes={report.metrics['cancelled_solver_lanes']} "
         f"context_receipts={context_receipts}"
     ]
     if report.best_candidate_id:
@@ -3013,7 +3173,9 @@ def render_orchestration_markdown(report: OrchestrationReport) -> str:
         f"`{report.config.max_parallel_tests}`; "
         f"observed max in-flight `{report.max_in_flight}`",
         f"- Speculative solver width: `{report.config.speculative_solver_width}`; "
-        f"observed provider max in-flight `{report.max_provider_in_flight}`",
+        f"observed provider max in-flight `{report.max_provider_in_flight}`; "
+        f"winners `{report.metrics['speculative_winners']}`, "
+        f"cancelled lanes `{report.metrics['cancelled_solver_lanes']}`",
         f"- Context receipts: {context_receipts}/{len(completed_calls)} "
         "(selected message blocks and observed-memory fingerprints)",
         f"- Best candidate: {report.best_candidate_id or 'none'}",
@@ -3101,6 +3263,10 @@ def render_orchestration_html(report: OrchestrationReport) -> str:
         f"<div class='metric'>reuses: {report.test_reuses}</div>"
         f"<div class='metric'>provider max in-flight: "
         f"{report.max_provider_in_flight}</div>"
+        f"<div class='metric'>speculative winners: "
+        f"{report.metrics['speculative_winners']}</div>"
+        f"<div class='metric'>cancelled lanes: "
+        f"{report.metrics['cancelled_solver_lanes']}</div>"
         f"<div class='metric'>best: {escape(report.best_candidate_id or 'none')}</div>"
         "</div><table><thead><tr><th>round</th><th>planner</th><th>solver</th>"
         "<th>solver lanes</th><th>reviewer</th><th>branch</th><th>review</th>"

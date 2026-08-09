@@ -1,0 +1,15 @@
+{
+  "schema_version": "1",
+  "artifact": "v0.9-speculative-cancellation",
+  "model_adapter": "scripted-deterministic-cancellation-fixture",
+  "run_id": "v0.9-speculative-cancellation-artifact",
+  "winner_lane": 0,
+  "cancelled_lane_count": 1,
+  "claim_boundary": "The winner is the first protocol-parseable candidate. Visible tests and reviewer approval remain authoritative; provider cancellation is best-effort.",
+  "files": {
+    "report.json": "c4370fb3df487a5a492f118fb1efb6042872d5ed5acf455f1f66919898c4811b",
+    "report.md": "1db35f1c583eb1cf3bdc1875adfecf02f1549d6548f3d75f618df6ae839feecf",
+    "report.html": "f2fb58c18a6ca62edaf2a46105d892f4ac2d306776faf339044d040422e77ad7",
+    "checkpoint.json": "facfd61782f71e9ba9ffea46d38c066cd2cbe50e6bbc0e312edc1b57ae0754b2"
+  }
+}

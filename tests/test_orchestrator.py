@@ -136,6 +136,40 @@ class DelayedScriptedModel(ScriptedModel):
         return await super().complete(request)
 
 
+class FirstValidSpeculativeModel:
+    """Return lane one immediately and make lane two cancellation-observable."""
+
+    def __init__(self, content: str) -> None:
+        self._name = "first-valid-speculative-solver:v1"
+        self._content = content
+        self._never = asyncio.Event()
+        self.requests: list[ModelRequest] = []
+        self.cancelled = 0
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def configuration_fingerprint(self) -> str:
+        return stable_hash({"adapter": "first-valid-test", "name": self._name})
+
+    def resume_from_turn(self, completed_turns: int) -> None:
+        if completed_turns < 0:
+            raise ValueError("completed_turns must be non-negative")
+
+    async def complete(self, request: ModelRequest) -> ModelResponse:
+        self.requests.append(request)
+        if "You are lane 2 of 2" in request.messages[-1].content:
+            try:
+                await self._never.wait()
+            except asyncio.CancelledError:
+                self.cancelled += 1
+                raise
+        await asyncio.sleep(0)
+        return ModelResponse(content=self._content)
+
+
 class PartialSpeculativeModel:
     """Return one lane, then block another so checkpoint reuse can be tested."""
 
@@ -396,6 +430,67 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
         received = [event for event in report.events if event.type == "solver.received"]
         self.assertEqual(received[0].data["speculative_width"], 2)
         self.assertEqual(received[0].data["valid_lanes"], [0, 1])
+        self.assertEqual(checkpoint_report.to_dict(), report.to_dict())
+
+    async def test_speculative_solver_stops_after_first_parseable_candidate(
+        self,
+    ) -> None:
+        solver = FirstValidSpeculativeModel(
+            _proposal("good", "def solve(values):\n    return sorted(values)\n")
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint = Path(temp_dir) / "first-valid-speculative.json"
+            report = await run_orchestration(
+                ScriptedModel([{"response": {"content": _plan()}}], name="stop-p:v1"),
+                solver,
+                ScriptedModel(
+                    [
+                        {
+                            "response": {
+                                "content": _review("accept", "round-0-spec-0-good")
+                            }
+                        }
+                    ],
+                    name="stop-r:v1",
+                ),
+                task="find a correct sorting implementation",
+                root_files=ROOT_FILES,
+                execution_config=_execution(),
+                config=OrchestrationConfig(
+                    max_rounds=1,
+                    max_model_calls=4,
+                    max_planner_calls=1,
+                    max_solver_calls=2,
+                    max_reviewer_calls=1,
+                    max_candidates=2,
+                    max_test_calls=2,
+                    speculative_solver_width=2,
+                    speculative_solver_stop_on_valid=True,
+                ),
+                solver_config=ProposalConfig(max_candidates=1),
+                search_config=BranchSearchConfig(max_depth=1, beam_width=1),
+                run_id="first-valid-speculative-test",
+                checkpoint_path=checkpoint,
+            )
+            checkpoint_report = read_orchestration_checkpoint(checkpoint)
+        self.assertEqual(report.status, "accepted")
+        self.assertEqual(report.best_candidate_id, "round-0-spec-0-good")
+        self.assertEqual(report.solver_calls, 2)
+        self.assertEqual(report.model_calls, 4)
+        self.assertEqual(len(report.rounds[0].solver_variants), 1)
+        self.assertEqual(report.metrics["speculative_winners"], 1)
+        self.assertEqual(report.metrics["cancelled_solver_lanes"], 1)
+        self.assertEqual(
+            sum(event.type == "solver.speculative.winner" for event in report.events),
+            1,
+        )
+        self.assertEqual(
+            sum(
+                event.type == "solver.speculative.cancelled" for event in report.events
+            ),
+            1,
+        )
+        self.assertEqual(solver.cancelled, 1)
         self.assertEqual(checkpoint_report.to_dict(), report.to_dict())
 
     async def test_speculative_resume_reuses_durable_lane_response(self) -> None:

@@ -375,10 +375,12 @@ including parent-quality promotion and early-stop, is available as a bounded pol
   evidence. The opt-in `speculative_solver_width > 1` now fans out bounded solver calls with
   lane-specific diversity instructions. Each response is validated independently, namespaced
   before branch evaluation, and recorded with a response hash, context receipt, token usage,
-  and lane-local failure. Each candidate is
-materialized in a fresh temporary workspace, and requested/completed events are recorded in
-candidate order so a checkpoint can resume without treating provider or subprocess effects as
-exactly once.
+  and lane-local failure. `speculative_solver_stop_on_valid` can select the first
+  protocol-parseable response, append winner/cancellation events, and request best-effort
+  cancellation for unfinished lanes; the resulting snapshot is still evaluated by the common
+  visible-test oracle. Each candidate is materialized in a fresh temporary workspace, and
+  requested/completed events are recorded in candidate order so a checkpoint can resume without
+  treating provider or subprocess effects as exactly once.
 
 Role context is now a first-class part of this report. Each role retains only its prior
 assistant responses, combines them with the next fresh request, and runs the transcript through

@@ -620,12 +620,22 @@ in-flight observation; valid snapshots are namespaced before the common oracle. 
 and orchestration checkpoints persist requested/completed candidate events and the observed
 maximum in-flight counts.
 
+The solver fan-out also has an opt-in first-valid race. Set
+`OrchestrationConfig.speculative_solver_stop_on_valid=True` or pass
+`--speculative-solver-stop-on-valid` with a width greater than one to select the first response
+that passes the strict candidate parser. The runner appends a `solver.speculative.winner` event,
+requests cancellation for lanes that have not crossed the durable response boundary, and appends
+one `solver.speculative.cancelled` event per such lane. The selected snapshot still goes through
+the same visible-test oracle and reviewer gate. A cancellation event means local cancellation
+was requested; it deliberately records `provider_cancellation=best_effort` because cancelling
+an asyncio task cannot interrupt every provider's remote HTTP work. Solver/model budgets still
+charge the configured width, so latency savings and remote cost must be measured separately.
+
 Remaining milestones are:
 
-1. Add provider-aware cancellation/winner selection around the current bounded solver fan-out;
-   completed lane responses are already checkpointed and reused, but a crash in the small
-   response-to-checkpoint window can still cause one lane to run again. The serial
-   OpenAI-compatible adapter now emits a deterministic idempotency hook.
+1. Exercise the new cancellation/winner policy against provider adapters that expose a real
+   abort primitive; the built-in serial OpenAI-compatible adapter currently offers the durable
+   idempotency hook but only best-effort local task cancellation.
 2. Run the strategy harness against multiple real model versions and independent hidden
    tests, preserving paired budgets and full ledgers.
 3. Add container/VM isolation and a controlled real-model coding benchmark with fixed

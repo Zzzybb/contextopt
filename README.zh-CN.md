@@ -23,7 +23,12 @@ generation，因此 checkpoint 里能审计“本轮到底给了角色什么上�
 共享模型/候选预算内并发调用多个 solver lane：每个 lane 有独立多样性指令，响应先分别
 校验、记录哈希/用量/失败，再 namespace 后进入 oracle；checkpoint 记录观察到的 provider
 并发度和已经落账的 lane response。恢复时复用已落账 lane，只重发没有 response 的 lane；
-planner 和 reviewer 仍然顺序调用，仍不声称 exactly-once。
+planner 和 reviewer 仍然顺序调用，仍不声称 exactly-once。还可以打开
+`speculative_solver_stop_on_valid`（CLI 参数 `--speculative-solver-stop-on-valid`）：
+第一个通过候选协议解析的 lane 会被记录为 winner，其余未完成 lane 会收到取消请求，
+并通过 `solver.speculative.winner` / `solver.speculative.cancelled` 事件留下可审计证据。
+这里的 valid 只表示协议可解析，不代表测试通过；取消是 best-effort，不能假设 provider
+一定已经停止远端 HTTP 请求。
 OS sandbox、跨运行语义记忆和统计严谨的真实模型评测仍在后续计划中。
 
 另外新增了 `recovery-eval` 长程恢复矩阵：在 `model.requested`、`model.responded`、
@@ -35,6 +40,9 @@ runner/model/tools 恢复同一份日志。它覆盖 pending request 复用、�
 每个 durable `model.requested` 事件还会记录稳定的 request idempotency key；
 OpenAI-compatible adapter 默认通过 `Idempotency-Key` 发送它，但是否去重取决于 provider
 是否真正支持该 header，项目不把本地 header 包装成 exactly-once 保证。
+另有一个不依赖 provider 的首个有效候选取消演示，产物在
+[`experiments/v0.9-speculative-cancellation`](experiments/v0.9-speculative-cancellation/README.zh-CN.md)，
+展示 winner/cancelled lane ledger 和按配置 width 计费的预算口径，但不冒充远端 abort 评测。
 
 ## 为什么适合面试 Agent 开发岗
 
@@ -48,7 +56,8 @@ OpenAI-compatible adapter 默认通过 `Idempotency-Key` 发送它，但是否�
    memory fingerprint 和 workspace generation；
 6. 并行候选调度：限制 in-flight 数量，隔离临时工作区，并在每个测试结果后持久化；
 7. speculative solver：在共享预算内并发发起独立 solver 请求，记录 lane 级上下文收据、
-   响应哈希、token 用量、失败和 `max_provider_in_flight`，再合并进入同一个可见 oracle；
+   响应哈希、token 用量、失败和 `max_provider_in_flight`，支持首个可解析候选胜出并请求
+   取消其余 lane，再合并进入同一个可见 oracle；
 8. MCTS 调度：使用真实 oracle 质量而不是模型自报置信度选择后续候选，记录 UCT、访问次数和
    reward；
 9. 评测边界：reviewer 不能绕过可见测试，脚本 conformance 与模型能力明确分开。
@@ -115,13 +124,14 @@ reviewer 决策、oracle gate 和 checkpoint。
 python -m contextopt orchestrate \
   --task "修复算法实现" --root-files root.json --checkpoint run.json \
   --solver-model <model-name> --base-url <endpoint> \
-  --speculative-solver-width 3 --max-solver-calls 3 \
+  --speculative-solver-width 3 --speculative-solver-stop-on-valid \
+  --max-solver-calls 3 \
   --test-command "python -m unittest discover -s ." --allow-command
 ~~~
 
 离线 ScriptedModel 也支持该开关，只需为 solver script 准备足够多的 response；
-报告里的 `solver_variants`、`solver.speculative.*` 事件和 `max_provider_in_flight`
-可以直接检查并发是否真的发生。
+报告里的 `solver_variants`、`solver.speculative.*` 事件、winner/cancelled lane 数和
+`max_provider_in_flight` 可以直接检查并发与提前停止是否真的发生。
 
 代码 Agent 策略评测可以直接离线运行：
 

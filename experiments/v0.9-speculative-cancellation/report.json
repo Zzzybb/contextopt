@@ -1,0 +1,1797 @@
+{
+  "schema_version": "1",
+  "run_id": "v0.9-speculative-cancellation-artifact",
+  "task": "find a correct sorting implementation",
+  "model_fingerprints": {
+    "planner": "f9191d95ea4f8e969d77489542a1657726ada5da507e5628fedd6e21c94596fd",
+    "solver": "89699df5f6a9978eb9305330f58bcab162bf202fd22032ce7d466b7a8f7a92d9",
+    "reviewer": "0e2bb1ca34c2f060c29dce454edd41c01d60fcfb7cdbb7394851f4079133ffbc"
+  },
+  "status": "accepted",
+  "phase": "idle",
+  "config": {
+    "max_rounds": 1,
+    "max_model_calls": 4,
+    "max_planner_calls": 1,
+    "max_solver_calls": 2,
+    "max_reviewer_calls": 1,
+    "max_candidates": 2,
+    "max_test_calls": 2,
+    "max_parallel_tests": 1,
+    "speculative_solver_width": 2,
+    "speculative_solver_stop_on_valid": true,
+    "scheduler_policy": "fixed",
+    "merge_policy": "disabled",
+    "max_total_tokens": 100000,
+    "context_config": {
+      "compiler_version": 1,
+      "policy": "submodular",
+      "budget_tokens": 16000,
+      "recent_blocks": 2,
+      "max_tool_output_tokens": 2048,
+      "memory_policy": "versioned-v1"
+    }
+  },
+  "planner_config": {
+    "max_items": 6,
+    "max_item_chars": 600,
+    "max_prompt_chars": 400000,
+    "max_output_tokens": 4096
+  },
+  "solver_config": {
+    "max_candidates": 1,
+    "max_files_per_candidate": 32,
+    "max_file_chars": 200000,
+    "max_total_prompt_chars": 400000,
+    "max_output_tokens": 8192
+  },
+  "reviewer_config": {
+    "max_prompt_chars": 400000,
+    "max_output_tokens": 2048,
+    "max_issue_items": 8,
+    "max_item_chars": 600
+  },
+  "search_config": {
+    "beam_width": 1,
+    "max_depth": 1,
+    "max_candidates": 32,
+    "test_environment_fingerprint": "visible-tests-v1",
+    "stop_on_pass": true,
+    "search_policy": "beam",
+    "exploration_constant": 1.0
+  },
+  "execution_config": {
+    "command": [
+      "D:\\vnpy\\python.exe",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "."
+    ],
+    "suite": "artifact-visible-tests",
+    "test_name": "solver-order",
+    "timeout_seconds": 120.0,
+    "max_report_bytes": 65536
+  },
+  "root_files": {
+    "solver.py": "def solve(values):\n    return list(values)\n",
+    "test_solver.py": "import unittest\nfrom solver import solve\n\n\nclass SolverTests(unittest.TestCase):\n    def test_orders_values(self):\n        self.assertEqual(solve([3, 1, 2]), [1, 2, 3])\n\n\nif __name__ == '__main__':\n    unittest.main()\n"
+  },
+  "base_files": {
+    "solver.py": "def solve(values):\n    return sorted(values)\n",
+    "test_solver.py": "import unittest\nfrom solver import solve\n\n\nclass SolverTests(unittest.TestCase):\n    def test_orders_values(self):\n        self.assertEqual(solve([3, 1, 2]), [1, 2, 3])\n\n\nif __name__ == '__main__':\n    unittest.main()\n"
+  },
+  "rounds": [
+    {
+      "index": 0,
+      "base_fingerprint": "d577a6e41d2640dc20c03ba1e5a2564d398b95a6523cf7c0b4d1fe70da797e35",
+      "plan": {
+        "schema_version": "1",
+        "goal": "return values in ascending order",
+        "constraints": [
+          "preserve the public solve signature"
+        ],
+        "hypotheses": [
+          "use the standard sorted primitive"
+        ],
+        "test_focus": [
+          "visible ordering test"
+        ],
+        "risks": [
+          "do not mutate caller-owned input"
+        ]
+      },
+      "branch_report": {
+        "schema_version": "1",
+        "task": "find a correct sorting implementation",
+        "case_fingerprint": "51c2c8afc66f00fbf4f6044f198c939fe914f7f4f376535885d91f155c7e9d08",
+        "config": {
+          "beam_width": 1,
+          "max_depth": 1,
+          "max_candidates": 32,
+          "test_environment_fingerprint": "visible-tests-v1",
+          "stop_on_pass": true,
+          "search_policy": "beam",
+          "exploration_constant": 1.0
+        },
+        "status": "accepted",
+        "best_node_id": "round-0-spec-0-good",
+        "nodes": [
+          {
+            "id": "root",
+            "parent_id": null,
+            "depth": 0,
+            "status": "root",
+            "hypothesis": "initial workspace state",
+            "workspace_fingerprint": "a4192c6a6d46211988b2c6e4f35602fed3b40635765a88cf927d2b8008f6e159",
+            "dedup_key": "6ea1e40493915b366f24eb949a8dc143bab333f634b0326408a07800db77a8f0",
+            "score": 0.0,
+            "test_result": null,
+            "duplicate_of": null,
+            "reason": "search root",
+            "evidence": []
+          },
+          {
+            "id": "round-0-spec-0-good",
+            "parent_id": "root",
+            "depth": 1,
+            "status": "accepted",
+            "hypothesis": "use sorted for a stable ascending snapshot",
+            "workspace_fingerprint": "cb0a34250358619854a0891e569d878173cd3652143529391b8bb9e92d8829ff",
+            "dedup_key": "8ea871ebef391bc9e8752ec6508f7b8bdd72560b1e93deacc06e76606714ce27",
+            "score": 0.99,
+            "test_result": {
+              "suite": "artifact-visible-tests",
+              "passed_tests": [
+                "solver-order"
+              ],
+              "failed_tests": [],
+              "error": null,
+              "duration_ms": 139.77200002409518,
+              "output_sha256": "5b13a9ef4efb3b0c6298a6cfb406313c15e37197a6770ead9bdee0efbfde6115",
+              "output_excerpt": "\n--- stderr ---\n.\r\n----------------------------------------------------------------------\r\nRan 1 test in 0.000s\r\n\r\nOK\r\n",
+              "total_tests": 1,
+              "passed_ratio": 1.0,
+              "quality_score": 1.0,
+              "behavior_fingerprint": "cc644608a6f52cf5a4c6b64d6280bc83a71b577c874395e9220701ff3cf5f4a1",
+              "is_success": true
+            },
+            "duplicate_of": null,
+            "reason": "all visible tests passed",
+            "evidence": [
+              "visible test is the oracle"
+            ]
+          }
+        ],
+        "events": [
+          {
+            "seq": 0,
+            "type": "search.started",
+            "data": {
+              "task": "find a correct sorting implementation",
+              "case_fingerprint": "51c2c8afc66f00fbf4f6044f198c939fe914f7f4f376535885d91f155c7e9d08",
+              "config": {
+                "beam_width": 1,
+                "max_depth": 1,
+                "max_candidates": 32,
+                "test_environment_fingerprint": "visible-tests-v1",
+                "stop_on_pass": true,
+                "search_policy": "beam",
+                "exploration_constant": 1.0
+              }
+            },
+            "prev_sha256": null,
+            "sha256": "dcfa2b2191f268eb7db1dd9362ced7d30af1aaf7ad262e3117f15b09910aa7cd"
+          },
+          {
+            "seq": 1,
+            "type": "candidate.proposed",
+            "data": {
+              "candidate_id": "round-0-spec-0-good",
+              "parent_id": "root",
+              "depth": 1,
+              "patch_fingerprint": "43809909eece5c169255722beea15bf51192d2090ef22e1ccf478cfcd63ad3c6",
+              "workspace_fingerprint": "cb0a34250358619854a0891e569d878173cd3652143529391b8bb9e92d8829ff",
+              "dedup_key": "8ea871ebef391bc9e8752ec6508f7b8bdd72560b1e93deacc06e76606714ce27"
+            },
+            "prev_sha256": "dcfa2b2191f268eb7db1dd9362ced7d30af1aaf7ad262e3117f15b09910aa7cd",
+            "sha256": "fe3e35b3307a383e5fc5e46982c308588ce7481a08819f309cd3cd498e20765c"
+          },
+          {
+            "seq": 2,
+            "type": "candidate.evaluated",
+            "data": {
+              "candidate_id": "round-0-spec-0-good",
+              "test_result": {
+                "suite": "artifact-visible-tests",
+                "passed_tests": [
+                  "solver-order"
+                ],
+                "failed_tests": [],
+                "error": null,
+                "duration_ms": 139.77200002409518,
+                "output_sha256": "5b13a9ef4efb3b0c6298a6cfb406313c15e37197a6770ead9bdee0efbfde6115",
+                "output_excerpt": "\n--- stderr ---\n.\r\n----------------------------------------------------------------------\r\nRan 1 test in 0.000s\r\n\r\nOK\r\n",
+                "total_tests": 1,
+                "passed_ratio": 1.0,
+                "quality_score": 1.0,
+                "behavior_fingerprint": "cc644608a6f52cf5a4c6b64d6280bc83a71b577c874395e9220701ff3cf5f4a1",
+                "is_success": true
+              },
+              "test_fingerprint": "cc644608a6f52cf5a4c6b64d6280bc83a71b577c874395e9220701ff3cf5f4a1",
+              "score": 0.99
+            },
+            "prev_sha256": "fe3e35b3307a383e5fc5e46982c308588ce7481a08819f309cd3cd498e20765c",
+            "sha256": "afebcae6e34eea7e5c51829cfb72cace6bd51982ba18b01ab3ea58b30a0c9689"
+          },
+          {
+            "seq": 3,
+            "type": "search.completed",
+            "data": {
+              "status": "accepted",
+              "best_node_id": "round-0-spec-0-good",
+              "proposed": 1,
+              "evaluated": 1,
+              "test_calls": 1,
+              "duplicates": 0,
+              "pruned": 0,
+              "passed": 1,
+              "max_depth": 1
+            },
+            "prev_sha256": "afebcae6e34eea7e5c51829cfb72cace6bd51982ba18b01ab3ea58b30a0c9689",
+            "sha256": "cfe10cd15b6860fd393364bb30d4018b8400487b5d004e65430a9fad78ec18cd"
+          }
+        ],
+        "metrics": {
+          "proposed": 1,
+          "evaluated": 1,
+          "test_calls": 1,
+          "duplicates": 0,
+          "pruned": 0,
+          "passed": 1,
+          "max_depth": 1
+        },
+        "case": {
+          "task": "find a correct sorting implementation",
+          "root_files": {
+            "solver.py": "def solve(values):\n    return list(values)\n",
+            "test_solver.py": "import unittest\nfrom solver import solve\n\n\nclass SolverTests(unittest.TestCase):\n    def test_orders_values(self):\n        self.assertEqual(solve([3, 1, 2]), [1, 2, 3])\n\n\nif __name__ == '__main__':\n    unittest.main()\n"
+          },
+          "candidates": [
+            {
+              "id": "round-0-spec-0-good",
+              "parent_id": "root",
+              "hypothesis": "use sorted for a stable ascending snapshot",
+              "files": {
+                "solver.py": "def solve(values):\n    return sorted(values)\n",
+                "test_solver.py": "import unittest\nfrom solver import solve\n\n\nclass SolverTests(unittest.TestCase):\n    def test_orders_values(self):\n        self.assertEqual(solve([3, 1, 2]), [1, 2, 3])\n\n\nif __name__ == '__main__':\n    unittest.main()\n"
+              },
+              "evidence": [
+                "visible test is the oracle"
+              ],
+              "workspace_fingerprint": "cb0a34250358619854a0891e569d878173cd3652143529391b8bb9e92d8829ff",
+              "patch_fingerprint": "43809909eece5c169255722beea15bf51192d2090ef22e1ccf478cfcd63ad3c6"
+            }
+          ],
+          "tests": {
+            "round-0-spec-0-good": {
+              "suite": "artifact-visible-tests",
+              "passed_tests": [
+                "solver-order"
+              ],
+              "failed_tests": [],
+              "error": null,
+              "duration_ms": 139.77200002409518,
+              "output_sha256": "5b13a9ef4efb3b0c6298a6cfb406313c15e37197a6770ead9bdee0efbfde6115",
+              "output_excerpt": "\n--- stderr ---\n.\r\n----------------------------------------------------------------------\r\nRan 1 test in 0.000s\r\n\r\nOK\r\n",
+              "total_tests": 1,
+              "passed_ratio": 1.0,
+              "quality_score": 1.0,
+              "behavior_fingerprint": "cc644608a6f52cf5a4c6b64d6280bc83a71b577c874395e9220701ff3cf5f4a1",
+              "is_success": true
+            }
+          },
+          "fingerprint": "51c2c8afc66f00fbf4f6044f198c939fe914f7f4f376535885d91f155c7e9d08"
+        }
+      },
+      "planner_call": {
+        "role": "planner",
+        "turn": 1,
+        "model_name": "artifact-planner:v1",
+        "response_sha256": "9484243476cd84e807014c35fb19713d35478bfe6ac5ade70cb2a35274b170f2",
+        "response_id": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "cached_input_tokens": 0,
+          "reasoning_tokens": 0,
+          "total_tokens": 0
+        },
+        "context_receipt": {
+          "schema_version": 1,
+          "config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
+          "memory_fingerprint": "7b07ee544c04b6b8505cfd92d3bc78e60469e59ee0703e0d1c61ba73cda722cd",
+          "workspace_generation": 0,
+          "policy": "submodular",
+          "budget_tokens": 16000,
+          "estimated_original_tokens": 310,
+          "estimated_candidate_tokens": 310,
+          "estimated_selected_tokens": 310,
+          "selected_block_ids": [
+            "block-000000",
+            "block-000001"
+          ],
+          "evicted_block_ids": [],
+          "compacted_block_ids": [],
+          "stale_block_ids": [],
+          "messages_sha256": "14881b845166670c960c4a52f98a423e4c1d80e94bf8c968dd18525b17b0f5ba",
+          "message_count": 2,
+          "message_roles": [
+            "system",
+            "user"
+          ],
+          "frame": {
+            "policy": "submodular",
+            "selected_ids": [
+              "block-000000",
+              "block-000001"
+            ],
+            "used_tokens": 310,
+            "budget": 16000,
+            "utilization": 0.019375,
+            "objective_score": 19.962176496149713,
+            "decisions": [
+              {
+                "item_id": "block-000000",
+                "status": "selected",
+                "reason": "mandatory item",
+                "marginal_gain": null,
+                "added_tokens": 28
+              },
+              {
+                "item_id": "block-000001",
+                "status": "selected",
+                "reason": "mandatory item",
+                "marginal_gain": null,
+                "added_tokens": 282
+              }
+            ],
+            "metadata": {
+              "iterations": 0
+            }
+          },
+          "blocks": [
+            {
+              "block_id": "block-000000",
+              "start_index": 0,
+              "end_index": 1,
+              "roles": [
+                "system"
+              ],
+              "estimated_original_tokens": 28,
+              "estimated_tokens": 28,
+              "selected": true,
+              "mandatory": true,
+              "compacted": false,
+              "stale": false
+            },
+            {
+              "block_id": "block-000001",
+              "start_index": 1,
+              "end_index": 2,
+              "roles": [
+                "user"
+              ],
+              "estimated_original_tokens": 282,
+              "estimated_tokens": 282,
+              "selected": true,
+              "mandatory": true,
+              "compacted": false,
+              "stale": false
+            }
+          ]
+        }
+      },
+      "solver_call": {
+        "role": "solver",
+        "turn": 1,
+        "model_name": "artifact-first-valid-solver:v1",
+        "response_sha256": "d216fd507c3d0f1541c1b6f9da691174c734df9e8c5633b9460206a303a1229b",
+        "response_id": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "cached_input_tokens": 0,
+          "reasoning_tokens": 0,
+          "total_tokens": 0
+        },
+        "context_receipt": {
+          "schema_version": 1,
+          "config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
+          "memory_fingerprint": "7b07ee544c04b6b8505cfd92d3bc78e60469e59ee0703e0d1c61ba73cda722cd",
+          "workspace_generation": 0,
+          "policy": "submodular",
+          "budget_tokens": 16000,
+          "estimated_original_tokens": 498,
+          "estimated_candidate_tokens": 498,
+          "estimated_selected_tokens": 498,
+          "selected_block_ids": [
+            "block-000000",
+            "block-000001"
+          ],
+          "evicted_block_ids": [],
+          "compacted_block_ids": [],
+          "stale_block_ids": [],
+          "messages_sha256": "c60c5acb579536669c63f086adb82387a3c30fae6d3f1ef31b72b7310141e6fe",
+          "message_count": 2,
+          "message_roles": [
+            "system",
+            "user"
+          ],
+          "frame": {
+            "policy": "submodular",
+            "selected_ids": [
+              "block-000000",
+              "block-000001"
+            ],
+            "used_tokens": 498,
+            "budget": 16000,
+            "utilization": 0.031125,
+            "objective_score": 19.89903939946922,
+            "decisions": [
+              {
+                "item_id": "block-000000",
+                "status": "selected",
+                "reason": "mandatory item",
+                "marginal_gain": null,
+                "added_tokens": 36
+              },
+              {
+                "item_id": "block-000001",
+                "status": "selected",
+                "reason": "mandatory item",
+                "marginal_gain": null,
+                "added_tokens": 462
+              }
+            ],
+            "metadata": {
+              "iterations": 0
+            }
+          },
+          "blocks": [
+            {
+              "block_id": "block-000000",
+              "start_index": 0,
+              "end_index": 1,
+              "roles": [
+                "system"
+              ],
+              "estimated_original_tokens": 36,
+              "estimated_tokens": 36,
+              "selected": true,
+              "mandatory": true,
+              "compacted": false,
+              "stale": false
+            },
+            {
+              "block_id": "block-000001",
+              "start_index": 1,
+              "end_index": 2,
+              "roles": [
+                "user"
+              ],
+              "estimated_original_tokens": 462,
+              "estimated_tokens": 462,
+              "selected": true,
+              "mandatory": true,
+              "compacted": false,
+              "stale": false
+            }
+          ]
+        }
+      },
+      "reviewer_call": {
+        "role": "reviewer",
+        "turn": 1,
+        "model_name": "artifact-reviewer:v1",
+        "response_sha256": "22c5159c7d127d1727fabc4fce20ab1daa7eec5a477570585781c2eb36c7c379",
+        "response_id": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "cached_input_tokens": 0,
+          "reasoning_tokens": 0,
+          "total_tokens": 0
+        },
+        "context_receipt": {
+          "schema_version": 1,
+          "config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
+          "memory_fingerprint": "7b07ee544c04b6b8505cfd92d3bc78e60469e59ee0703e0d1c61ba73cda722cd",
+          "workspace_generation": 0,
+          "policy": "submodular",
+          "budget_tokens": 16000,
+          "estimated_original_tokens": 757,
+          "estimated_candidate_tokens": 757,
+          "estimated_selected_tokens": 757,
+          "selected_block_ids": [
+            "block-000000",
+            "block-000001"
+          ],
+          "evicted_block_ids": [],
+          "compacted_block_ids": [],
+          "stale_block_ids": [],
+          "messages_sha256": "0d25149651470dbe595fd98673b9c0df82b752a0d46cc18c8a023e787db956e4",
+          "message_count": 2,
+          "message_roles": [
+            "system",
+            "user"
+          ],
+          "frame": {
+            "policy": "submodular",
+            "selected_ids": [
+              "block-000000",
+              "block-000001"
+            ],
+            "used_tokens": 757,
+            "budget": 16000,
+            "utilization": 0.0473125,
+            "objective_score": 20.479700850264567,
+            "decisions": [
+              {
+                "item_id": "block-000000",
+                "status": "selected",
+                "reason": "mandatory item",
+                "marginal_gain": null,
+                "added_tokens": 32
+              },
+              {
+                "item_id": "block-000001",
+                "status": "selected",
+                "reason": "mandatory item",
+                "marginal_gain": null,
+                "added_tokens": 725
+              }
+            ],
+            "metadata": {
+              "iterations": 0
+            }
+          },
+          "blocks": [
+            {
+              "block_id": "block-000000",
+              "start_index": 0,
+              "end_index": 1,
+              "roles": [
+                "system"
+              ],
+              "estimated_original_tokens": 32,
+              "estimated_tokens": 32,
+              "selected": true,
+              "mandatory": true,
+              "compacted": false,
+              "stale": false
+            },
+            {
+              "block_id": "block-000001",
+              "start_index": 1,
+              "end_index": 2,
+              "roles": [
+                "user"
+              ],
+              "estimated_original_tokens": 725,
+              "estimated_tokens": 725,
+              "selected": true,
+              "mandatory": true,
+              "compacted": false,
+              "stale": false
+            }
+          ]
+        }
+      },
+      "review": {
+        "decision": "accept",
+        "candidate_id": "round-0-spec-0-good",
+        "confidence": 0.9,
+        "blocking_issues": [],
+        "required_checks": [],
+        "summary": "the visible oracle supports this decision"
+      },
+      "solver_variants": [
+        {
+          "role": "solver",
+          "turn": 1,
+          "model_name": "artifact-first-valid-solver:v1",
+          "response_sha256": "d216fd507c3d0f1541c1b6f9da691174c734df9e8c5633b9460206a303a1229b",
+          "response_id": null,
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cached_input_tokens": 0,
+            "reasoning_tokens": 0,
+            "total_tokens": 0
+          },
+          "context_receipt": {
+            "schema_version": 1,
+            "config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
+            "memory_fingerprint": "7b07ee544c04b6b8505cfd92d3bc78e60469e59ee0703e0d1c61ba73cda722cd",
+            "workspace_generation": 0,
+            "policy": "submodular",
+            "budget_tokens": 16000,
+            "estimated_original_tokens": 498,
+            "estimated_candidate_tokens": 498,
+            "estimated_selected_tokens": 498,
+            "selected_block_ids": [
+              "block-000000",
+              "block-000001"
+            ],
+            "evicted_block_ids": [],
+            "compacted_block_ids": [],
+            "stale_block_ids": [],
+            "messages_sha256": "c60c5acb579536669c63f086adb82387a3c30fae6d3f1ef31b72b7310141e6fe",
+            "message_count": 2,
+            "message_roles": [
+              "system",
+              "user"
+            ],
+            "frame": {
+              "policy": "submodular",
+              "selected_ids": [
+                "block-000000",
+                "block-000001"
+              ],
+              "used_tokens": 498,
+              "budget": 16000,
+              "utilization": 0.031125,
+              "objective_score": 19.89903939946922,
+              "decisions": [
+                {
+                  "item_id": "block-000000",
+                  "status": "selected",
+                  "reason": "mandatory item",
+                  "marginal_gain": null,
+                  "added_tokens": 36
+                },
+                {
+                  "item_id": "block-000001",
+                  "status": "selected",
+                  "reason": "mandatory item",
+                  "marginal_gain": null,
+                  "added_tokens": 462
+                }
+              ],
+              "metadata": {
+                "iterations": 0
+              }
+            },
+            "blocks": [
+              {
+                "block_id": "block-000000",
+                "start_index": 0,
+                "end_index": 1,
+                "roles": [
+                  "system"
+                ],
+                "estimated_original_tokens": 36,
+                "estimated_tokens": 36,
+                "selected": true,
+                "mandatory": true,
+                "compacted": false,
+                "stale": false
+              },
+              {
+                "block_id": "block-000001",
+                "start_index": 1,
+                "end_index": 2,
+                "roles": [
+                  "user"
+                ],
+                "estimated_original_tokens": 462,
+                "estimated_tokens": 462,
+                "selected": true,
+                "mandatory": true,
+                "compacted": false,
+                "stale": false
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "observations": {
+    "cb0a34250358619854a0891e569d878173cd3652143529391b8bb9e92d8829ff": {
+      "suite": "artifact-visible-tests",
+      "passed_tests": [
+        "solver-order"
+      ],
+      "failed_tests": [],
+      "error": null,
+      "duration_ms": 139.77200002409518,
+      "output_sha256": "5b13a9ef4efb3b0c6298a6cfb406313c15e37197a6770ead9bdee0efbfde6115",
+      "output_excerpt": "\n--- stderr ---\n.\r\n----------------------------------------------------------------------\r\nRan 1 test in 0.000s\r\n\r\nOK\r\n",
+      "total_tests": 1,
+      "passed_ratio": 1.0,
+      "quality_score": 1.0,
+      "behavior_fingerprint": "cc644608a6f52cf5a4c6b64d6280bc83a71b577c874395e9220701ff3cf5f4a1",
+      "is_success": true
+    }
+  },
+  "events": [
+    {
+      "seq": 0,
+      "type": "orchestration.started",
+      "data": {
+        "run_id": "v0.9-speculative-cancellation-artifact",
+        "task": "find a correct sorting implementation",
+        "model_fingerprints": {
+          "planner": "f9191d95ea4f8e969d77489542a1657726ada5da507e5628fedd6e21c94596fd",
+          "solver": "89699df5f6a9978eb9305330f58bcab162bf202fd22032ce7d466b7a8f7a92d9",
+          "reviewer": "0e2bb1ca34c2f060c29dce454edd41c01d60fcfb7cdbb7394851f4079133ffbc"
+        },
+        "config": {
+          "max_rounds": 1,
+          "max_model_calls": 4,
+          "max_planner_calls": 1,
+          "max_solver_calls": 2,
+          "max_reviewer_calls": 1,
+          "max_candidates": 2,
+          "max_test_calls": 2,
+          "max_parallel_tests": 1,
+          "speculative_solver_width": 2,
+          "speculative_solver_stop_on_valid": true,
+          "scheduler_policy": "fixed",
+          "merge_policy": "disabled",
+          "max_total_tokens": 100000,
+          "context_config": {
+            "compiler_version": 1,
+            "policy": "submodular",
+            "budget_tokens": 16000,
+            "recent_blocks": 2,
+            "max_tool_output_tokens": 2048,
+            "memory_policy": "versioned-v1"
+          }
+        },
+        "planner_config": {
+          "max_items": 6,
+          "max_item_chars": 600,
+          "max_prompt_chars": 400000,
+          "max_output_tokens": 4096
+        },
+        "solver_config": {
+          "max_candidates": 1,
+          "max_files_per_candidate": 32,
+          "max_file_chars": 200000,
+          "max_total_prompt_chars": 400000,
+          "max_output_tokens": 8192
+        },
+        "reviewer_config": {
+          "max_prompt_chars": 400000,
+          "max_output_tokens": 2048,
+          "max_issue_items": 8,
+          "max_item_chars": 600
+        },
+        "search_config": {
+          "beam_width": 1,
+          "max_depth": 1,
+          "max_candidates": 32,
+          "test_environment_fingerprint": "visible-tests-v1",
+          "stop_on_pass": true,
+          "search_policy": "beam",
+          "exploration_constant": 1.0
+        },
+        "execution_config": {
+          "command": [
+            "D:\\vnpy\\python.exe",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "."
+          ],
+          "suite": "artifact-visible-tests",
+          "test_name": "solver-order",
+          "timeout_seconds": 120.0,
+          "max_report_bytes": 65536
+        },
+        "root_fingerprint": "d577a6e41d2640dc20c03ba1e5a2564d398b95a6523cf7c0b4d1fe70da797e35"
+      },
+      "prev_sha256": null,
+      "sha256": "d7f4abfd25a339c417998036a8aea852c4533a3a1f741393a3d55bf8e9a397a5"
+    },
+    {
+      "seq": 1,
+      "type": "planner.requested",
+      "data": {
+        "round": 0,
+        "turn": 1,
+        "base_fingerprint": "d577a6e41d2640dc20c03ba1e5a2564d398b95a6523cf7c0b4d1fe70da797e35",
+        "feedback_count": 0,
+        "context_config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
+        "context_receipt": {
+          "schema_version": 1,
+          "config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
+          "memory_fingerprint": "7b07ee544c04b6b8505cfd92d3bc78e60469e59ee0703e0d1c61ba73cda722cd",
+          "workspace_generation": 0,
+          "policy": "submodular",
+          "budget_tokens": 16000,
+          "estimated_original_tokens": 310,
+          "estimated_candidate_tokens": 310,
+          "estimated_selected_tokens": 310,
+          "selected_block_ids": [
+            "block-000000",
+            "block-000001"
+          ],
+          "evicted_block_ids": [],
+          "compacted_block_ids": [],
+          "stale_block_ids": [],
+          "messages_sha256": "14881b845166670c960c4a52f98a423e4c1d80e94bf8c968dd18525b17b0f5ba",
+          "message_count": 2,
+          "message_roles": [
+            "system",
+            "user"
+          ],
+          "frame": {
+            "policy": "submodular",
+            "selected_ids": [
+              "block-000000",
+              "block-000001"
+            ],
+            "used_tokens": 310,
+            "budget": 16000,
+            "utilization": 0.019375,
+            "objective_score": 19.962176496149713,
+            "decisions": [
+              {
+                "item_id": "block-000000",
+                "status": "selected",
+                "reason": "mandatory item",
+                "marginal_gain": null,
+                "added_tokens": 28
+              },
+              {
+                "item_id": "block-000001",
+                "status": "selected",
+                "reason": "mandatory item",
+                "marginal_gain": null,
+                "added_tokens": 282
+              }
+            ],
+            "metadata": {
+              "iterations": 0
+            }
+          },
+          "blocks": [
+            {
+              "block_id": "block-000000",
+              "start_index": 0,
+              "end_index": 1,
+              "roles": [
+                "system"
+              ],
+              "estimated_original_tokens": 28,
+              "estimated_tokens": 28,
+              "selected": true,
+              "mandatory": true,
+              "compacted": false,
+              "stale": false
+            },
+            {
+              "block_id": "block-000001",
+              "start_index": 1,
+              "end_index": 2,
+              "roles": [
+                "user"
+              ],
+              "estimated_original_tokens": 282,
+              "estimated_tokens": 282,
+              "selected": true,
+              "mandatory": true,
+              "compacted": false,
+              "stale": false
+            }
+          ]
+        },
+        "compiled_messages_sha256": "14881b845166670c960c4a52f98a423e4c1d80e94bf8c968dd18525b17b0f5ba",
+        "memory_fingerprint": "7b07ee544c04b6b8505cfd92d3bc78e60469e59ee0703e0d1c61ba73cda722cd",
+        "workspace_generation": 0
+      },
+      "prev_sha256": "d7f4abfd25a339c417998036a8aea852c4533a3a1f741393a3d55bf8e9a397a5",
+      "sha256": "d01585b4b8fe3880fd566900704c116d6ea58878fdc5b98054bb6a572cb29601"
+    },
+    {
+      "seq": 2,
+      "type": "planner.received",
+      "data": {
+        "round": 0,
+        "turn": 1,
+        "model_name": "artifact-planner:v1",
+        "response_sha256": "9484243476cd84e807014c35fb19713d35478bfe6ac5ade70cb2a35274b170f2",
+        "response_id": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "cached_input_tokens": 0,
+          "reasoning_tokens": 0,
+          "total_tokens": 0
+        },
+        "plan_fingerprint": "bd1660920ac15b0da4e1946326ff801eaa42a960e630377bc121d0e91dd45b5b",
+        "context_config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
+        "context_receipt": {
+          "schema_version": 1,
+          "config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
+          "memory_fingerprint": "7b07ee544c04b6b8505cfd92d3bc78e60469e59ee0703e0d1c61ba73cda722cd",
+          "workspace_generation": 0,
+          "policy": "submodular",
+          "budget_tokens": 16000,
+          "estimated_original_tokens": 310,
+          "estimated_candidate_tokens": 310,
+          "estimated_selected_tokens": 310,
+          "selected_block_ids": [
+            "block-000000",
+            "block-000001"
+          ],
+          "evicted_block_ids": [],
+          "compacted_block_ids": [],
+          "stale_block_ids": [],
+          "messages_sha256": "14881b845166670c960c4a52f98a423e4c1d80e94bf8c968dd18525b17b0f5ba",
+          "message_count": 2,
+          "message_roles": [
+            "system",
+            "user"
+          ],
+          "frame": {
+            "policy": "submodular",
+            "selected_ids": [
+              "block-000000",
+              "block-000001"
+            ],
+            "used_tokens": 310,
+            "budget": 16000,
+            "utilization": 0.019375,
+            "objective_score": 19.962176496149713,
+            "decisions": [
+              {
+                "item_id": "block-000000",
+                "status": "selected",
+                "reason": "mandatory item",
+                "marginal_gain": null,
+                "added_tokens": 28
+              },
+              {
+                "item_id": "block-000001",
+                "status": "selected",
+                "reason": "mandatory item",
+                "marginal_gain": null,
+                "added_tokens": 282
+              }
+            ],
+            "metadata": {
+              "iterations": 0
+            }
+          },
+          "blocks": [
+            {
+              "block_id": "block-000000",
+              "start_index": 0,
+              "end_index": 1,
+              "roles": [
+                "system"
+              ],
+              "estimated_original_tokens": 28,
+              "estimated_tokens": 28,
+              "selected": true,
+              "mandatory": true,
+              "compacted": false,
+              "stale": false
+            },
+            {
+              "block_id": "block-000001",
+              "start_index": 1,
+              "end_index": 2,
+              "roles": [
+                "user"
+              ],
+              "estimated_original_tokens": 282,
+              "estimated_tokens": 282,
+              "selected": true,
+              "mandatory": true,
+              "compacted": false,
+              "stale": false
+            }
+          ]
+        },
+        "compiled_messages_sha256": "14881b845166670c960c4a52f98a423e4c1d80e94bf8c968dd18525b17b0f5ba",
+        "memory_fingerprint": "7b07ee544c04b6b8505cfd92d3bc78e60469e59ee0703e0d1c61ba73cda722cd",
+        "workspace_generation": 0
+      },
+      "prev_sha256": "d01585b4b8fe3880fd566900704c116d6ea58878fdc5b98054bb6a572cb29601",
+      "sha256": "b81f6b7f684ae9b432d7f3a26fa6d24013a84a5aa206ac549868f9dc12197bd6"
+    },
+    {
+      "seq": 3,
+      "type": "solver.requested",
+      "data": {
+        "round": 0,
+        "turn": 1,
+        "base_fingerprint": "d577a6e41d2640dc20c03ba1e5a2564d398b95a6523cf7c0b4d1fe70da797e35",
+        "proposal_config": {
+          "max_candidates": 1,
+          "max_files_per_candidate": 32,
+          "max_file_chars": 200000,
+          "max_total_prompt_chars": 400000,
+          "max_output_tokens": 8192
+        },
+        "plan_fingerprint": "bd1660920ac15b0da4e1946326ff801eaa42a960e630377bc121d0e91dd45b5b",
+        "speculative_width": 2,
+        "stop_on_valid": true,
+        "max_parallel_solver_calls": 2,
+        "speculative_lanes": [
+          {
+            "lane": 0,
+            "model_name": "artifact-first-valid-solver:v1",
+            "request_sha256": "0bc781ff801b8e2d6024765e423acf760a427d13804faff1c68bf4d197894b24",
+            "response_reused": false,
+            "context_config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
+            "context_receipt": {
+              "schema_version": 1,
+              "config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
+              "memory_fingerprint": "7b07ee544c04b6b8505cfd92d3bc78e60469e59ee0703e0d1c61ba73cda722cd",
+              "workspace_generation": 0,
+              "policy": "submodular",
+              "budget_tokens": 16000,
+              "estimated_original_tokens": 498,
+              "estimated_candidate_tokens": 498,
+              "estimated_selected_tokens": 498,
+              "selected_block_ids": [
+                "block-000000",
+                "block-000001"
+              ],
+              "evicted_block_ids": [],
+              "compacted_block_ids": [],
+              "stale_block_ids": [],
+              "messages_sha256": "c60c5acb579536669c63f086adb82387a3c30fae6d3f1ef31b72b7310141e6fe",
+              "message_count": 2,
+              "message_roles": [
+                "system",
+                "user"
+              ],
+              "frame": {
+                "policy": "submodular",
+                "selected_ids": [
+                  "block-000000",
+                  "block-000001"
+                ],
+                "used_tokens": 498,
+                "budget": 16000,
+                "utilization": 0.031125,
+                "objective_score": 19.89903939946922,
+                "decisions": [
+                  {
+                    "item_id": "block-000000",
+                    "status": "selected",
+                    "reason": "mandatory item",
+                    "marginal_gain": null,
+                    "added_tokens": 36
+                  },
+                  {
+                    "item_id": "block-000001",
+                    "status": "selected",
+                    "reason": "mandatory item",
+                    "marginal_gain": null,
+                    "added_tokens": 462
+                  }
+                ],
+                "metadata": {
+                  "iterations": 0
+                }
+              },
+              "blocks": [
+                {
+                  "block_id": "block-000000",
+                  "start_index": 0,
+                  "end_index": 1,
+                  "roles": [
+                    "system"
+                  ],
+                  "estimated_original_tokens": 36,
+                  "estimated_tokens": 36,
+                  "selected": true,
+                  "mandatory": true,
+                  "compacted": false,
+                  "stale": false
+                },
+                {
+                  "block_id": "block-000001",
+                  "start_index": 1,
+                  "end_index": 2,
+                  "roles": [
+                    "user"
+                  ],
+                  "estimated_original_tokens": 462,
+                  "estimated_tokens": 462,
+                  "selected": true,
+                  "mandatory": true,
+                  "compacted": false,
+                  "stale": false
+                }
+              ]
+            },
+            "compiled_messages_sha256": "c60c5acb579536669c63f086adb82387a3c30fae6d3f1ef31b72b7310141e6fe",
+            "memory_fingerprint": "7b07ee544c04b6b8505cfd92d3bc78e60469e59ee0703e0d1c61ba73cda722cd",
+            "workspace_generation": 0
+          },
+          {
+            "lane": 1,
+            "model_name": "artifact-first-valid-solver:v1",
+            "request_sha256": "e7d90f22fc6477a92a16da99089606ce8db39ce4c5377d50df5293d3db7bffa1",
+            "response_reused": false,
+            "context_config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
+            "context_receipt": {
+              "schema_version": 1,
+              "config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
+              "memory_fingerprint": "7b07ee544c04b6b8505cfd92d3bc78e60469e59ee0703e0d1c61ba73cda722cd",
+              "workspace_generation": 0,
+              "policy": "submodular",
+              "budget_tokens": 16000,
+              "estimated_original_tokens": 498,
+              "estimated_candidate_tokens": 498,
+              "estimated_selected_tokens": 498,
+              "selected_block_ids": [
+                "block-000000",
+                "block-000001"
+              ],
+              "evicted_block_ids": [],
+              "compacted_block_ids": [],
+              "stale_block_ids": [],
+              "messages_sha256": "7e0a21cb7e7a4a0df1d6318a10df9820b9c5a435b25e10d316587bfbaadb22cf",
+              "message_count": 2,
+              "message_roles": [
+                "system",
+                "user"
+              ],
+              "frame": {
+                "policy": "submodular",
+                "selected_ids": [
+                  "block-000000",
+                  "block-000001"
+                ],
+                "used_tokens": 498,
+                "budget": 16000,
+                "utilization": 0.031125,
+                "objective_score": 19.89903939946922,
+                "decisions": [
+                  {
+                    "item_id": "block-000000",
+                    "status": "selected",
+                    "reason": "mandatory item",
+                    "marginal_gain": null,
+                    "added_tokens": 36
+                  },
+                  {
+                    "item_id": "block-000001",
+                    "status": "selected",
+                    "reason": "mandatory item",
+                    "marginal_gain": null,
+                    "added_tokens": 462
+                  }
+                ],
+                "metadata": {
+                  "iterations": 0
+                }
+              },
+              "blocks": [
+                {
+                  "block_id": "block-000000",
+                  "start_index": 0,
+                  "end_index": 1,
+                  "roles": [
+                    "system"
+                  ],
+                  "estimated_original_tokens": 36,
+                  "estimated_tokens": 36,
+                  "selected": true,
+                  "mandatory": true,
+                  "compacted": false,
+                  "stale": false
+                },
+                {
+                  "block_id": "block-000001",
+                  "start_index": 1,
+                  "end_index": 2,
+                  "roles": [
+                    "user"
+                  ],
+                  "estimated_original_tokens": 462,
+                  "estimated_tokens": 462,
+                  "selected": true,
+                  "mandatory": true,
+                  "compacted": false,
+                  "stale": false
+                }
+              ]
+            },
+            "compiled_messages_sha256": "7e0a21cb7e7a4a0df1d6318a10df9820b9c5a435b25e10d316587bfbaadb22cf",
+            "memory_fingerprint": "7b07ee544c04b6b8505cfd92d3bc78e60469e59ee0703e0d1c61ba73cda722cd",
+            "workspace_generation": 0
+          }
+        ],
+        "reused_lanes": []
+      },
+      "prev_sha256": "b81f6b7f684ae9b432d7f3a26fa6d24013a84a5aa206ac549868f9dc12197bd6",
+      "sha256": "b229f02dfc1db9f4b15d8273916474d92e184c4ee4a9e5df66971a6bb62c750f"
+    },
+    {
+      "seq": 4,
+      "type": "solver.speculative.durable",
+      "data": {
+        "lane": 0,
+        "turn": 1,
+        "response_sha256": "d216fd507c3d0f1541c1b6f9da691174c734df9e8c5633b9460206a303a1229b",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "cached_input_tokens": 0,
+          "reasoning_tokens": 0,
+          "total_tokens": 0
+        },
+        "pending_lanes": [
+          0
+        ],
+        "max_provider_in_flight": 2
+      },
+      "prev_sha256": "b229f02dfc1db9f4b15d8273916474d92e184c4ee4a9e5df66971a6bb62c750f",
+      "sha256": "c163dca13e31ed4646f8867a1e23ced021521f42407226d0ede8e3fabbf780ee"
+    },
+    {
+      "seq": 5,
+      "type": "solver.speculative.winner",
+      "data": {
+        "lane": 0,
+        "turn": 1,
+        "source": "fresh",
+        "response_sha256": "d216fd507c3d0f1541c1b6f9da691174c734df9e8c5633b9460206a303a1229b",
+        "candidate_count": 1,
+        "selection": "first_parseable_candidate",
+        "provider_cancellation": "best_effort"
+      },
+      "prev_sha256": "c163dca13e31ed4646f8867a1e23ced021521f42407226d0ede8e3fabbf780ee",
+      "sha256": "ee45f2ac8fca197a3cc9aba674cbe282b84e573c3db68de9deda08f00a240002"
+    },
+    {
+      "seq": 6,
+      "type": "solver.speculative.cancelled",
+      "data": {
+        "lane": 1,
+        "turn": 1,
+        "winner_lane": 0,
+        "reason": "first_valid_lane",
+        "cancellation_mode": "task_cancel_requested",
+        "provider_cancellation": "best_effort"
+      },
+      "prev_sha256": "ee45f2ac8fca197a3cc9aba674cbe282b84e573c3db68de9deda08f00a240002",
+      "sha256": "13a473cd4a6a8e2074c77e12e1f8fda6e5679510c5d152c4c748b7c9be499271"
+    },
+    {
+      "seq": 7,
+      "type": "solver.speculative.received",
+      "data": {
+        "lane": 0,
+        "turn": 1,
+        "model_name": "artifact-first-valid-solver:v1",
+        "response_sha256": "d216fd507c3d0f1541c1b6f9da691174c734df9e8c5633b9460206a303a1229b",
+        "response_id": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "cached_input_tokens": 0,
+          "reasoning_tokens": 0,
+          "total_tokens": 0
+        },
+        "candidate_count": 1,
+        "case_fingerprint": "c6efc9dc98dfd2852068bdd40ec573a61573f1c7c19f82082b037e41dab391d5"
+      },
+      "prev_sha256": "13a473cd4a6a8e2074c77e12e1f8fda6e5679510c5d152c4c748b7c9be499271",
+      "sha256": "057efe7fce6f9e58919212448d71ccd92661525a0677198adc571936f9d4d872"
+    },
+    {
+      "seq": 8,
+      "type": "solver.received",
+      "data": {
+        "round": 0,
+        "turn": 1,
+        "model_name": "artifact-first-valid-solver:v1",
+        "response_sha256": "d216fd507c3d0f1541c1b6f9da691174c734df9e8c5633b9460206a303a1229b",
+        "response_id": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "cached_input_tokens": 0,
+          "reasoning_tokens": 0,
+          "total_tokens": 0
+        },
+        "case_fingerprint": "26d1aa587d5db4c612be8806c49eae4f756ebec55d2469d63ae288abede60b72",
+        "candidate_count": 1,
+        "speculative_width": 2,
+        "valid_lanes": [
+          0
+        ],
+        "rejected_lanes": [],
+        "speculative_variants": [
+          {
+            "role": "solver",
+            "turn": 1,
+            "model_name": "artifact-first-valid-solver:v1",
+            "response_sha256": "d216fd507c3d0f1541c1b6f9da691174c734df9e8c5633b9460206a303a1229b",
+            "response_id": null,
+            "usage": {
+              "input_tokens": 0,
+              "output_tokens": 0,
+              "cached_input_tokens": 0,
+              "reasoning_tokens": 0,
+              "total_tokens": 0
+            },
+            "context_receipt": {
+              "schema_version": 1,
+              "config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
+              "memory_fingerprint": "7b07ee544c04b6b8505cfd92d3bc78e60469e59ee0703e0d1c61ba73cda722cd",
+              "workspace_generation": 0,
+              "policy": "submodular",
+              "budget_tokens": 16000,
+              "estimated_original_tokens": 498,
+              "estimated_candidate_tokens": 498,
+              "estimated_selected_tokens": 498,
+              "selected_block_ids": [
+                "block-000000",
+                "block-000001"
+              ],
+              "evicted_block_ids": [],
+              "compacted_block_ids": [],
+              "stale_block_ids": [],
+              "messages_sha256": "c60c5acb579536669c63f086adb82387a3c30fae6d3f1ef31b72b7310141e6fe",
+              "message_count": 2,
+              "message_roles": [
+                "system",
+                "user"
+              ],
+              "frame": {
+                "policy": "submodular",
+                "selected_ids": [
+                  "block-000000",
+                  "block-000001"
+                ],
+                "used_tokens": 498,
+                "budget": 16000,
+                "utilization": 0.031125,
+                "objective_score": 19.89903939946922,
+                "decisions": [
+                  {
+                    "item_id": "block-000000",
+                    "status": "selected",
+                    "reason": "mandatory item",
+                    "marginal_gain": null,
+                    "added_tokens": 36
+                  },
+                  {
+                    "item_id": "block-000001",
+                    "status": "selected",
+                    "reason": "mandatory item",
+                    "marginal_gain": null,
+                    "added_tokens": 462
+                  }
+                ],
+                "metadata": {
+                  "iterations": 0
+                }
+              },
+              "blocks": [
+                {
+                  "block_id": "block-000000",
+                  "start_index": 0,
+                  "end_index": 1,
+                  "roles": [
+                    "system"
+                  ],
+                  "estimated_original_tokens": 36,
+                  "estimated_tokens": 36,
+                  "selected": true,
+                  "mandatory": true,
+                  "compacted": false,
+                  "stale": false
+                },
+                {
+                  "block_id": "block-000001",
+                  "start_index": 1,
+                  "end_index": 2,
+                  "roles": [
+                    "user"
+                  ],
+                  "estimated_original_tokens": 462,
+                  "estimated_tokens": 462,
+                  "selected": true,
+                  "mandatory": true,
+                  "compacted": false,
+                  "stale": false
+                }
+              ]
+            }
+          }
+        ],
+        "stop_on_valid": true,
+        "winner_lane": 0,
+        "cancelled_lanes": [
+          1
+        ],
+        "max_provider_in_flight": 2
+      },
+      "prev_sha256": "057efe7fce6f9e58919212448d71ccd92661525a0677198adc571936f9d4d872",
+      "sha256": "4f84e45627b8b36ebc99ad47c1f5f2cc0e2bb9b26a044a27a561d17265ada5a1"
+    },
+    {
+      "seq": 9,
+      "type": "candidate.requested",
+      "data": {
+        "round": 0,
+        "candidate_id": "round-0-spec-0-good",
+        "workspace_fingerprint": "cb0a34250358619854a0891e569d878173cd3652143529391b8bb9e92d8829ff",
+        "max_parallel_tests": 1,
+        "scheduler_policy": "fixed"
+      },
+      "prev_sha256": "4f84e45627b8b36ebc99ad47c1f5f2cc0e2bb9b26a044a27a561d17265ada5a1",
+      "sha256": "99e27ce1fb53cd0cd67820e47dd0d6b71d6aa8ad795ce3e3c29d2a5019389922"
+    },
+    {
+      "seq": 10,
+      "type": "candidate.completed",
+      "data": {
+        "round": 0,
+        "candidate_id": "round-0-spec-0-good",
+        "workspace_fingerprint": "cb0a34250358619854a0891e569d878173cd3652143529391b8bb9e92d8829ff",
+        "behavior_fingerprint": "cc644608a6f52cf5a4c6b64d6280bc83a71b577c874395e9220701ff3cf5f4a1",
+        "test_calls": 1,
+        "max_in_flight": 1,
+        "scheduler_policy": "fixed"
+      },
+      "prev_sha256": "99e27ce1fb53cd0cd67820e47dd0d6b71d6aa8ad795ce3e3c29d2a5019389922",
+      "sha256": "9a5593b7fe7b6d3135cd14bb21ffc41be2073d064e1859b149cb99f9b22bde06"
+    },
+    {
+      "seq": 11,
+      "type": "evaluation.completed",
+      "data": {
+        "round": 0,
+        "case_fingerprint": "51c2c8afc66f00fbf4f6044f198c939fe914f7f4f376535885d91f155c7e9d08",
+        "status": "accepted",
+        "metrics": {
+          "proposed": 1,
+          "evaluated": 1,
+          "test_calls": 1,
+          "duplicates": 0,
+          "pruned": 0,
+          "passed": 1,
+          "max_depth": 1
+        },
+        "actual_test_calls": 1,
+        "test_reuses": 0,
+        "max_in_flight": 1
+      },
+      "prev_sha256": "9a5593b7fe7b6d3135cd14bb21ffc41be2073d064e1859b149cb99f9b22bde06",
+      "sha256": "70b4b5941e6ea44be27b338fc1978e269cbf498f5a0260a588dadec677bd5a6a"
+    },
+    {
+      "seq": 12,
+      "type": "reviewer.requested",
+      "data": {
+        "round": 0,
+        "turn": 1,
+        "branch_status": "accepted",
+        "best_node_id": "round-0-spec-0-good",
+        "context_config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
+        "context_receipt": {
+          "schema_version": 1,
+          "config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
+          "memory_fingerprint": "7b07ee544c04b6b8505cfd92d3bc78e60469e59ee0703e0d1c61ba73cda722cd",
+          "workspace_generation": 0,
+          "policy": "submodular",
+          "budget_tokens": 16000,
+          "estimated_original_tokens": 757,
+          "estimated_candidate_tokens": 757,
+          "estimated_selected_tokens": 757,
+          "selected_block_ids": [
+            "block-000000",
+            "block-000001"
+          ],
+          "evicted_block_ids": [],
+          "compacted_block_ids": [],
+          "stale_block_ids": [],
+          "messages_sha256": "0d25149651470dbe595fd98673b9c0df82b752a0d46cc18c8a023e787db956e4",
+          "message_count": 2,
+          "message_roles": [
+            "system",
+            "user"
+          ],
+          "frame": {
+            "policy": "submodular",
+            "selected_ids": [
+              "block-000000",
+              "block-000001"
+            ],
+            "used_tokens": 757,
+            "budget": 16000,
+            "utilization": 0.0473125,
+            "objective_score": 20.479700850264567,
+            "decisions": [
+              {
+                "item_id": "block-000000",
+                "status": "selected",
+                "reason": "mandatory item",
+                "marginal_gain": null,
+                "added_tokens": 32
+              },
+              {
+                "item_id": "block-000001",
+                "status": "selected",
+                "reason": "mandatory item",
+                "marginal_gain": null,
+                "added_tokens": 725
+              }
+            ],
+            "metadata": {
+              "iterations": 0
+            }
+          },
+          "blocks": [
+            {
+              "block_id": "block-000000",
+              "start_index": 0,
+              "end_index": 1,
+              "roles": [
+                "system"
+              ],
+              "estimated_original_tokens": 32,
+              "estimated_tokens": 32,
+              "selected": true,
+              "mandatory": true,
+              "compacted": false,
+              "stale": false
+            },
+            {
+              "block_id": "block-000001",
+              "start_index": 1,
+              "end_index": 2,
+              "roles": [
+                "user"
+              ],
+              "estimated_original_tokens": 725,
+              "estimated_tokens": 725,
+              "selected": true,
+              "mandatory": true,
+              "compacted": false,
+              "stale": false
+            }
+          ]
+        },
+        "compiled_messages_sha256": "0d25149651470dbe595fd98673b9c0df82b752a0d46cc18c8a023e787db956e4",
+        "memory_fingerprint": "7b07ee544c04b6b8505cfd92d3bc78e60469e59ee0703e0d1c61ba73cda722cd",
+        "workspace_generation": 0
+      },
+      "prev_sha256": "70b4b5941e6ea44be27b338fc1978e269cbf498f5a0260a588dadec677bd5a6a",
+      "sha256": "4b63a1ddc4c868f4ed77acadcd4e8e198afcc6af6fc74d2c6691762ef7473f85"
+    },
+    {
+      "seq": 13,
+      "type": "reviewer.received",
+      "data": {
+        "round": 0,
+        "turn": 1,
+        "model_name": "artifact-reviewer:v1",
+        "response_sha256": "22c5159c7d127d1727fabc4fce20ab1daa7eec5a477570585781c2eb36c7c379",
+        "response_id": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "cached_input_tokens": 0,
+          "reasoning_tokens": 0,
+          "total_tokens": 0
+        },
+        "decision": {
+          "decision": "accept",
+          "candidate_id": "round-0-spec-0-good",
+          "confidence": 0.9,
+          "blocking_issues": [],
+          "required_checks": [],
+          "summary": "the visible oracle supports this decision"
+        },
+        "oracle_gate": true,
+        "context_config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
+        "context_receipt": {
+          "schema_version": 1,
+          "config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
+          "memory_fingerprint": "7b07ee544c04b6b8505cfd92d3bc78e60469e59ee0703e0d1c61ba73cda722cd",
+          "workspace_generation": 0,
+          "policy": "submodular",
+          "budget_tokens": 16000,
+          "estimated_original_tokens": 757,
+          "estimated_candidate_tokens": 757,
+          "estimated_selected_tokens": 757,
+          "selected_block_ids": [
+            "block-000000",
+            "block-000001"
+          ],
+          "evicted_block_ids": [],
+          "compacted_block_ids": [],
+          "stale_block_ids": [],
+          "messages_sha256": "0d25149651470dbe595fd98673b9c0df82b752a0d46cc18c8a023e787db956e4",
+          "message_count": 2,
+          "message_roles": [
+            "system",
+            "user"
+          ],
+          "frame": {
+            "policy": "submodular",
+            "selected_ids": [
+              "block-000000",
+              "block-000001"
+            ],
+            "used_tokens": 757,
+            "budget": 16000,
+            "utilization": 0.0473125,
+            "objective_score": 20.479700850264567,
+            "decisions": [
+              {
+                "item_id": "block-000000",
+                "status": "selected",
+                "reason": "mandatory item",
+                "marginal_gain": null,
+                "added_tokens": 32
+              },
+              {
+                "item_id": "block-000001",
+                "status": "selected",
+                "reason": "mandatory item",
+                "marginal_gain": null,
+                "added_tokens": 725
+              }
+            ],
+            "metadata": {
+              "iterations": 0
+            }
+          },
+          "blocks": [
+            {
+              "block_id": "block-000000",
+              "start_index": 0,
+              "end_index": 1,
+              "roles": [
+                "system"
+              ],
+              "estimated_original_tokens": 32,
+              "estimated_tokens": 32,
+              "selected": true,
+              "mandatory": true,
+              "compacted": false,
+              "stale": false
+            },
+            {
+              "block_id": "block-000001",
+              "start_index": 1,
+              "end_index": 2,
+              "roles": [
+                "user"
+              ],
+              "estimated_original_tokens": 725,
+              "estimated_tokens": 725,
+              "selected": true,
+              "mandatory": true,
+              "compacted": false,
+              "stale": false
+            }
+          ]
+        },
+        "compiled_messages_sha256": "0d25149651470dbe595fd98673b9c0df82b752a0d46cc18c8a023e787db956e4",
+        "memory_fingerprint": "7b07ee544c04b6b8505cfd92d3bc78e60469e59ee0703e0d1c61ba73cda722cd",
+        "workspace_generation": 0
+      },
+      "prev_sha256": "4b63a1ddc4c868f4ed77acadcd4e8e198afcc6af6fc74d2c6691762ef7473f85",
+      "sha256": "6fbedef7c7444687ffc2cfaad07bbf59d2e8fdeffab6cc583c74ef7fee3a0605"
+    }
+  ],
+  "model_calls": 4,
+  "planner_calls": 1,
+  "solver_calls": 2,
+  "reviewer_calls": 1,
+  "candidate_proposals": 1,
+  "test_calls": 1,
+  "test_reuses": 0,
+  "usage": {
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cached_input_tokens": 0,
+    "reasoning_tokens": 0,
+    "total_tokens": 0
+  },
+  "metrics": {
+    "rounds": 1,
+    "model_calls": 4,
+    "planner_calls": 1,
+    "solver_calls": 2,
+    "reviewer_calls": 1,
+    "candidate_proposals": 1,
+    "test_calls": 1,
+    "test_reuses": 0,
+    "cached_observations": 1,
+    "max_provider_in_flight": 2,
+    "speculative_winners": 1,
+    "cancelled_solver_lanes": 1,
+    "pending_solver_responses": 0,
+    "total_tokens": 0
+  },
+  "best_candidate_id": "round-0-spec-0-good",
+  "best_files": {
+    "solver.py": "def solve(values):\n    return sorted(values)\n",
+    "test_solver.py": "import unittest\nfrom solver import solve\n\n\nclass SolverTests(unittest.TestCase):\n    def test_orders_values(self):\n        self.assertEqual(solve([3, 1, 2]), [1, 2, 3])\n\n\nif __name__ == '__main__':\n    unittest.main()\n"
+  },
+  "max_in_flight": 1,
+  "max_provider_in_flight": 2,
+  "reason": "reviewer accepted a visible-test-passing candidate",
+  "pending_plan": null,
+  "pending_planner_call": null,
+  "pending_case": null,
+  "pending_solver_call": null,
+  "pending_solver_variants": null,
+  "pending_solver_responses": null,
+  "pending_branch_report": null,
+  "role_histories": {
+    "planner": [
+      {
+        "role": "assistant",
+        "content": "{\"goal\": \"return values in ascending order\", \"constraints\": [\"preserve the public solve signature\"], \"hypotheses\": [\"use the standard sorted primitive\"], \"test_focus\": [\"visible ordering test\"], \"risks\": [\"do not mutate caller-owned input\"]}",
+        "tool_calls": [],
+        "tool_call_id": null,
+        "tool_name": null
+      }
+    ],
+    "reviewer": [
+      {
+        "role": "assistant",
+        "content": "{\"decision\": \"accept\", \"candidate_id\": \"round-0-spec-0-good\", \"confidence\": 0.9, \"blocking_issues\": [], \"required_checks\": [], \"summary\": \"the visible oracle supports this decision\"}",
+        "tool_calls": [],
+        "tool_call_id": null,
+        "tool_name": null
+      }
+    ],
+    "solver": [
+      {
+        "role": "assistant",
+        "content": "{\"candidates\": [{\"id\": \"good\", \"parent_id\": \"root\", \"hypothesis\": \"use sorted for a stable ascending snapshot\", \"files\": {\"solver.py\": \"def solve(values):\\n    return sorted(values)\\n\", \"test_solver.py\": \"import unittest\\nfrom solver import solve\\n\\n\\nclass SolverTests(unittest.TestCase):\\n    def test_orders_values(self):\\n        self.assertEqual(solve([3, 1, 2]), [1, 2, 3])\\n\\n\\nif __name__ == '__main__':\\n    unittest.main()\\n\"}, \"evidence\": [\"visible test is the oracle\"]}]}",
+        "tool_calls": [],
+        "tool_call_id": null,
+        "tool_name": null
+      }
+    ]
+  },
+  "feedback": [
+    {
+      "candidate_id": "round-0-spec-0-good",
+      "hypothesis": "use sorted for a stable ascending snapshot",
+      "score": 0.99,
+      "passed_tests": [
+        "solver-order"
+      ],
+      "failed_tests": [],
+      "error": null,
+      "output_excerpt": "\n--- stderr ---\n.\r\n----------------------------------------------------------------------\r\nRan 1 test in 0.000s\r\n\r\nOK\r\n"
+    },
+    {
+      "review": {
+        "decision": "accept",
+        "candidate_id": "round-0-spec-0-good",
+        "confidence": 0.9,
+        "blocking_issues": [],
+        "required_checks": [],
+        "summary": "the visible oracle supports this decision"
+      },
+      "round": 0
+    }
+  ]
+}
