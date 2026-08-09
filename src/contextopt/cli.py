@@ -60,6 +60,8 @@ from contextopt.runtime import (
     EventLog,
     ModelClient,
     OpenAICompatibleModel,
+    RecordingModel,
+    ReplayModel,
     RunLimits,
     RunPermissions,
     ScriptedModel,
@@ -591,23 +593,29 @@ def _split_command(command: str) -> tuple[str, ...]:
 
 
 def _build_model(args: argparse.Namespace) -> ModelClient:
+    if args.replay_transcript:
+        return ReplayModel(args.replay_transcript)
     if args.script:
-        return ScriptedModel.from_path(args.script)
-    if not args.model or not args.base_url:
-        raise ValueError("--model and --base-url are required without --script")
-    api_key = os.environ.get(args.api_key_env)
-    if not api_key:
-        raise ValueError(
-            f"model API key is missing from environment variable {args.api_key_env}"
+        model: ModelClient = ScriptedModel.from_path(args.script)
+    else:
+        if not args.model or not args.base_url:
+            raise ValueError("--model and --base-url are required without --script")
+        api_key = os.environ.get(args.api_key_env)
+        if not api_key:
+            raise ValueError(
+                f"model API key is missing from environment variable {args.api_key_env}"
+            )
+        model = OpenAICompatibleModel(
+            base_url=args.base_url,
+            api_key=api_key,
+            model=args.model,
+            timeout_seconds=args.model_timeout,
+            max_retries=args.model_retries,
+            temperature=args.temperature,
         )
-    return OpenAICompatibleModel(
-        base_url=args.base_url,
-        api_key=api_key,
-        model=args.model,
-        timeout_seconds=args.model_timeout,
-        max_retries=args.model_retries,
-        temperature=args.temperature,
-    )
+    if args.record_transcript:
+        return RecordingModel(model, args.record_transcript)
+    return model
 
 
 def _build_role_model(args: argparse.Namespace, role: str) -> ModelClient:
@@ -1016,6 +1024,15 @@ def _add_model_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--model-timeout", type=float, default=90.0)
     parser.add_argument("--model-retries", type=int, default=2)
     parser.add_argument("--temperature", type=float, default=0.0)
+    transcript = parser.add_mutually_exclusive_group()
+    transcript.add_argument(
+        "--record-transcript",
+        help="append successful normalized model calls to a JSONL cassette",
+    )
+    transcript.add_argument(
+        "--replay-transcript",
+        help="replay a JSONL cassette instead of contacting a model provider",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:

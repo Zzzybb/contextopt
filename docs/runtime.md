@@ -119,6 +119,17 @@ response that was returned but could not be written to the cassette is surfaced 
 `transcript_write_failed` so the caller cannot silently treat an unrecorded trajectory as
 reproducible.
 
+The single-agent CLI exposes the same boundary without Python glue. Record a scripted or
+OpenAI-compatible run with `--record-transcript PATH`; a fresh run can use
+`--replay-transcript PATH` and omit `--model`, `--base-url`, and `--api-key-env`:
+
+```text
+contextopt run "inspect the workspace" --workspace ./workspace \
+  --script ./script.json --record-transcript .contextopt/provider.jsonl
+contextopt run "inspect the workspace" --workspace ./workspace \
+  --replay-transcript .contextopt/provider.jsonl
+```
+
 ## Coding-agent strategy evaluation harness
 
 The repository also ships a model-free outer-loop comparison for the control policies that

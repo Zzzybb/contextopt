@@ -149,6 +149,11 @@ contextopt run "修复 parser" \
 当前实现不依赖 embedding service，也不宣称 memory 本身已经提升真实模型成功率。resume 时
 需要传入同一条 store 路径和 `--memory-scope`。
 
+单 Agent 的 `run`、`search-session`、`propose-case` 和 `resume` 也可以用
+`--record-transcript PATH` 写入可选 provider cassette；新的离线运行用
+`--replay-transcript PATH` 即可，不需要 API key。重放必须使用相同的请求序列，hash 不匹配
+时会 fail closed。
+
 完整的“两次全新运行”离线演示在
 [`examples/semantic_memory_demo`](examples/semantic_memory_demo/README.md)：第一次运行保存
 procedure，第二次运行打开同一个 store 查询，reader trace 会显示命中词、memory id 和 revision。

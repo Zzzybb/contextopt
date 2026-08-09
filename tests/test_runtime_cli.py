@@ -172,6 +172,53 @@ class RuntimeCliTests(unittest.TestCase):
             self.assertIn("context receipts", html)
             self.assertIn("model.requested", html)
 
+    def test_run_can_record_then_replay_provider_transcript(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            workspace = root / "workspace"
+            workspace.mkdir()
+            script = self._write_script(
+                root,
+                [{"response": {"content": "recorded trajectory"}}],
+            )
+            cassette = root / "provider.jsonl"
+            record_exit, recorded = self._invoke_json(
+                [
+                    "run",
+                    "Return the recorded trajectory.",
+                    "--workspace",
+                    str(workspace),
+                    "--script",
+                    str(script),
+                    "--record-transcript",
+                    str(cassette),
+                    "--run-id",
+                    "transcript-cli",
+                    "--event-log",
+                    str(root / "record-events.jsonl"),
+                ]
+            )
+            replay_exit, replayed = self._invoke_json(
+                [
+                    "run",
+                    "Return the recorded trajectory.",
+                    "--workspace",
+                    str(workspace),
+                    "--replay-transcript",
+                    str(cassette),
+                    "--run-id",
+                    "transcript-cli",
+                    "--event-log",
+                    str(root / "replay-events.jsonl"),
+                ]
+            )
+
+            self.assertEqual(record_exit, 0)
+            self.assertEqual(replay_exit, 0)
+            self.assertEqual(recorded["final_text"], "recorded trajectory")
+            self.assertEqual(replayed["final_text"], recorded["final_text"])
+            self.assertEqual(len(cassette.read_text(encoding="utf-8").splitlines()), 1)
+
     def test_write_permission_denial_is_observable_and_recoverable(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
