@@ -92,6 +92,16 @@ for an Agent to diagnose and repair code after reproducing a bug.
 These checks are not a container security boundary. Registered commands are trusted host
 processes.
 
+### Workspace knowledge index
+
+`runtime.knowledge.index_workspace` is the repository-facing adapter for the durable semantic
+memory layer. It walks a bounded set of UTF-8 files, splits them into deterministic line chunks,
+and writes each chunk with a relative `source_ref` and `knowledge-chunk-v1` tag. The chunk identity
+is content-derived, so an unchanged re-index is a no-op. Changed or removed chunks are retained
+as invalidated ledger entries rather than being deleted. The existing `versioned-v1+semantic`
+context policy can then retrieve at most three lexical source chunks under the normal context
+budget. This is a provenance/freshness projection, not an embedding service or OS sandbox.
+
 Before a tool executes, the runner persists an operation id, canonical call fingerprint,
 replay policy, and sealed execution plan when preparation succeeds. Recovery classes are:
 

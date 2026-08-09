@@ -347,6 +347,15 @@ For a fresh-process cross-run demonstration, use
 reader scripts make the boundary visible without an API key: the first run saves a procedure,
 the second run searches the same store, and both traces remain independently auditable.
 
+The repository-facing knowledge-base projection uses the same store. Run
+`contextopt knowledge-index --workspace <workspace> --memory-store <memory.jsonl>` to create
+bounded source chunks with relative `source_refs`; repeated indexing reuses unchanged chunks and
+invalidates chunks from changed or removed files. With `--context-memory versioned-v1+semantic`,
+the regular context compiler can select at most three lexical code/document matches under the
+same budget as durable experience. The index is a provenance/freshness contract, not an embedding
+or coding-quality benchmark. See [`docs/knowledge-base.md`](knowledge-base.md) for limits and
+the bilingual reproduction command.
+
 The retrieval-only conformance command is `python -m contextopt memory-eval`; it repeats fixed
 queries and reports hit@k/MRR, scope isolation, invalidation exclusion, negative-query behavior,
 and deterministic replay. Its raw JSON, Markdown, and HTML outputs are checked in under

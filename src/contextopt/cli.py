@@ -58,6 +58,7 @@ from contextopt.policies import POLICIES, create_policy
 from contextopt.runtime import (
     AgentRunner,
     EventLog,
+    KnowledgeIndexConfig,
     ModelClient,
     OpenAICompatibleModel,
     RecordingModel,
@@ -66,7 +67,10 @@ from contextopt.runtime import (
     RunPermissions,
     ScriptedModel,
     WorkspaceTools,
+    index_workspace,
     read_events,
+    render_knowledge_index_console,
+    render_knowledge_index_markdown,
     render_trace,
     render_trace_html,
 )
@@ -415,6 +419,32 @@ def _semantic_context_eval(args: argparse.Namespace) -> int:
     _write(args.markdown, render_semantic_context_markdown(report))
     _write(args.html, render_semantic_context_html(report))
     return 0 if report["summary"]["failed_count"] == 0 else 1
+
+
+def _knowledge_index(args: argparse.Namespace) -> int:
+    extensions = tuple(
+        item.strip() for item in args.extensions.split(",") if item.strip()
+    )
+    ignored_dirs = tuple(
+        item.strip() for item in args.ignore_dirs.split(",") if item.strip()
+    )
+    config = KnowledgeIndexConfig(
+        workspace=args.workspace,
+        scope=args.memory_scope,
+        chunk_lines=args.chunk_lines,
+        max_chunk_bytes=args.max_chunk_bytes,
+        max_file_bytes=args.max_file_bytes,
+        max_files=args.max_files,
+        extensions=extensions,
+        ignored_dirs=ignored_dirs,
+        include_dotfiles=args.include_dotfiles,
+    )
+    with SemanticMemoryStore(args.memory_store) as store:
+        report = index_workspace(store, config)
+    print(render_knowledge_index_console(report), end="")
+    _write(args.output, json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n")
+    _write(args.markdown, render_knowledge_index_markdown(report))
+    return 0
 
 
 def _load_branch_case(path: str) -> BranchCase:
@@ -1307,6 +1337,38 @@ def build_parser() -> argparse.ArgumentParser:
         "--html", help="write a self-contained evaluation dashboard"
     )
     semantic_context_eval.set_defaults(handler=_semantic_context_eval)
+
+    knowledge_index = subparsers.add_parser(
+        "knowledge-index",
+        help="index bounded workspace source files into semantic memory",
+    )
+    knowledge_index.add_argument(
+        "--workspace", required=True, help="workspace directory to index"
+    )
+    knowledge_index.add_argument(
+        "--memory-store", required=True, help="append-only semantic memory JSONL path"
+    )
+    knowledge_index.add_argument(
+        "--memory-scope", default="project:workspace", help="scope for indexed chunks"
+    )
+    knowledge_index.add_argument(
+        "--extensions",
+        default=".py,.js,.ts,.tsx,.java,.go,.rs,.cpp,.h,.md,.json,.yaml,.yml,.toml,.sql,.sh,.txt",
+        help="comma-separated file suffixes",
+    )
+    knowledge_index.add_argument(
+        "--ignore-dirs",
+        default=".git,__pycache__,.mypy_cache,.pytest_cache,.ruff_cache,.venv,venv,node_modules,build,dist",
+        help="comma-separated directory names to skip",
+    )
+    knowledge_index.add_argument("--chunk-lines", type=int, default=80)
+    knowledge_index.add_argument("--max-chunk-bytes", type=int, default=8 * 1024)
+    knowledge_index.add_argument("--max-file-bytes", type=int, default=256 * 1024)
+    knowledge_index.add_argument("--max-files", type=int, default=500)
+    knowledge_index.add_argument("--include-dotfiles", action="store_true")
+    knowledge_index.add_argument("--output", help="write the complete JSON report")
+    knowledge_index.add_argument("--markdown", help="write a Markdown index report")
+    knowledge_index.set_defaults(handler=_knowledge_index)
 
     propose = subparsers.add_parser(
         "propose-case",

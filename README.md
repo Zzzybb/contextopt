@@ -47,6 +47,8 @@ Every boundary ──> durable schema-2 JSONL event log + verified state project
 > learned retrieval or a coding-quality claim. The bounded `recovery-eval` matrix now injects
 > process-like stops across durable model/tool boundaries and verifies fresh-run recovery,
 > reconciliation, duplicate-effect accounting, and explicit operator pauses.
+> A deterministic workspace knowledge index now turns bounded UTF-8 source files into the same
+> provenance-carrying memory candidates, invalidating stale chunks when the source changes.
 
 ## Why this project exists
 
@@ -78,6 +80,8 @@ coding success without a controlled real-model benchmark.
 - A minimal non-streaming OpenAI-compatible Chat Completions adapter.
 - Optional `RecordingModel` / `ReplayModel` cassettes that persist provider request/response
   pairs without credentials and replay them only on an exact request-hash match.
+- A bounded `knowledge-index` command that chunks source files into the append-only semantic
+  memory store with source references, repeat-safe reuse, and change-aware invalidation.
 - Workspace-bounded file listing, literal search, numbered reads, file creation, atomic
   SHA-256 compare-and-swap replacement, and pre-registered visible-test commands.
 - Explicit write and command permissions; both are disabled unless enabled by the caller.
@@ -393,6 +397,28 @@ The complete two-run offline demonstration is in
 [`examples/semantic_memory_demo`](examples/semantic_memory_demo/README.md): one fresh Agent
 writes a procedure, a second fresh Agent searches the same store, and the reader trace shows the
 retrieval evidence.
+
+### Workspace knowledge base
+
+Index a bounded source snapshot into the same durable store before starting a coding run:
+
+```text
+contextopt knowledge-index \
+  --workspace <workspace> \
+  --memory-store .contextopt/memory.jsonl \
+  --memory-scope project:parser \
+  --output .contextopt/knowledge-index.json \
+  --markdown .contextopt/knowledge-index.md
+```
+
+The index is intentionally deterministic: it skips non-UTF-8 files, generated directories,
+symlinks, and files beyond the configured byte/file bounds, then stores each chunk with a
+workspace-relative `source_ref`. Re-running the command reuses identical chunks and appends
+`memory.invalidated` events for removed or changed chunks. Attach the same store to `run` or
+`orchestrate` with `--context-memory versioned-v1+semantic` to let the normal context budget
+select at most three relevant code/document chunks alongside durable experience. This is a
+lexical, provenance-aware source projection, not an embedding benchmark or proof that the
+model used every retrieved chunk. See the [knowledge-base guide](docs/knowledge-base.md).
 
 The multi-agent path uses the same boundary for planner, solver, and reviewer:
 
@@ -867,7 +893,7 @@ and [Chinese version](docs/pr/0001-v1.0-provider-transcript-replay.zh-CN.md). It
 debugging/replay boundary: it makes a completed provider trajectory inspectable without claiming
 remote exactly-once execution or model-quality improvement.
 
-See [Architecture](docs/architecture.md), [Runtime](docs/runtime.md), and
+See [Architecture](docs/architecture.md), [Runtime](docs/runtime.md), [Workspace knowledge base](docs/knowledge-base.md), and
 [Evaluation protocol](docs/evaluation.md) for the design and claim boundaries.
 
 ## Contributing

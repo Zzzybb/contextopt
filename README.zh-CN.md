@@ -12,6 +12,8 @@
 - 安全边界：测试和 apply/rollback 都是显式操作，不能因为模型说成功就写盘。
 - 跨运行记忆：可选的 append-only `SemanticMemoryStore`，由显式工具读写并保留 provenance、
   幂等 identity 和失效/替代状态。
+- workspace 知识库：`knowledge-index` 将有界 UTF-8 源文件分块写入同一记忆账本，保留
+  `source_refs`，重复运行复用不变块，并对变更/删除的块自动失效。
 - provider 轨迹：可选的 `RecordingModel` / `ReplayModel` cassette，不保存凭据，持久化请求/响应，
   只有完整请求 hash 匹配时才允许离线重放。
 
@@ -167,6 +169,26 @@ hidden oracle，但它是离线复现而不是新的 provider 测量；每次矩
 完整的“两次全新运行”离线演示在
 [`examples/semantic_memory_demo`](examples/semantic_memory_demo/README.md)：第一次运行保存
 procedure，第二次运行打开同一个 store 查询，reader trace 会显示命中词、memory id 和 revision。
+
+### Workspace 知识库
+
+可以先把有限的源码快照索引进同一个 durable store，再启动代码 Agent：
+
+~~~text
+contextopt knowledge-index \
+  --workspace <workspace> \
+  --memory-store .contextopt/memory.jsonl \
+  --memory-scope project:parser \
+  --output .contextopt/knowledge-index.json \
+  --markdown .contextopt/knowledge-index.md
+~~~
+
+索引过程是确定性的：跳过非 UTF-8 文件、生成目录、符号链接以及超过文件/字节上限的文件，
+每个分块携带 workspace-relative `source_ref`。重复运行会复用相同分块；删除或修改的分块
+会追加 `memory.invalidated` 事件。给 `run` 或 `orchestrate` 传入同一个 store，并打开
+`--context-memory versioned-v1+semantic`，正常上下文预算就会在 durable 经验之外最多选择
+3 条相关代码/文档块。它是带 provenance 的 lexical 源码投影，不是 embedding benchmark，
+也不能证明模型一定使用了每条检索结果。详见[知识库说明](docs/knowledge-base.zh-CN.md)。
 
 还可以单独评测记忆检索边界：
 
@@ -336,6 +358,7 @@ python -m contextopt agent-eval \
 - 英文评测：[docs/evaluation.md](docs/evaluation.md)
 - 真实 provider 工作流：[docs/evaluation-real-provider.zh-CN.md](docs/evaluation-real-provider.zh-CN.md)
 - 运行时说明：[docs/runtime.md](docs/runtime.md)
+- Workspace 知识库：[docs/knowledge-base.zh-CN.md](docs/knowledge-base.zh-CN.md)
 - PR 变更说明约定：[docs/pr/README.md](docs/pr/README.md)
 - PR #1 中文回顾：[docs/pr/0001-contextopt-evolution.zh-CN.md](docs/pr/0001-contextopt-evolution.zh-CN.md)
 - v0.8 中文变更说明：[docs/pr/0001-v0.8-evaluation-addendum.zh-CN.md](docs/pr/0001-v0.8-evaluation-addendum.zh-CN.md)

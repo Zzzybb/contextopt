@@ -24,6 +24,15 @@ from contextopt.runtime.events import (
     render_trace_html,
     scan_events,
 )
+from contextopt.runtime.knowledge import (
+    KNOWLEDGE_CHUNK_TAG,
+    KNOWLEDGE_INDEX_SCHEMA_VERSION,
+    KnowledgeIndexConfig,
+    KnowledgeIndexReport,
+    index_workspace,
+    render_knowledge_index_console,
+    render_knowledge_index_markdown,
+)
 from contextopt.runtime.memory import EvidenceRecord, MemorySnapshot
 from contextopt.runtime.model import OpenAICompatibleModel, ScriptedModel
 from contextopt.runtime.protocol import (
@@ -70,6 +79,8 @@ from contextopt.runtime.transcript import (
 
 __all__ = [
     "CONTEXT_COMPILER_VERSION",
+    "KNOWLEDGE_CHUNK_TAG",
+    "KNOWLEDGE_INDEX_SCHEMA_VERSION",
     "MIN_TOOL_OUTPUT_TOKENS",
     "MODEL_TRANSCRIPT_SCHEMA_VERSION",
     "SEMANTIC_MEMORY_SCHEMA_VERSION",
@@ -86,6 +97,8 @@ __all__ = [
     "EventLog",
     "EventScan",
     "EvidenceRecord",
+    "KnowledgeIndexConfig",
+    "KnowledgeIndexReport",
     "MemoryFeedbackLabel",
     "MemoryFeedbackResult",
     "MemoryKind",
@@ -121,8 +134,11 @@ __all__ = [
     "estimate_message_tokens",
     "estimate_messages_tokens",
     "estimate_text_tokens",
+    "index_workspace",
     "model_request_fingerprint",
     "read_events",
+    "render_knowledge_index_console",
+    "render_knowledge_index_markdown",
     "render_trace",
     "render_trace_html",
     "replay_events",
