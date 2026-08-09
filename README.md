@@ -929,6 +929,8 @@ The built-in HTTP transport cancellation is documented in [the v0.9 note](docs/p
 and [Chinese version](docs/pr/0001-v0.9-http-transport-cancellation.zh-CN.md).
 The opt-in provider-specific cancellation endpoint is documented in [the v1.0 note](docs/pr/0001-v1.0-provider-cancellation-hook.md)
 and [Chinese version](docs/pr/0001-v1.0-provider-cancellation-hook.zh-CN.md).
+The provider adapter's fail-closed runtime parameter validation is documented in [the v1.0 note](docs/pr/0001-v1.0-provider-runtime-validation.md)
+and [Chinese version](docs/pr/0001-v1.0-provider-runtime-validation.zh-CN.md).
 The candidate process lifecycle and credential-scrubbing boundary are documented in [the v1.0 note](docs/pr/0001-v1.0-candidate-process-boundary.md)
 and [Chinese version](docs/pr/0001-v1.0-candidate-process-boundary.zh-CN.md).
 The paired matrix can persist independent planner/solver/reviewer model identities in its

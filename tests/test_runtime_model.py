@@ -184,6 +184,27 @@ def _tool_call_response() -> dict[str, Any]:
 
 
 class OpenAICompatibleModelTests(unittest.IsolatedAsyncioTestCase):
+    def test_openai_adapter_rejects_non_finite_runtime_controls(self) -> None:
+        base = {
+            "base_url": "https://example.test/v1",
+            "api_key": "key",
+            "model": "unit-model",
+        }
+        for field, value, message in (
+            ("timeout_seconds", float("nan"), "timeout_seconds"),
+            ("timeout_seconds", float("inf"), "timeout_seconds"),
+            ("temperature", float("nan"), "temperature"),
+            ("temperature", -0.1, "temperature"),
+        ):
+            with (
+                self.subTest(field=field, value=value),
+                self.assertRaisesRegex(ValueError, message),
+            ):
+                OpenAICompatibleModel(**base, **{field: value})
+
+        with self.assertRaisesRegex(ValueError, "max_retries"):
+            OpenAICompatibleModel(**base, max_retries=True)
+
     async def test_parses_tool_call_and_sends_expected_request(self) -> None:
         secret = "unit-test-secret"
         with _LocalModelServer([(200, _tool_call_response())]) as server:

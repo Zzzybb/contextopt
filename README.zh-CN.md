@@ -445,6 +445,8 @@ PR 说明[英文版](docs/pr/0001-v1.0-model-matrix-analysis.md) /
   和 [英文版](docs/pr/0001-v0.9-http-transport-cancellation.md)
 - v1.0 provider-specific 远端取消 hook：[docs/pr/0001-v1.0-provider-cancellation-hook.zh-CN.md](docs/pr/0001-v1.0-provider-cancellation-hook.zh-CN.md)
   和 [英文版](docs/pr/0001-v1.0-provider-cancellation-hook.md)
+- v1.0 provider 运行时参数 fail-closed 校验：[docs/pr/0001-v1.0-provider-runtime-validation.zh-CN.md](docs/pr/0001-v1.0-provider-runtime-validation.zh-CN.md)
+  和 [英文版](docs/pr/0001-v1.0-provider-runtime-validation.md)
 - v1.0 候选进程生命周期与凭据清理：[docs/pr/0001-v1.0-candidate-process-boundary.zh-CN.md](docs/pr/0001-v1.0-candidate-process-boundary.zh-CN.md)
   和 [英文版](docs/pr/0001-v1.0-candidate-process-boundary.md)
 - 真实矩阵会把 planner/solver/reviewer 的独立 model identity 写入 checkpoint 和 manifest，

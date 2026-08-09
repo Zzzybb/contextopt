@@ -8,6 +8,7 @@ import threading
 import urllib.error
 import urllib.request
 from collections.abc import Mapping, Sequence
+from math import isfinite
 from pathlib import Path
 from typing import Any
 
@@ -225,16 +226,34 @@ class OpenAICompatibleModel:
         idempotency_header: str | None = "Idempotency-Key",
         cancellation_url: str | None = None,
     ) -> None:
+        if not isinstance(base_url, str) or not base_url.strip():
+            raise ValueError("base_url must be a non-empty string")
         if not base_url.startswith(("http://", "https://")):
             raise ValueError("base_url must use http or https")
-        if not api_key:
-            raise ValueError("api_key must not be empty")
-        if not model:
-            raise ValueError("model must not be empty")
-        if timeout_seconds <= 0:
-            raise ValueError("timeout_seconds must be positive")
-        if max_retries < 0:
-            raise ValueError("max_retries must be non-negative")
+        if not isinstance(api_key, str) or not api_key:
+            raise ValueError("api_key must be a non-empty string")
+        if not isinstance(model, str) or not model.strip():
+            raise ValueError("model must be a non-empty string")
+        if (
+            not isinstance(timeout_seconds, (int, float))
+            or isinstance(timeout_seconds, bool)
+            or not isfinite(float(timeout_seconds))
+            or timeout_seconds <= 0
+        ):
+            raise ValueError("timeout_seconds must be finite and positive")
+        if (
+            not isinstance(max_retries, int)
+            or isinstance(max_retries, bool)
+            or max_retries < 0
+        ):
+            raise ValueError("max_retries must be a non-negative integer")
+        if temperature is not None and (
+            not isinstance(temperature, (int, float))
+            or isinstance(temperature, bool)
+            or not isfinite(float(temperature))
+            or temperature < 0
+        ):
+            raise ValueError("temperature must be finite and non-negative")
         if idempotency_header is not None and not idempotency_header.strip():
             raise ValueError("idempotency_header must be non-empty when provided")
         if cancellation_url is not None:
