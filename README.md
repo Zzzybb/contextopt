@@ -76,6 +76,8 @@ coding success without a controlled real-model benchmark.
   and tool-output limits.
 - Observation-aware `ScriptedModel` runs that need no network or API key.
 - A minimal non-streaming OpenAI-compatible Chat Completions adapter.
+- Optional `RecordingModel` / `ReplayModel` cassettes that persist provider request/response
+  pairs without credentials and replay them only on an exact request-hash match.
 - Workspace-bounded file listing, literal search, numbered reads, file creation, atomic
   SHA-256 compare-and-swap replacement, and pre-registered visible-test commands.
 - Explicit write and command permissions; both are disabled unless enabled by the caller.
@@ -842,6 +844,11 @@ and [Chinese version](docs/pr/0001-v1.0-robustness-eval.zh-CN.md), with its fixe
   evaluations with independent hidden tests and compare measurable multi-agent schedulers. The
   manual workflow is the reproducibility entry point; the checked-in scripted artifacts remain
   controls rather than real-model evidence.
+
+The provider transcript cassette is documented in [the English PR note](docs/pr/0001-v1.0-provider-transcript-replay.md)
+and [Chinese version](docs/pr/0001-v1.0-provider-transcript-replay.zh-CN.md). It is an opt-in
+debugging/replay boundary: it makes a completed provider trajectory inspectable without claiming
+remote exactly-once execution or model-quality improvement.
 
 See [Architecture](docs/architecture.md), [Runtime](docs/runtime.md), and
 [Evaluation protocol](docs/evaluation.md) for the design and claim boundaries.

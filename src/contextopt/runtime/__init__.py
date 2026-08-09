@@ -59,10 +59,19 @@ from contextopt.runtime.semantic_memory import (
 )
 from contextopt.runtime.tool_state import ToolExecutionPlan, ToolReconciliation
 from contextopt.runtime.tools import WorkspaceTools
+from contextopt.runtime.transcript import (
+    MODEL_TRANSCRIPT_SCHEMA_VERSION,
+    ModelTranscript,
+    ModelTranscriptRecord,
+    RecordingModel,
+    ReplayModel,
+    model_request_fingerprint,
+)
 
 __all__ = [
     "CONTEXT_COMPILER_VERSION",
     "MIN_TOOL_OUTPUT_TOKENS",
+    "MODEL_TRANSCRIPT_SCHEMA_VERSION",
     "SEMANTIC_MEMORY_SCHEMA_VERSION",
     "AgentMessage",
     "AgentRunResult",
@@ -86,9 +95,13 @@ __all__ = [
     "ModelClient",
     "ModelRequest",
     "ModelResponse",
+    "ModelTranscript",
+    "ModelTranscriptRecord",
     "OpenAICompatibleModel",
     "PendingToolResolution",
+    "RecordingModel",
     "RecoveryError",
+    "ReplayModel",
     "RunLease",
     "RunLimits",
     "RunPermissions",
@@ -108,6 +121,7 @@ __all__ = [
     "estimate_message_tokens",
     "estimate_messages_tokens",
     "estimate_text_tokens",
+    "model_request_fingerprint",
     "read_events",
     "render_trace",
     "render_trace_html",

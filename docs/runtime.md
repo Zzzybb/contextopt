@@ -88,6 +88,37 @@ For a deterministic local run, give orchestrate three ScriptedModel JSON files a
 trusted visible-test command used by search-session. Real-model experiments should keep
 provider, prompt, tool, budget, and repository versions fixed across role ablations.
 
+### Provider transcript cassettes
+
+`RecordingModel` wraps any `ModelClient` and appends each successful normalized request and
+response to a JSONL cassette. `ReplayModel` consumes that cassette later and fails closed if
+the next request is exhausted or its full request hash differs. The cassette contains no
+provider API key, carries response/record hashes and a previous-record chain, and each append
+is flushed to disk before the response is returned to the caller. This makes a provider
+trajectory inspectable for context/prompt debugging and offline incident reproduction:
+
+```python
+from contextopt.runtime import OpenAICompatibleModel, RecordingModel, ReplayModel
+
+recorded = RecordingModel(
+    OpenAICompatibleModel(
+        base_url="https://provider.example/v1",
+        api_key="read-from-an-environment-variable",
+        model="coding-model",
+    ),
+    ".contextopt/provider.jsonl",
+)
+# pass `recorded` to AgentRunner or an orchestration role
+
+replayed = ReplayModel(".contextopt/provider.jsonl")
+# pass `replayed` to a fresh runner with the same request sequence
+```
+
+Replay is a strict debugging boundary, not a remote exactly-once guarantee. A provider
+response that was returned but could not be written to the cassette is surfaced as
+`transcript_write_failed` so the caller cannot silently treat an unrecorded trajectory as
+reproducible.
+
 ## Coding-agent strategy evaluation harness
 
 The repository also ships a model-free outer-loop comparison for the control policies that

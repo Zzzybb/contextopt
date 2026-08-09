@@ -61,11 +61,21 @@ The runtime depends on a narrow async protocol rather than one provider SDK. v0.
 
 - `ScriptedModel`, used for deterministic observation-aware offline conformance runs;
 - `OpenAICompatibleModel`, a minimal non-streaming Chat Completions adapter.
+- `RecordingModel` and `ReplayModel`, opt-in JSONL cassettes for recording successful
+  request/response pairs and replaying them only when the full request hash matches.
 
 Both normalize assistant text, structured tool calls, finish reason, provider usage, and
 model failures into the same runtime types. The initial event persists a non-secret model
 configuration fingerprint. A non-terminal resume must present the same fingerprint;
 ScriptedModel also moves its deterministic cursor past already durable responses.
+
+The cassette records the normalized `ModelRequest` and `ModelResponse`, model name, schema
+version, sequence, and request hash; it never receives the provider API key. A recording
+append is fsynced after a successful model response. Replay fails closed with
+`transcript_mismatch` or `transcript_exhausted` rather than silently substituting a new
+response. This is useful for prompt/context debugging and offline incident reproduction,
+but remains an at-least-once observation boundary: it does not prove a remote provider
+call was made exactly once.
 
 ### WorkspaceTools
 

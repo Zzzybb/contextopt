@@ -12,6 +12,8 @@
 - 安全边界：测试和 apply/rollback 都是显式操作，不能因为模型说成功就写盘。
 - 跨运行记忆：可选的 append-only `SemanticMemoryStore`，由显式工具读写并保留 provenance、
   幂等 identity 和失效/替代状态。
+- provider 轨迹：可选的 `RecordingModel` / `ReplayModel` cassette，不保存凭据，持久化请求/响应，
+  只有完整请求 hash 匹配时才允许离线重放。
 
 当前状态是 v0.9。已经实现单 Agent 运行时、上下文选择、分支搜索、可恢复的
 proposal/test session、顺序的 planner / solver / reviewer 编排，以及带独立隐藏测试的
@@ -108,6 +110,10 @@ assistant block，并和普通上下文一起竞争 token 预算。候选可能�
 10. 跨运行记忆：显式的 `memory_search` / `memory_save` / `memory_invalidate`、scope 继承、内容幂等、
     provenance、supersession/invalidation 和 lease，让“记住上一轮经验”变成可恢复、可审计
     的运行时协议，而不是 prompt 里凭空塞一段摘要。
+
+provider transcript cassette 的改动记录在[英文 PR 说明](docs/pr/0001-v1.0-provider-transcript-replay.md)
+和[中文版](docs/pr/0001-v1.0-provider-transcript-replay.zh-CN.md)。它是可选的调试/离线重放
+边界：让已完成的 provider 轨迹可检查，但不声称远端 exactly-once，也不声称提升模型能力。
 
 编排也可以使用 `merge_policy=disjoint`：对相同根快照下的独立 solver 候选做有界三方合并，
 合并候选仍必须经过可见测试；同一路径的不同修改只记录 conflict，不会猜测如何拼接。

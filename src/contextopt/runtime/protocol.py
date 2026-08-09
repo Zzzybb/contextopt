@@ -268,6 +268,44 @@ class ModelRequest:
     tools: tuple[ToolDefinition, ...]
     max_output_tokens: int
 
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> ModelRequest:
+        value = _fields(
+            data,
+            required=frozenset(
+                {"run_id", "turn", "messages", "tools", "max_output_tokens"}
+            ),
+            label="model request",
+        )
+        raw_messages = _array(value["messages"], "model request messages")
+        raw_tools = _array(value["tools"], "model request tools")
+        return cls(
+            run_id=_string(value["run_id"], "model request run_id", allow_empty=False),
+            turn=_integer(value["turn"], "model request turn", minimum=1),
+            messages=tuple(
+                AgentMessage.from_dict(_object(item, f"messages[{index}]"))
+                for index, item in enumerate(raw_messages)
+            ),
+            tools=tuple(
+                ToolDefinition.from_dict(_object(item, f"tools[{index}]"))
+                for index, item in enumerate(raw_tools)
+            ),
+            max_output_tokens=_integer(
+                value["max_output_tokens"],
+                "model request max_output_tokens",
+                minimum=1,
+            ),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "run_id": self.run_id,
+            "turn": self.turn,
+            "messages": [message.to_dict() for message in self.messages],
+            "tools": [tool.to_dict() for tool in self.tools],
+            "max_output_tokens": self.max_output_tokens,
+        }
+
 
 @dataclass(frozen=True, slots=True)
 class ModelResponse:
