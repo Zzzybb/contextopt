@@ -981,6 +981,9 @@ and [Chinese version](docs/pr/0001-v1.0-provider-transcript-replay.zh-CN.md). It
 debugging/replay boundary: it makes a completed provider trajectory inspectable without claiming
 remote exactly-once execution or model-quality improvement.
 
+The bilingual 30-second portfolio quickstart is documented in [the English PR note](docs/pr/0001-v1.0-portfolio-quickstart.md)
+and [Chinese version](docs/pr/0001-v1.0-portfolio-quickstart.zh-CN.md).
+
 See [Architecture](docs/architecture.md), [Runtime](docs/runtime.md), [Workspace knowledge base](docs/knowledge-base.md), and
 [Evaluation protocol](docs/evaluation.md) for the design and claim boundaries.
 
