@@ -449,6 +449,9 @@ PR 说明[英文版](docs/pr/0001-v1.0-model-matrix-analysis.md) /
   和 [英文版](docs/pr/0001-v1.0-provider-runtime-validation.md)
 - v1.0 候选进程生命周期与凭据清理：[docs/pr/0001-v1.0-candidate-process-boundary.zh-CN.md](docs/pr/0001-v1.0-candidate-process-boundary.zh-CN.md)
   和 [英文版](docs/pr/0001-v1.0-candidate-process-boundary.md)
+- host/Docker/VM 执行隔离策略：[docs/sandbox-policy.zh-CN.md](docs/sandbox-policy.zh-CN.md)
+  和 [英文版](docs/sandbox-policy.md)；对应 [PR 说明](docs/pr/0001-v1.0-sandbox-policy.zh-CN.md)
+  和 [英文版](docs/pr/0001-v1.0-sandbox-policy.md)
 - 真实矩阵会把 planner/solver/reviewer 的独立 model identity 写入 checkpoint 和 manifest，
   workflow 也支持相同的 role override。
 - v1.0 按角色固定 model identity：[docs/pr/0001-v1.0-role-model-overrides.zh-CN.md](docs/pr/0001-v1.0-role-model-overrides.zh-CN.md)

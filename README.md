@@ -933,6 +933,9 @@ The provider adapter's fail-closed runtime parameter validation is documented in
 and [Chinese version](docs/pr/0001-v1.0-provider-runtime-validation.zh-CN.md).
 The candidate process lifecycle and credential-scrubbing boundary are documented in [the v1.0 note](docs/pr/0001-v1.0-candidate-process-boundary.md)
 and [Chinese version](docs/pr/0001-v1.0-candidate-process-boundary.zh-CN.md).
+The host/Docker/VM execution boundary is documented in the [sandbox policy](docs/sandbox-policy.md)
+and [Chinese version](docs/sandbox-policy.zh-CN.md), with its [PR note](docs/pr/0001-v1.0-sandbox-policy.md)
+and [Chinese version](docs/pr/0001-v1.0-sandbox-policy.zh-CN.md).
 The paired matrix can persist independent planner/solver/reviewer model identities in its
 checkpoint and manifest; the real-provider workflow exposes the same role overrides.
 The role-identity persistence change is documented in [the v1.0 note](docs/pr/0001-v1.0-role-model-overrides.md)

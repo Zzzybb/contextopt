@@ -21,6 +21,7 @@ from contextopt.search import (
     evaluate_case,
     run_executable_search,
 )
+from contextopt.search.executor import _docker_command
 
 
 def _case() -> BranchCase:
@@ -189,6 +190,35 @@ class BranchExecutorTests(unittest.TestCase):
             result = evaluate_candidate(_case().by_id["good"], config)
         self.assertFalse(result.is_success)
         self.assertIn("docker executable was not found", result.error or "")
+
+    def test_docker_command_matches_hardened_policy(self) -> None:
+        config = ExecutableSearchConfig(
+            command=("python", "-c", "print('sandbox')"),
+            sandbox="docker",
+            container_image="python:3.12-slim@sha256:" + "a" * 64,
+        )
+        with patch("contextopt.search.executor.shutil.which", return_value="docker"):
+            command, docker, container_name = _docker_command(
+                config, Path("C:/contextopt-workspace")
+            )
+
+        self.assertEqual(docker, "docker")
+        self.assertTrue(container_name.startswith("contextopt-"))
+        for flag in (
+            "--rm",
+            "--init",
+            "--network=none",
+            "--cap-drop=ALL",
+            "--security-opt=no-new-privileges",
+            "--read-only",
+            "--pids-limit",
+            "--memory",
+            "--cpus",
+            "--tmpfs",
+            "--mount",
+        ):
+            self.assertIn(flag, command)
+        self.assertIn("python:3.12-slim@sha256:" + "a" * 64, command)
 
     @unittest.skipUnless(
         shutil.which("docker") and os.environ.get("CONTEXTOPT_RUN_DOCKER_SMOKE") == "1",
