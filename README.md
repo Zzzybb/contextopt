@@ -933,6 +933,8 @@ The provider adapter's fail-closed runtime parameter validation is documented in
 and [Chinese version](docs/pr/0001-v1.0-provider-runtime-validation.zh-CN.md).
 The long-running agent limit validation is documented in [the v1.0 note](docs/pr/0001-v1.0-runtime-limit-validation.md)
 and [Chinese version](docs/pr/0001-v1.0-runtime-limit-validation.zh-CN.md).
+The MCTS evaluation exploration-constant validation is documented in [the v1.0 note](docs/pr/0001-v1.0-agent-eval-config-validation.md)
+and [Chinese version](docs/pr/0001-v1.0-agent-eval-config-validation.zh-CN.md).
 The candidate process lifecycle and credential-scrubbing boundary are documented in [the v1.0 note](docs/pr/0001-v1.0-candidate-process-boundary.md)
 and [Chinese version](docs/pr/0001-v1.0-candidate-process-boundary.zh-CN.md).
 The host/Docker/VM execution boundary is documented in the [sandbox policy](docs/sandbox-policy.md)

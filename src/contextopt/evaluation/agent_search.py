@@ -122,6 +122,15 @@ def _non_negative_int(value: Any, label: str) -> int:
     return value
 
 
+def _finite_positive_number(value: Any, label: str) -> float:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        raise ValueError(f"{label} must be a finite positive number")
+    result = float(value)
+    if not isfinite(result) or result <= 0:
+        raise ValueError(f"{label} must be a finite positive number")
+    return result
+
+
 def _boolean(value: Any, label: str) -> bool:
     if not isinstance(value, bool):
         raise ValueError(f"{label} must be a boolean")
@@ -680,12 +689,7 @@ class AgentEvalConfig:
             "mcts",
         }:
             raise ValueError(f"unsupported search policy: {self.search_policy!r}")
-        if not isinstance(self.exploration_constant, (int, float)) or isinstance(
-            self.exploration_constant, bool
-        ):
-            raise ValueError("exploration_constant must be a number")
-        if self.exploration_constant <= 0:
-            raise ValueError("exploration_constant must be positive")
+        _finite_positive_number(self.exploration_constant, "exploration_constant")
         if not isinstance(self.include_hidden_tests, bool):
             raise ValueError("include_hidden_tests must be a boolean")
         if self.model_adapter not in {
@@ -752,7 +756,9 @@ class AgentEvalConfig:
                 value.get("max_test_calls", 2), "max_test_calls"
             ),
             search_policy=cast(SearchPolicy, value.get("search_policy", "beam")),
-            exploration_constant=float(value.get("exploration_constant", 1.0)),
+            exploration_constant=_finite_positive_number(
+                value.get("exploration_constant", 1.0), "exploration_constant"
+            ),
             include_hidden_tests=_boolean(
                 value.get("include_hidden_tests", True), "include_hidden_tests"
             ),

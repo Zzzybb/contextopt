@@ -449,6 +449,8 @@ PR 说明[英文版](docs/pr/0001-v1.0-model-matrix-analysis.md) /
   和 [英文版](docs/pr/0001-v1.0-provider-runtime-validation.md)
 - v1.0 长程 Agent limits 校验：[docs/pr/0001-v1.0-runtime-limit-validation.zh-CN.md](docs/pr/0001-v1.0-runtime-limit-validation.zh-CN.md)
   和 [英文版](docs/pr/0001-v1.0-runtime-limit-validation.md)
+- v1.0 Agent eval MCTS exploration constant fail-closed 校验：[docs/pr/0001-v1.0-agent-eval-config-validation.zh-CN.md](docs/pr/0001-v1.0-agent-eval-config-validation.zh-CN.md)
+  和 [英文版](docs/pr/0001-v1.0-agent-eval-config-validation.md)
 - v1.0 候选进程生命周期与凭据清理：[docs/pr/0001-v1.0-candidate-process-boundary.zh-CN.md](docs/pr/0001-v1.0-candidate-process-boundary.zh-CN.md)
   和 [英文版](docs/pr/0001-v1.0-candidate-process-boundary.md)
 - host/Docker/VM 执行隔离策略：[docs/sandbox-policy.zh-CN.md](docs/sandbox-policy.zh-CN.md)

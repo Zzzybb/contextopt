@@ -679,6 +679,18 @@ class AgentEvaluationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unknown"):
             AgentEvalConfig(strategies=("made_up",))  # type: ignore[arg-type]
 
+    def test_configuration_rejects_non_finite_exploration_constant(self) -> None:
+        with self.assertRaisesRegex(ValueError, "finite"):
+            AgentEvalConfig(exploration_constant=float("nan"))
+        with self.assertRaisesRegex(ValueError, "finite"):
+            AgentEvalConfig(exploration_constant=float("inf"))
+        with self.assertRaisesRegex(ValueError, "finite"):
+            AgentEvalConfig(exploration_constant=True)  # type: ignore[arg-type]
+        payload = AgentEvalConfig(fixtures=("two-sum",)).to_dict()
+        payload["exploration_constant"] = float("nan")
+        with self.assertRaisesRegex(ValueError, "finite"):
+            AgentEvalConfig.from_dict(payload)
+
     def test_html_dashboard_contains_summary_bars_and_durable_payload(self) -> None:
         html = render_agent_evaluation_html(self.report)
         self.assertIn("visible success", html)
