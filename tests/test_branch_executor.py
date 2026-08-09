@@ -205,7 +205,10 @@ class BranchExecutorTests(unittest.TestCase):
                 timeout_seconds=30,
             ),
         )
-        self.assertTrue(result.is_success, result.error)
+        self.assertTrue(
+            result.is_success,
+            json.dumps(result.to_dict(), ensure_ascii=False, sort_keys=True),
+        )
         self.assertIn("True", result.output_excerpt or "")
 
     def test_cli_executes_a_serialized_case_only_with_explicit_permission(self) -> None:
