@@ -1,0 +1,42 @@
+{
+  "claim_boundary": "The manifest records experiment identity and configuration; it does not prove model quality or provider reproducibility.",
+  "config": {
+    "exploration_constant": 1.0,
+    "fixtures": [
+      "two-sum",
+      "extended-gcd",
+      "merge-intervals",
+      "modular-inverse"
+    ],
+    "include_hidden_tests": true,
+    "max_candidates": 2,
+    "max_model_calls": 6,
+    "max_rounds": 2,
+    "max_test_calls": 2,
+    "model_adapter": "scripted",
+    "repetitions": 3,
+    "search_policy": "beam",
+    "strategies": [
+      "single_pass",
+      "best_of_n",
+      "orchestrated"
+    ]
+  },
+  "kind": "contextopt.agent-eval.manifest",
+  "provider": {
+    "adapter": "scripted",
+    "base_url": null,
+    "model": null,
+    "planner_model": null,
+    "reviewer_model": null,
+    "solver_model": null
+  },
+  "repository_revision": null,
+  "runtime": {
+    "api_key_env": "CONTEXTOPT_API_KEY",
+    "max_retries": 2,
+    "temperature": 0.0,
+    "timeout_seconds": 90.0
+  },
+  "schema_version": "1"
+}

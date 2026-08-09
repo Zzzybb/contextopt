@@ -364,6 +364,9 @@ python -m contextopt agent-eval \
   和 [英文版](docs/pr/0001-v0.9-semantic-memory-feedback-loop.md)
 - v1.0 ACM/数学 fixture 任务集扩展：[docs/pr/0001-v1.0-acm-math-fixture-suite.zh-CN.md](docs/pr/0001-v1.0-acm-math-fixture-suite.zh-CN.md)
   和 [英文版](docs/pr/0001-v1.0-acm-math-fixture-suite.md)
+- v1.0 四任务控制产物与 adapter smoke：[docs/pr/0001-v1.0-four-fixture-control-artifact.zh-CN.md](docs/pr/0001-v1.0-four-fixture-control-artifact.zh-CN.md)
+  和 [英文版](docs/pr/0001-v1.0-four-fixture-control-artifact.md)；固定 ledger 位于
+  [experiments/v1.0-acm-math-4-fixtures](experiments/v1.0-acm-math-4-fixtures/README.zh-CN.md)
 - v0.7 编排补充的中文回顾：[docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md](docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、

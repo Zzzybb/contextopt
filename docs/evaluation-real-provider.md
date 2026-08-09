@@ -17,6 +17,12 @@ use the equivalent local CLI command in the README.
    exploratory comparison rule.
 4. Download the uploaded artifact bundle after the job finishes.
 
+At the current revision, `all` expands to `two-sum`, `extended-gcd`, `merge-intervals`, and
+`modular-inverse`. The deterministic three-repetition control baseline is checked in under
+[`experiments/v1.0-acm-math-4-fixtures`](../experiments/v1.0-acm-math-4-fixtures/README.md);
+keep the fixture IDs, strategies, budgets, and prompt configuration fixed when comparing a
+provider run with it.
+
 The bundle contains the JSON ledger, Markdown summary, self-contained HTML dashboard, manifest,
 and atomic checkpoint. If a provider call or runner stops, rerun the same matrix locally with
 `--resume --checkpoint` or use the same workflow inputs and inspect the new run separately; do

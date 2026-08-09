@@ -18,7 +18,7 @@ on:
         default: "3"
         type: string
       fixtures:
-        description: "Fixture selection: all, two-sum, extended-gcd, or comma-separated"
+        description: "Fixture selection: all, two-sum, extended-gcd, merge-intervals, modular-inverse, or comma-separated"
         required: true
         default: "all"
         type: string

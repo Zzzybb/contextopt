@@ -778,6 +778,12 @@ protocol/accounting baseline, not evidence about real-model quality.
 The corresponding [PR change note](docs/pr/0001-v0.8-scripted-control-artifact.md) and
 [Chinese version](docs/pr/0001-v0.8-scripted-control-artifact.zh-CN.md) record the exact
 regeneration command and claim boundary.
+The v1.0 four-fixture control artifact is checked in under
+[`experiments/v1.0-acm-math-4-fixtures`](experiments/v1.0-acm-math-4-fixtures/README.md);
+it uses the expanded ACM/math registry with three paired repetitions. The corresponding
+[PR change note](docs/pr/0001-v1.0-four-fixture-control-artifact.md) and
+[Chinese version](docs/pr/0001-v1.0-four-fixture-control-artifact.zh-CN.md) record the
+adapter smoke and claim boundary.
 The bounded long-horizon recovery matrix is documented in [the v0.9 PR change note](docs/pr/0001-v0.9-recovery-matrix.md)
 and [Chinese version](docs/pr/0001-v0.9-recovery-matrix.zh-CN.md).
 The model-request idempotency hook is documented in [the v0.9 idempotency addendum](docs/pr/0001-v0.9-idempotency-hook.md)

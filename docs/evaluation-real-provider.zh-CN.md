@@ -14,6 +14,11 @@
    工作流会拒绝少于 3 次的 repetition，以满足 Level 3 探索性对比规则。
 4. 工作流完成后下载上传的 artifact bundle。
 
+当前 revision 中，`all` 会展开为 `two-sum`、`extended-gcd`、`merge-intervals`、
+`modular-inverse`。确定性的三次重复控制基线位于
+[experiments/v1.0-acm-math-4-fixtures](../experiments/v1.0-acm-math-4-fixtures/README.zh-CN.md)；
+与 provider 结果比较时保持 fixture ID、策略、预算和 prompt 配置不变。
+
 bundle 包含 JSON ledger、Markdown 摘要、自包含 HTML dashboard、manifest 和原子 checkpoint。
 如果 provider 调用或 runner 中断，可以在本地使用 `--resume --checkpoint` 继续同一矩阵，
 或者用同样的 workflow 参数重新运行；不要把不同模型、prompt、fixture 或预算配置混在一份

@@ -225,32 +225,38 @@ class AgentEvaluationTests(unittest.TestCase):
     def test_real_adapter_matrix_path_works_with_local_compatible_provider(
         self,
     ) -> None:
-        fixture = build_algorithm_fixtures()[0]
-        with _DynamicProviderServer(fixture.good_files) as server:
-            factory = build_openai_model_factory(
-                base_url=server.base_url,
-                api_key="provider-smoke-secret",
-                model="provider-smoke-model",
-            )
-            report = run_agent_evaluation(
-                AgentEvalConfig(
-                    strategies=("single_pass",),
-                    fixtures=(fixture.fixture_id,),
-                    repetitions=1,
-                    include_hidden_tests=True,
-                    model_adapter="openai-compatible",
-                ),
-                model_factory=factory,
-            )
-        self.assertEqual(report.runs[0].status, "accepted")
-        self.assertTrue(report.runs[0].success)
-        self.assertTrue(report.runs[0].hidden_success)
-        self.assertEqual(len(server.requests), 1)
-        request = server.requests[0]
-        self.assertEqual(request["path"], "/v1/chat/completions")
-        self.assertEqual(request["authorization"], "Bearer provider-smoke-secret")
-        self.assertTrue(request["idempotency_key"].startswith("contextopt-"))
-        self.assertEqual(request["payload"]["model"], "provider-smoke-model")
+        fixtures = build_algorithm_fixtures()
+        for fixture in fixtures:
+            with (
+                self.subTest(fixture=fixture.fixture_id),
+                _DynamicProviderServer(fixture.good_files) as server,
+            ):
+                factory = build_openai_model_factory(
+                    base_url=server.base_url,
+                    api_key="provider-smoke-secret",
+                    model="provider-smoke-model",
+                )
+                report = run_agent_evaluation(
+                    AgentEvalConfig(
+                        strategies=("single_pass",),
+                        fixtures=(fixture.fixture_id,),
+                        repetitions=1,
+                        include_hidden_tests=True,
+                        model_adapter="openai-compatible",
+                    ),
+                    model_factory=factory,
+                )
+                self.assertEqual(report.runs[0].status, "accepted")
+                self.assertTrue(report.runs[0].success)
+                self.assertTrue(report.runs[0].hidden_success)
+                self.assertEqual(len(server.requests), 1)
+                request = server.requests[0]
+                self.assertEqual(request["path"], "/v1/chat/completions")
+                self.assertEqual(
+                    request["authorization"], "Bearer provider-smoke-secret"
+                )
+                self.assertTrue(request["idempotency_key"].startswith("contextopt-"))
+                self.assertEqual(request["payload"]["model"], "provider-smoke-model")
 
     def test_report_roundtrip_and_tamper_detection(self) -> None:
         payload = self.report.to_dict()
