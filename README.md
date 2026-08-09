@@ -40,8 +40,10 @@ Every boundary ──> durable schema-2 JSONL event log + verified state project
 > diversity instruction, responses are namespaced and validated independently, and the checkpoint
 > records lane hashes, usage, failures, and observed provider concurrency. Planner and reviewer
 > calls remain sequential; this is still at-least-once provider execution, not exactly-once.
-> An OS sandbox, learned semantic memory, and a statistically powered real-model coding benchmark
-> remain outside the current claim boundary. The v0.9 follow-up now adds an explicit,
+> A mandatory OS sandbox for every run, learned semantic memory, and a statistically powered
+> real-model coding benchmark remain outside the current claim boundary. The opt-in Docker path is
+> now exercised by a provider-free GitHub Actions smoke, but it is not a universal deployment
+> guarantee. The v0.9 follow-up now adds an explicit,
 > provider-free lexical semantic-memory notebook with audited save/search tools plus an opt-in,
 > budgeted semantic-context projection; it is not
 > learned retrieval or a coding-quality claim. The bounded `recovery-eval` matrix now injects

@@ -53,8 +53,9 @@ planner 和 reviewer 仍然顺序调用，仍不声称 exactly-once。还可以�
 会记录为 `acknowledged`，404/405 会记录为 `unsupported`。endpoint 的语义仍由 provider
 自己定义，即使返回 2xx，也不能单独证明通用 Chat Completions provider 已停止服务端生成。
 当前 v0.9 已经提供显式、可审计的跨运行语义记忆 notebook，以及一个可选的、受预算约束的
-自动候选上下文模式；它仍然不是 embedding 检索、自动总结或学习型置信度校准。OS sandbox
-和统计严谨的真实模型评测仍在后续计划中。
+自动候选上下文模式；它仍然不是 embedding 检索、自动总结或学习型置信度校准。Docker
+路径已经由 GitHub Actions 的 provider-free smoke 真实执行，但不是所有部署都强制使用的
+OS sandbox；统计严谨的真实模型评测仍在后续计划中。
 另外提供不调用模型的 `semantic-context-eval` 矩阵，固定 ACM/数学任务，比较
 `recent`、`topk`、`density`、`submodular` 在候选上下文上的检索、预算淘汰、receipt
 确定性和无 store 重放。这里的 recall 只是固定 fixture id 的保留率，不是语义理解、模型
