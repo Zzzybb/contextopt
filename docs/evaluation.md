@@ -368,6 +368,29 @@ plumbing and its safety boundaries; they are intentionally not promoted to model
 success claims. See the [English artifact note](../experiments/v0.9-semantic-memory/README.md)
 and [Chinese note](../experiments/v0.9-semantic-memory/README.zh-CN.md).
 
+### Level 2d: automatic semantic-context candidate conformance
+
+The opt-in `versioned-v1+semantic` mode adds retrieved durable-memory matches as labelled,
+advisory assistant blocks before policy selection. The candidates are bounded at three, compete
+for the same deterministic context budget, and are copied into the `model.requested` receipt so
+that a pending request can be replayed after the live store changes. The evaluator below tests
+that boundary without a provider:
+
+```text
+python -m contextopt semantic-context-eval \
+  --repetitions 3 --budgets 128,256,512 \
+  --output experiments/v0.9-semantic-context/report.json \
+  --markdown experiments/v0.9-semantic-context/report.md \
+  --html experiments/v0.9-semantic-context/report.html
+```
+
+The matrix reports retrieved and selected candidate ids, fixture-label recall, candidate-token
+estimates, evictions, budget compliance, receipt determinism, and store-free replay. `model_calls`
+is always zero. Recall here means exact retention of a hand-labelled fixture id; it is not
+embedding quality, semantic understanding, model-use evidence, or coding-task success. The
+committed JSON/Markdown/HTML artifact is documented in the [English note](../experiments/v0.9-semantic-context/README.md)
+and [Chinese note](../experiments/v0.9-semantic-context/README.zh-CN.md).
+
 ## Level 3: controlled real-model coding tasks — harness ready, runs pending
 
 Use the same model snapshot, system prompt, tools, repository commit, maximum turns, token

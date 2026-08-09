@@ -40,6 +40,10 @@ endpoint，不能据此证明 provider 已停止服务端生成。
 当前 v0.9 已经提供显式、可审计的跨运行语义记忆 notebook，以及一个可选的、受预算约束的
 自动候选上下文模式；它仍然不是 embedding 检索、自动总结或学习型置信度校准。OS sandbox
 和统计严谨的真实模型评测仍在后续计划中。
+另外提供不调用模型的 `semantic-context-eval` 矩阵，固定 ACM/数学任务，比较
+`recent`、`topk`、`density`、`submodular` 在候选上下文上的检索、预算淘汰、receipt
+确定性和无 store 重放。这里的 recall 只是固定 fixture id 的保留率，不是语义理解、模型
+使用证据或代码成功率。
 
 另外新增了 `recovery-eval` 长程恢复矩阵：在 `model.requested`、`model.responded`、
 `tool.started`、`tool.completed` 等 durable 边界注入 process-like stop，再用全新的
@@ -141,6 +145,21 @@ python -m contextopt memory-eval \
 固定报告把 hit@1/hit@k、MRR、负查询通过率、scope 隔离、失效记忆排除和重复检索确定性与
 代码成功率分开；提交中的产物说明在
 [`experiments/v0.9-semantic-memory`](experiments/v0.9-semantic-memory/README.zh-CN.md)。
+
+还可以评测自动 durable-memory 候选和上下文预算的边界：
+
+~~~text
+python -m contextopt semantic-context-eval \
+  --repetitions 3 --budgets 128,256,512 \
+  --output experiments/v0.9-semantic-context/report.json \
+  --markdown experiments/v0.9-semantic-context/report.md \
+  --html experiments/v0.9-semantic-context/report.html
+~~~
+
+提交中的 JSON、Markdown、HTML 产物说明在
+[`experiments/v0.9-semantic-context`](experiments/v0.9-semantic-context/README.zh-CN.md)。
+该评测始终 `model_calls=0`，只验证候选投影、token 预算、收据确定性和重放，不能推出
+embedding 质量、模型是否使用记忆或生成 patch 是否更好。
 
 ## 离线验证
 
@@ -309,6 +328,8 @@ python -m contextopt agent-eval \
   和 [英文版](docs/pr/0001-v0.9-memory-feedback.md)
 - v0.9 有界 durable 记忆上下文：[docs/pr/0001-v0.9-semantic-memory-context.zh-CN.md](docs/pr/0001-v0.9-semantic-memory-context.zh-CN.md)
   和 [英文版](docs/pr/0001-v0.9-semantic-memory-context.md)
+- v0.9 自动语义上下文候选评测：[docs/pr/0001-v0.9-semantic-context-evaluation.zh-CN.md](docs/pr/0001-v0.9-semantic-context-evaluation.zh-CN.md)
+  和 [英文版](docs/pr/0001-v0.9-semantic-context-evaluation.md)
 - v0.7 编排补充的中文回顾：[docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md](docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、

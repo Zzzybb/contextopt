@@ -284,6 +284,22 @@ queries and reports hit@k/MRR, scope isolation, invalidation exclusion, negative
 and deterministic replay. Its raw JSON, Markdown, and HTML outputs are checked in under
 [`experiments/v0.9-semantic-memory`](../experiments/v0.9-semantic-memory/README.md).
 
+The automatic candidate boundary has a separate provider-free matrix:
+
+```text
+python -m contextopt semantic-context-eval \
+  --repetitions 3 --budgets 128,256,512 \
+  --output experiments/v0.9-semantic-context/report.json \
+  --markdown experiments/v0.9-semantic-context/report.md \
+  --html experiments/v0.9-semantic-context/report.html
+```
+
+It records the three-candidate retrieval snapshot, policy/budget eviction, exact fixture-label
+retention, budget compliance, byte-deterministic compilation, and replay without the live store.
+The command makes zero model calls; it does not establish semantic quality or an improvement in
+generated patches. See the [English artifact note](../experiments/v0.9-semantic-context/README.md)
+and [Chinese note](../experiments/v0.9-semantic-context/README.zh-CN.md).
+
 ### Per-turn receipt and recovery contract
 
 Every new `model.requested` event includes a `context` receipt. It contains:

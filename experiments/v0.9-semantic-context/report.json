@@ -1,0 +1,2179 @@
+{
+  "claim_boundary": "This is a deterministic context-projection conformance evaluation. It measures lexical candidate retrieval, budgeted selection, receipt determinism, and replay without a provider; it does not measure model reasoning, memory usefulness, semantic understanding, or coding success.",
+  "config": {
+    "budgets": [
+      128,
+      256,
+      512
+    ],
+    "max_tool_output_tokens": 96,
+    "policies": [
+      "recent",
+      "topk",
+      "density",
+      "submodular"
+    ],
+    "recent_blocks": 0,
+    "repetitions": 3
+  },
+  "fixture": {
+    "cases": [
+      {
+        "case_id": "two-sum",
+        "expected_memory_ids": [
+          "mem-8bc63aaaee2754011daf765d83321d9f"
+        ],
+        "messages": [
+          {
+            "content": "You are a coding agent.",
+            "role": "system",
+            "tool_call_id": null,
+            "tool_calls": [],
+            "tool_name": null
+          },
+          {
+            "content": "Implement two-sum with the hash-map complement invariant and duplicate values.",
+            "role": "user",
+            "tool_call_id": null,
+            "tool_calls": [],
+            "tool_name": null
+          }
+        ],
+        "scope": "project:acm",
+        "task": "Implement two-sum with the hash-map complement invariant and duplicate values."
+      },
+      {
+        "case_id": "extended-gcd",
+        "expected_memory_ids": [
+          "mem-5af541c535930d6d03e9aac5647d397a"
+        ],
+        "messages": [
+          {
+            "content": "You are a coding agent.",
+            "role": "system",
+            "tool_call_id": null,
+            "tool_calls": [],
+            "tool_name": null
+          },
+          {
+            "content": "Implement extended gcd and preserve the Bezout invariant at the b == 0 base case.",
+            "role": "user",
+            "tool_call_id": null,
+            "tool_calls": [],
+            "tool_name": null
+          }
+        ],
+        "scope": "project:math",
+        "task": "Implement extended gcd and preserve the Bezout invariant at the b == 0 base case."
+      }
+    ],
+    "entries": [
+      {
+        "confidence": 0.95,
+        "content_sha256": "ca65ef2b34a37b5a285ccfc61360e8aa2a546c18eeb747a1aa645ba6472a8818",
+        "created_seq": 1,
+        "invalidation_reason": null,
+        "kind": "procedure",
+        "memory_id": "mem-8bc63aaaee2754011daf765d83321d9f",
+        "schema_version": "1",
+        "scope": "project:acm",
+        "source_refs": [
+          "two_sum.py"
+        ],
+        "source_run_id": "semantic-context-fixture",
+        "status": "active",
+        "supersedes": null,
+        "tags": [
+          "hash-map",
+          "two-sum"
+        ],
+        "text": "Two-sum complement invariant: save each prior value in a hash map before scanning the next value; duplicate values must remain valid.",
+        "updated_seq": 1
+      },
+      {
+        "confidence": 0.95,
+        "content_sha256": "5a9f89bef246ffb0c95a297755a9d65030d9a8717dd0cc836e90dc309bb33eda",
+        "created_seq": 2,
+        "invalidation_reason": null,
+        "kind": "fact",
+        "memory_id": "mem-5af541c535930d6d03e9aac5647d397a",
+        "schema_version": "1",
+        "scope": "project:math",
+        "source_refs": [
+          "extended_gcd.py"
+        ],
+        "source_run_id": "semantic-context-fixture",
+        "status": "active",
+        "supersedes": null,
+        "tags": [
+          "bezout",
+          "extended-gcd"
+        ],
+        "text": "Extended Euclid invariant: a*x + b*y equals the current gcd, and the b == 0 base case returns Bezout coefficients.",
+        "updated_seq": 2
+      },
+      {
+        "confidence": 0.6,
+        "content_sha256": "d46b6b36c852f1dbfca6f0c07b0f06b38a71cd0c08d2016f0a6a97b794c724d2",
+        "created_seq": 3,
+        "invalidation_reason": null,
+        "kind": "procedure",
+        "memory_id": "mem-7aa0e6e87998685598d6ceebc718871a",
+        "schema_version": "1",
+        "scope": "global",
+        "source_refs": [],
+        "source_run_id": "semantic-context-fixture",
+        "status": "active",
+        "supersedes": null,
+        "tags": [
+          "binary-search"
+        ],
+        "text": "Binary search keeps a half-open interval and recomputes the midpoint without changing the public API.",
+        "updated_seq": 3
+      },
+      {
+        "confidence": 0.7,
+        "content_sha256": "b8a1e7de3933980db38b666a6f03a988360548a04e5e455d1021339a43482668",
+        "created_seq": 4,
+        "invalidation_reason": null,
+        "kind": "decision",
+        "memory_id": "mem-46ea806aa44ad5d91119faf4bb2dd730",
+        "schema_version": "1",
+        "scope": "global",
+        "source_refs": [],
+        "source_run_id": "semantic-context-fixture",
+        "status": "active",
+        "supersedes": null,
+        "tags": [
+          "testing"
+        ],
+        "text": "Visible tests are the authoritative gate before accepting a complete coding-agent snapshot.",
+        "updated_seq": 4
+      }
+    ],
+    "fingerprint": "7df53ef7bb85650f36099c8f43c1fede298bf138f8b907900aca01d355ab6234"
+  },
+  "kind": "contextopt.semantic-context-eval.report",
+  "model_calls": 0,
+  "runs": [
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038",
+      "policy": "recent",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038",
+      "policy": "recent",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038",
+      "policy": "recent",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "c83370c43f774be9157fefaad08e4b08b4524241b2d8d5a03d95e769c3efe685",
+      "policy": "recent",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 143,
+      "selected_context_tokens": 183,
+      "selected_memory_ids": [
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "c83370c43f774be9157fefaad08e4b08b4524241b2d8d5a03d95e769c3efe685",
+      "policy": "recent",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 143,
+      "selected_context_tokens": 183,
+      "selected_memory_ids": [
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "c83370c43f774be9157fefaad08e4b08b4524241b2d8d5a03d95e769c3efe685",
+      "policy": "recent",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 143,
+      "selected_context_tokens": 183,
+      "selected_memory_ids": [
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 1,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "af462574caa8d71c47aa29bb077b10b885fe76fab2e80e91ece244598b1c5c27",
+      "policy": "recent",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 290,
+      "selected_context_tokens": 330,
+      "selected_memory_ids": [
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 1,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "af462574caa8d71c47aa29bb077b10b885fe76fab2e80e91ece244598b1c5c27",
+      "policy": "recent",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 290,
+      "selected_context_tokens": 330,
+      "selected_memory_ids": [
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 1,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "af462574caa8d71c47aa29bb077b10b885fe76fab2e80e91ece244598b1c5c27",
+      "policy": "recent",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 290,
+      "selected_context_tokens": 330,
+      "selected_memory_ids": [
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038",
+      "policy": "topk",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038",
+      "policy": "topk",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038",
+      "policy": "topk",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4",
+      "policy": "topk",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 185,
+      "selected_context_tokens": 225,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4",
+      "policy": "topk",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 185,
+      "selected_context_tokens": 225,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4",
+      "policy": "topk",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 185,
+      "selected_context_tokens": 225,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 1,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048",
+      "policy": "topk",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 328,
+      "selected_context_tokens": 368,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 1,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048",
+      "policy": "topk",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 328,
+      "selected_context_tokens": 368,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 1,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048",
+      "policy": "topk",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 328,
+      "selected_context_tokens": 368,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038",
+      "policy": "density",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038",
+      "policy": "density",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038",
+      "policy": "density",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4",
+      "policy": "density",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 185,
+      "selected_context_tokens": 225,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4",
+      "policy": "density",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 185,
+      "selected_context_tokens": 225,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4",
+      "policy": "density",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 185,
+      "selected_context_tokens": 225,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 1,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048",
+      "policy": "density",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 328,
+      "selected_context_tokens": 368,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 1,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048",
+      "policy": "density",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 328,
+      "selected_context_tokens": 368,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 1,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048",
+      "policy": "density",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 328,
+      "selected_context_tokens": 368,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038",
+      "policy": "submodular",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038",
+      "policy": "submodular",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038",
+      "policy": "submodular",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4",
+      "policy": "submodular",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 185,
+      "selected_context_tokens": 225,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4",
+      "policy": "submodular",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 185,
+      "selected_context_tokens": 225,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4",
+      "policy": "submodular",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 185,
+      "selected_context_tokens": 225,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 1,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "03de4a4d8a9580a7291e5b1598e5c8bc29cd5d4dda1ba9177a2b7bd9a5c03472",
+      "policy": "submodular",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 332,
+      "selected_context_tokens": 372,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 1,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "03de4a4d8a9580a7291e5b1598e5c8bc29cd5d4dda1ba9177a2b7bd9a5c03472",
+      "policy": "submodular",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 332,
+      "selected_context_tokens": 372,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 475,
+      "case_id": "two-sum",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 1,
+      "expected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f"
+      ],
+      "messages_sha256": "03de4a4d8a9580a7291e5b1598e5c8bc29cd5d4dda1ba9177a2b7bd9a5c03472",
+      "policy": "submodular",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 332,
+      "selected_context_tokens": 372,
+      "selected_memory_ids": [
+        "mem-8bc63aaaee2754011daf765d83321d9f",
+        "mem-7aa0e6e87998685598d6ceebc718871a"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981",
+      "policy": "recent",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981",
+      "policy": "recent",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981",
+      "policy": "recent",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "17356a7a2fcbaeee0b11bf5674ee066d3cbc2ab1029bae92f75028fa489c4155",
+      "policy": "recent",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 143,
+      "selected_context_tokens": 183,
+      "selected_memory_ids": [
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "17356a7a2fcbaeee0b11bf5674ee066d3cbc2ab1029bae92f75028fa489c4155",
+      "policy": "recent",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 143,
+      "selected_context_tokens": 183,
+      "selected_memory_ids": [
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "17356a7a2fcbaeee0b11bf5674ee066d3cbc2ab1029bae92f75028fa489c4155",
+      "policy": "recent",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 143,
+      "selected_context_tokens": 183,
+      "selected_memory_ids": [
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 0,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c",
+      "policy": "recent",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 471,
+      "selected_context_tokens": 511,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 0,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c",
+      "policy": "recent",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 471,
+      "selected_context_tokens": 511,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 0,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c",
+      "policy": "recent",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 471,
+      "selected_context_tokens": 511,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981",
+      "policy": "topk",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981",
+      "policy": "topk",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981",
+      "policy": "topk",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b",
+      "policy": "topk",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 181,
+      "selected_context_tokens": 221,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b",
+      "policy": "topk",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 181,
+      "selected_context_tokens": 221,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b",
+      "policy": "topk",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 181,
+      "selected_context_tokens": 221,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 0,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c",
+      "policy": "topk",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 471,
+      "selected_context_tokens": 511,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 0,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c",
+      "policy": "topk",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 471,
+      "selected_context_tokens": 511,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 0,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c",
+      "policy": "topk",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 471,
+      "selected_context_tokens": 511,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981",
+      "policy": "density",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981",
+      "policy": "density",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981",
+      "policy": "density",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b",
+      "policy": "density",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 181,
+      "selected_context_tokens": 221,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b",
+      "policy": "density",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 181,
+      "selected_context_tokens": 221,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b",
+      "policy": "density",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 181,
+      "selected_context_tokens": 221,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 0,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c",
+      "policy": "density",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 471,
+      "selected_context_tokens": 511,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 0,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c",
+      "policy": "density",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 471,
+      "selected_context_tokens": 511,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 0,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c",
+      "policy": "density",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 471,
+      "selected_context_tokens": 511,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981",
+      "policy": "submodular",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981",
+      "policy": "submodular",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 128,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 3,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981",
+      "policy": "submodular",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 0,
+      "selected_context_tokens": 40,
+      "selected_memory_ids": [],
+      "selected_recall": 0.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b",
+      "policy": "submodular",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 181,
+      "selected_context_tokens": 221,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b",
+      "policy": "submodular",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 181,
+      "selected_context_tokens": 221,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 256,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 2,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b",
+      "policy": "submodular",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 181,
+      "selected_context_tokens": 221,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 0,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c",
+      "policy": "submodular",
+      "repetition": 0,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 471,
+      "selected_context_tokens": 511,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 0,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c",
+      "policy": "submodular",
+      "repetition": 1,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 471,
+      "selected_context_tokens": 511,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    },
+    {
+      "budget_compliant": true,
+      "budget_tokens": 512,
+      "candidate_tokens": 471,
+      "case_id": "extended-gcd",
+      "deterministic": true,
+      "error": null,
+      "evicted_candidates": 0,
+      "expected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a"
+      ],
+      "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c",
+      "policy": "submodular",
+      "repetition": 2,
+      "replayable": true,
+      "retrieved_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "retrieved_recall": 1.0,
+      "selected_candidate_tokens": 471,
+      "selected_context_tokens": 511,
+      "selected_memory_ids": [
+        "mem-5af541c535930d6d03e9aac5647d397a",
+        "mem-7aa0e6e87998685598d6ceebc718871a",
+        "mem-46ea806aa44ad5d91119faf4bb2dd730"
+      ],
+      "selected_recall": 1.0
+    }
+  ],
+  "schema_version": "1",
+  "store_revision": 4,
+  "summary": {
+    "budget_compliant_rate": 1.0,
+    "cell_count": 72,
+    "deterministic_rate": 1.0,
+    "failed_count": 0,
+    "mean_evicted_candidates": 1.833333,
+    "mean_retrieved_candidates": 3.0,
+    "mean_selected_candidates": 1.166667,
+    "model_calls": 0,
+    "replayable_rate": 1.0,
+    "retrieved_recall_rate": 1.0,
+    "selected_recall_rate": 0.541667
+  }
+}

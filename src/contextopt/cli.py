@@ -24,6 +24,7 @@ from contextopt.evaluation import (
     AgentEvalConfig,
     ContextRoutingEvalConfig,
     RecoveryEvalConfig,
+    SemanticContextEvalConfig,
     SemanticMemoryEvalConfig,
     build_openai_model_factory,
     render_agent_evaluation_console,
@@ -34,12 +35,16 @@ from contextopt.evaluation import (
     render_recovery_console,
     render_recovery_html,
     render_recovery_markdown,
+    render_semantic_context_console,
+    render_semantic_context_html,
+    render_semantic_context_markdown,
     render_semantic_memory_console,
     render_semantic_memory_html,
     render_semantic_memory_markdown,
     run_agent_evaluation,
     run_context_routing_evaluation,
     run_recovery_evaluation,
+    run_semantic_context_evaluation,
     run_semantic_memory_evaluation,
 )
 from contextopt.models import ContextItem, ObjectiveWeights, SelectionProblem
@@ -313,6 +318,25 @@ def _semantic_memory_eval(args: argparse.Namespace) -> int:
     _write(args.markdown, render_semantic_memory_markdown(report))
     _write(args.html, render_semantic_memory_html(report))
     return 0
+
+
+def _semantic_context_eval(args: argparse.Namespace) -> int:
+    policies = tuple(item.strip() for item in args.policies.split(",") if item.strip())
+    budgets = tuple(
+        int(item.strip()) for item in args.budgets.split(",") if item.strip()
+    )
+    report = run_semantic_context_evaluation(
+        SemanticContextEvalConfig(
+            policies=policies,
+            budgets=budgets,
+            repetitions=args.repetitions,
+        )
+    )
+    print(render_semantic_context_console(report), end="\n")
+    _write(args.output, json.dumps(report, indent=2, sort_keys=True) + "\n")
+    _write(args.markdown, render_semantic_context_markdown(report))
+    _write(args.html, render_semantic_context_html(report))
+    return 0 if report["summary"]["failed_count"] == 0 else 1
 
 
 def _load_branch_case(path: str) -> BranchCase:
@@ -1079,6 +1103,35 @@ def build_parser() -> argparse.ArgumentParser:
         "--html", help="write a self-contained retrieval dashboard"
     )
     memory_eval.set_defaults(handler=_semantic_memory_eval)
+
+    semantic_context_eval = subparsers.add_parser(
+        "semantic-context-eval",
+        help=(
+            "measure deterministic automatic durable-memory context candidates "
+            "without a model provider"
+        ),
+    )
+    semantic_context_eval.add_argument(
+        "--policies",
+        default="recent,topk,density,submodular",
+        help="comma-separated context policies",
+    )
+    semantic_context_eval.add_argument(
+        "--budgets",
+        default="128,256,512",
+        help="comma-separated deterministic token budgets",
+    )
+    semantic_context_eval.add_argument("--repetitions", type=int, default=3)
+    semantic_context_eval.add_argument(
+        "--output", help="write the complete JSON report"
+    )
+    semantic_context_eval.add_argument(
+        "--markdown", help="write the summary as Markdown"
+    )
+    semantic_context_eval.add_argument(
+        "--html", help="write a self-contained evaluation dashboard"
+    )
+    semantic_context_eval.set_defaults(handler=_semantic_context_eval)
 
     propose = subparsers.add_parser(
         "propose-case",

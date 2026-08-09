@@ -41,3 +41,8 @@ jobs:
           python -m contextopt memory-eval
           --repetitions 2
           --limit 3
+      - name: Smoke semantic-context evaluation
+        run: >-
+          python -m contextopt semantic-context-eval
+          --repetitions 2
+          --budgets 128,512

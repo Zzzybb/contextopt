@@ -256,6 +256,10 @@ recompute the complete chain because there is no secret or external trust anchor
   the opt-in semantic context mode performs only the bounded candidate projection described
   above. `global` entries can be inherited by a project scope, and neither path overrides the
   current workspace ledger.
+- The provider-free `semantic-context-eval` matrix exercises this projection across fixed ACM/math
+  tasks and `recent`/`topk`/`density`/`submodular` policies. It reports retrieved versus selected
+  candidate ids, fixture-label retention, token-budget evictions, receipt determinism, and
+  store-free replay; it makes zero model calls and does not claim semantic understanding.
 
 ### ContextOpt engine — v0.1 algorithms, v0.3 live integration
 
@@ -378,6 +382,21 @@ python -m contextopt memory-eval \
 The fixed report keeps hit@1/hit@k, MRR, negative-query pass rate, scope isolation, invalidated
 memory exclusion, and repeated-search determinism separate from coding success. The committed
 artifact is documented in [`experiments/v0.9-semantic-memory`](experiments/v0.9-semantic-memory/README.md).
+
+Evaluate automatic durable-memory candidates at the context boundary:
+
+```bash
+python -m contextopt semantic-context-eval \
+  --repetitions 3 --budgets 128,256,512 \
+  --output experiments/v0.9-semantic-context/report.json \
+  --markdown experiments/v0.9-semantic-context/report.md \
+  --html experiments/v0.9-semantic-context/report.html
+```
+
+The committed JSON/Markdown/HTML artifact is documented in
+[`experiments/v0.9-semantic-context`](experiments/v0.9-semantic-context/README.md). Its recall
+labels mean exact retention of the fixed fixture memory id, not embedding quality, model use,
+or coding-task success.
 
 The script drives this real sequence:
 
@@ -759,6 +778,8 @@ The idempotent feedback loop is documented in the [English PR note](docs/pr/0001
 and [Chinese version](docs/pr/0001-v0.9-memory-feedback.zh-CN.md).
 The opt-in semantic context projection is documented in [the English PR note](docs/pr/0001-v0.9-semantic-memory-context.md)
 and [Chinese version](docs/pr/0001-v0.9-semantic-memory-context.zh-CN.md).
+The provider-free automatic candidate matrix is documented in [the English PR note](docs/pr/0001-v0.9-semantic-context-evaluation.md)
+and [Chinese version](docs/pr/0001-v0.9-semantic-context-evaluation.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers. The
   manual workflow is the reproducibility entry point; the checked-in scripted artifacts remain
