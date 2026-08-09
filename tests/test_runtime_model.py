@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import json
 import threading
 import unittest
+import urllib.error
 from collections import deque
 from collections.abc import Mapping, Sequence
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -107,6 +109,13 @@ class _BlockingResponse:
 
     def close(self) -> None:
         self.closed.set()
+
+
+class _CancelDuringBackoffEvent(threading.Event):
+    def wait(self, timeout: float | None = None) -> bool:
+        del timeout
+        self.set()
+        return True
 
 
 def _model_request(*, turn: int = 1) -> ModelRequest:
@@ -222,8 +231,7 @@ class OpenAICompatibleModelTests(unittest.IsolatedAsyncioTestCase):
                 timeout_seconds=5,
                 max_retries=2,
             )
-            with patch("contextopt.runtime.model.time.sleep") as sleep:
-                response = await model.complete(_model_request())
+            response = await model.complete(_model_request())
 
         self.assertEqual(response.response_id, "chatcmpl-test")
         self.assertEqual(len(server.requests), 2)
@@ -231,7 +239,34 @@ class OpenAICompatibleModelTests(unittest.IsolatedAsyncioTestCase):
             server.requests[0]["idempotency_key"],
             server.requests[1]["idempotency_key"],
         )
-        sleep.assert_called_once_with(0.25)
+
+    async def test_cancellation_interrupts_retry_backoff(self) -> None:
+        model = OpenAICompatibleModel(
+            base_url="https://example.test/v1",
+            api_key="key",
+            model="unit-model",
+            max_retries=2,
+        )
+        cancellation = _CancelDuringBackoffEvent()
+        error = urllib.error.HTTPError(
+            "https://example.test/v1/chat/completions",
+            429,
+            "rate limited",
+            hdrs=None,
+            fp=io.BytesIO(b"rate limited"),
+        )
+        with (
+            patch(
+                "contextopt.runtime.model.urllib.request.urlopen",
+                side_effect=error,
+            ) as urlopen,
+            self.assertRaises(ModelError) as raised,
+        ):
+            model._complete_sync(_model_request(), "request-key", cancellation)
+
+        self.assertEqual(raised.exception.code, "cancelled")
+        self.assertFalse(raised.exception.retryable)
+        urlopen.assert_called_once()
 
     async def test_does_not_retry_401_or_expose_api_key(self) -> None:
         secret = "must-not-appear-in-errors"
@@ -245,10 +280,7 @@ class OpenAICompatibleModelTests(unittest.IsolatedAsyncioTestCase):
                 timeout_seconds=5,
                 max_retries=3,
             )
-            with (
-                patch("contextopt.runtime.model.time.sleep") as sleep,
-                self.assertRaises(ModelError) as raised,
-            ):
+            with self.assertRaises(ModelError) as raised:
                 await model.complete(_model_request())
 
         self.assertNotIn(secret, json.dumps(model.configuration, sort_keys=True))
@@ -262,7 +294,6 @@ class OpenAICompatibleModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(server.requests), 1)
         self.assertEqual(server.requests[0]["authorization"], f"Bearer {secret}")
         self.assertIsNotNone(server.requests[0]["idempotency_key"])
-        sleep.assert_not_called()
 
     async def test_idempotency_key_changes_when_logical_request_changes(self) -> None:
         with _LocalModelServer([(200, _tool_call_response())]) as server:

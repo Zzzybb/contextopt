@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import json
 import threading
-import time
 import urllib.error
 import urllib.request
 from collections.abc import Mapping, Sequence
@@ -440,7 +439,12 @@ class OpenAICompatibleModel:
                 not last_error.retryable or attempt >= self.max_retries
             ):
                 raise last_error
-            time.sleep(min(0.25 * (2**attempt), 2.0))
+            if cancellation.wait(min(0.25 * (2**attempt), 2.0)):
+                raise ModelError(
+                    "model request cancelled",
+                    code="cancelled",
+                    retryable=False,
+                ) from last_error
         raise last_error or ModelError("model request failed", code="unknown")
 
     @staticmethod
