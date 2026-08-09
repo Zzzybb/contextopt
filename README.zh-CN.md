@@ -60,6 +60,9 @@ OpenAI-compatible adapter 默认通过 `Idempotency-Key` 发送它，但是否�
 检索是可复现的 lexical 匹配，写入按内容 identity 幂等，`memory_save` 可以显式 supersede
 旧记忆，`memory_invalidate` 可以写入失效原因。它是下一轮的
 提示和 provenance，不是当前 workspace 文件状态的证明，也不会自动塞进每一轮 prompt。
+如果记忆带有 `source_refs`，成功的 `create_file` / `replace_text` 会在对应文件变更后
+自动追加失效事件；进程在写入后、记忆失效前停止时，reconcile 也会补做这一步。非文件
+原因导致的过期仍可通过 `memory_invalidate` 显式记录。
 
 ## 为什么适合面试 Agent 开发岗
 
@@ -290,6 +293,8 @@ python -m contextopt agent-eval \
   和 [英文版](docs/pr/0001-v0.9-semantic-memory.md)
 - v0.9 语义记忆检索评测：[docs/pr/0001-v0.9-semantic-memory-evaluation.zh-CN.md](docs/pr/0001-v0.9-semantic-memory-evaluation.zh-CN.md)
   和 [英文版](docs/pr/0001-v0.9-semantic-memory-evaluation.md)
+- v0.9 基于 source_refs 的记忆自动失效：[docs/pr/0001-v0.9-source-aware-memory-invalidation.zh-CN.md](docs/pr/0001-v0.9-source-aware-memory-invalidation.zh-CN.md)
+  和 [英文版](docs/pr/0001-v0.9-source-aware-memory-invalidation.md)
 - v0.7 编排补充的中文回顾：[docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md](docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、

@@ -328,6 +328,11 @@ without `--allow-write`, that `memory_search` returns revision and matched-term 
 that save/supersede/invalidate remain explicit and replay-safe, and that the store identity
 participates in the runtime tool configuration fingerprint.
 
+The runtime-tool suite also covers source-aware freshness: a memory citing a workspace path is
+automatically invalidated after a successful write to that exact path, and the same update is
+replayed when a prepared write is recovered from its durable postcondition. This protects the
+long-horizon boundary from silently reusing a fact about code that has just changed.
+
 These checks measure persistence, provenance, permission boundaries, and retry safety. They do
 not measure semantic recall, embedding quality, summarization quality, or whether a model uses a
 remembered item to produce a better patch. The current implementation intentionally uses a

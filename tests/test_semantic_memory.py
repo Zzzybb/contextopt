@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import tempfile
 import unittest
@@ -15,6 +16,7 @@ from contextopt.runtime import (
     WorkspaceTools,
     read_events,
 )
+from contextopt.runtime.tool_state import tool_call_fingerprint
 
 
 class SemanticMemoryStoreTests(unittest.TestCase):
@@ -80,6 +82,40 @@ class SemanticMemoryStoreTests(unittest.TestCase):
                 invalidated = store.invalidate(new.entry.memory_id, "obsolete rule")
                 self.assertEqual(invalidated.status, "invalidated")
                 self.assertEqual(store.search("duplicate tool"), ())
+
+    def test_source_ref_invalidation_replays_across_processes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "memory.jsonl"
+            with SemanticMemoryStore(path) as store:
+                stale = store.put(
+                    "The parser accepts the old token framing.",
+                    scope="project:demo",
+                    kind="fact",
+                    source_refs=("./src/parser.py",),
+                )
+                unrelated = store.put(
+                    "The parser accepts the fixture framing.",
+                    scope="project:demo",
+                    kind="fact",
+                    source_refs=("src/other.py",),
+                )
+                invalidated = store.invalidate_source_refs(
+                    "src\\parser.py", "workspace source changed"
+                )
+                self.assertEqual(
+                    tuple(item.memory_id for item in invalidated),
+                    (stale.entry.memory_id,),
+                )
+                self.assertEqual(store.get(stale.entry.memory_id).status, "invalidated")
+                self.assertTrue(store.get(unrelated.entry.memory_id).active)
+                self.assertEqual(store.search("old token"), ())
+
+            with SemanticMemoryStore(path) as reopened:
+                self.assertEqual(reopened.revision, 3)
+                self.assertEqual(
+                    reopened.get(stale.entry.memory_id).status, "invalidated"
+                )
+                self.assertTrue(reopened.get(unrelated.entry.memory_id).active)
 
 
 class SemanticMemoryToolTests(unittest.IsolatedAsyncioTestCase):
@@ -307,6 +343,89 @@ class SemanticMemoryToolTests(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(invalidated.ok)
                 self.assertIn(
                     "memory_invalidate", {item.name for item in tools.definitions}
+                )
+                tools.close()
+
+    async def test_workspace_write_invalidates_source_aware_memory(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "workspace"
+            workspace.mkdir()
+            source = workspace / "main.py"
+            source.write_bytes(b"return 0\n")
+            with SemanticMemoryStore(root / "memory.jsonl") as store:
+                saved = store.put(
+                    "The solver currently returns zero.",
+                    scope="project:demo",
+                    kind="fact",
+                    source_refs=("./main.py",),
+                )
+                tools = WorkspaceTools(
+                    workspace,
+                    permissions=RunPermissions(allow_write=True),
+                    memory_store=store,
+                )
+                call = ToolCall(
+                    id="replace-source",
+                    name="replace_text",
+                    arguments_json=json.dumps(
+                        {
+                            "path": "main.py",
+                            "old_text": "return 0",
+                            "new_text": "return 1",
+                            "expected_sha256": hashlib.sha256(
+                                b"return 0\n"
+                            ).hexdigest(),
+                        }
+                    ),
+                )
+                plan = await tools.prepare(
+                    call, "replace-source-operation", tool_call_fingerprint(call)
+                )
+                outcome = await tools.execute_prepared(plan)
+                self.assertTrue(outcome.ok)
+                self.assertEqual(
+                    outcome.metadata["invalidated_memory_ids"],
+                    [saved.entry.memory_id],
+                )
+                self.assertEqual(store.search("solver returns zero"), ())
+                self.assertEqual(source.read_bytes(), b"return 1\n")
+
+                recovered_source = workspace / "recovered.py"
+                recovered_source.write_bytes(b"return 0\n")
+                recovered = store.put(
+                    "The recovery fixture currently returns zero.",
+                    scope="project:demo",
+                    kind="fact",
+                    source_refs=("recovered.py",),
+                )
+                recovered_call = ToolCall(
+                    id="replace-recovered",
+                    name="replace_text",
+                    arguments_json=json.dumps(
+                        {
+                            "path": "recovered.py",
+                            "old_text": "return 0",
+                            "new_text": "return 1",
+                            "expected_sha256": hashlib.sha256(
+                                b"return 0\n"
+                            ).hexdigest(),
+                        }
+                    ),
+                )
+                recovered_plan = await tools.prepare(
+                    recovered_call,
+                    "replace-recovered-operation",
+                    tool_call_fingerprint(recovered_call),
+                )
+                # Simulate a process stop after the file replace but before the
+                # advisory memory ledger append.
+                recovered_source.write_bytes(b"return 1\n")
+                reconciliation = await tools.reconcile(recovered_plan)
+                self.assertEqual(reconciliation.action, "completed")
+                self.assertEqual(store.search("recovery fixture returns zero"), ())
+                self.assertEqual(
+                    store.get(recovered.entry.memory_id).status, "invalidated"
                 )
                 tools.close()
 

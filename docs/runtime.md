@@ -233,6 +233,13 @@ and invalidation preserve the history rather than silently editing it. `global` 
 visible to a requested project scope, and search results include matched terms, revision, and
 memory ids for auditability.
 
+`source_refs` also define a conservative freshness boundary. When a successful `create_file` or
+`replace_text` changes a cited workspace-relative path, the store appends `memory.invalidated`
+events for matching active entries. If the process stops after the file write but before that
+ledger update, write reconciliation repeats the same invalidation step. Matching is exact after
+slash and case normalization, so unrelated files are not invalidated; non-file staleness still
+requires an explicit `memory_invalidate` call.
+
 This layer is deliberately lexical and provider-free. It has no embedding index, automatic
 consolidation, or learned confidence calibration. The model must ask for memory explicitly, and
 the result is an advisory hint—not proof that a mutable workspace still satisfies the remembered

@@ -35,6 +35,7 @@ _MAX_SCOPE_CHARS = 128
 _MAX_TAG_CHARS = 64
 _MAX_TAGS = 24
 _MAX_SOURCE_REFS = 32
+_MAX_SOURCE_REF_CHARS = 256
 
 
 def _string(value: Any, label: str, *, allow_empty: bool = False) -> str:
@@ -92,6 +93,15 @@ def _string_tuple(
 
 def _tokens(text: str) -> tuple[str, ...]:
     return tuple(piece.casefold() for piece in _TOKEN_RE.findall(text))
+
+
+def _source_ref_key(value: str) -> str:
+    """Normalize a workspace source reference for conservative exact matching."""
+
+    normalized = value.replace("\\", "/").strip()
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+    return normalized.casefold()
 
 
 def _digest_identity(*, text: str, kind: str, scope: str, tags: Sequence[str]) -> str:
@@ -471,6 +481,44 @@ class SemanticMemoryStore:
                 {"memory_id": memory_id, "reason": normalized_reason},
             )
             return self._entries[memory_id]
+
+    def invalidate_source_refs(
+        self, source_ref: str, reason: str
+    ) -> tuple[SemanticMemoryEntry, ...]:
+        """Invalidate active entries that cite one changed workspace source.
+
+        Matching is deliberately exact after slash/case normalization.  A memory
+        citing ``src/main.py`` is stale when that file changes, while a memory
+        citing ``src/main.py.bak`` remains untouched.  The invalidations are
+        ordinary append-only events, so a fresh process observes the same result.
+        """
+
+        normalized_source_ref = _key(
+            source_ref, "source_ref", maximum=_MAX_SOURCE_REF_CHARS
+        )
+        normalized_reason = _key(reason, "reason", maximum=256)
+        source_key = _source_ref_key(normalized_source_ref)
+        with self._lock:
+            matching = tuple(
+                sorted(
+                    (
+                        entry
+                        for entry in self._entries.values()
+                        if entry.active
+                        and any(
+                            _source_ref_key(reference) == source_key
+                            for reference in entry.source_refs
+                        )
+                    ),
+                    key=lambda item: item.memory_id,
+                )
+            )
+            for entry in matching:
+                self._append(
+                    "memory.invalidated",
+                    {"memory_id": entry.memory_id, "reason": normalized_reason},
+                )
+            return tuple(self._entries[entry.memory_id] for entry in matching)
 
     def search(
         self,

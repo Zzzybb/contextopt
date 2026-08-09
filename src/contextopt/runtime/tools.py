@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 import unicodedata
 from collections.abc import Callable, Mapping
+from dataclasses import replace
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
@@ -327,12 +328,34 @@ class WorkspaceTools:
         if (
             plan.replay_policy == "reconcile"
             and outcome.ok
-            and outcome.to_dict() != plan.planned_outcome.to_dict()
+            and not self._matches_planned_outcome(outcome, plan.planned_outcome)
         ):
             raise RuntimeError(
                 "tool result did not match its planned successful outcome"
             )
         return outcome
+
+    @staticmethod
+    def _matches_planned_outcome(actual: ToolOutcome, planned: ToolOutcome) -> bool:
+        """Compare a replay result while allowing advisory memory metadata.
+
+        Workspace writes are the authoritative side effect.  Source-aware memory
+        invalidation is an auditable advisory update that may add dynamic ids,
+        revision, or a warning after the write; those fields must not make a
+        prepared write look like a different file operation during replay.
+        """
+
+        actual_data = actual.to_dict()
+        planned_data = planned.to_dict()
+        actual_metadata = dict(actual_data["metadata"])
+        for key in (
+            "invalidated_memory_ids",
+            "memory_revision",
+            "memory_invalidation_warning",
+        ):
+            actual_metadata.pop(key, None)
+        actual_data["metadata"] = actual_metadata
+        return actual_data == planned_data
 
     async def reconcile(self, plan: ToolExecutionPlan) -> ToolReconciliation:
         """Inspect an interrupted plan without executing its side effect."""
@@ -402,6 +425,35 @@ class WorkspaceTools:
                 "bytes_written": bytes_written,
             },
         )
+
+    def _invalidate_workspace_memories(
+        self, relative: str
+    ) -> tuple[tuple[str, ...], str | None]:
+        if self._memory_store is None:
+            return (), None
+        reason = f"workspace source changed: {relative}"[:256]
+        try:
+            entries = self._memory_store.invalidate_source_refs(relative, reason)
+        except Exception as exc:  # pragma: no cover - defensive advisory boundary
+            return (), type(exc).__name__
+        return tuple(entry.memory_id for entry in entries), None
+
+    def _record_workspace_memory_invalidation(
+        self, outcome: ToolOutcome, relative: str
+    ) -> ToolOutcome:
+        invalidated_ids, warning = self._invalidate_workspace_memories(relative)
+        if not invalidated_ids and warning is None:
+            return outcome
+        metadata = dict(outcome.metadata)
+        if invalidated_ids:
+            metadata["invalidated_memory_ids"] = list(invalidated_ids)
+            if self._memory_store is not None:
+                metadata["memory_revision"] = self._memory_store.revision
+        if warning is not None:
+            metadata["memory_invalidation_warning"] = (
+                f"semantic memory invalidation failed ({warning})"
+            )
+        return replace(outcome, metadata=metadata)
 
     def _prepare_sync(
         self,
@@ -667,6 +719,12 @@ class WorkspaceTools:
                 reason=f"cannot verify workspace state: {observation_error}",
             )
         if self._condition_matches(current, plan.postconditions):
+            relative = current.get("path")
+            if isinstance(relative, str):
+                # The write may have completed immediately before a process stop;
+                # reconcile the source-aware memory boundary even when no retry is
+                # needed for the workspace side effect.
+                self._invalidate_workspace_memories(relative)
             return ToolReconciliation(
                 action="completed",
                 reason="workspace already matches the planned postcondition",
@@ -1069,7 +1127,9 @@ class WorkspaceTools:
             handle.flush()
             os.fsync(handle.fileno())
         digest = _sha256(encoded)
-        return self._create_success_outcome(call, relative, encoded, digest)
+        return self._record_workspace_memory_invalidation(
+            self._create_success_outcome(call, relative, encoded, digest), relative
+        )
 
     def _replace_text(
         self, call: ToolCall, arguments: Mapping[str, Any]
@@ -1125,13 +1185,16 @@ class WorkspaceTools:
             if temporary_name is not None:
                 Path(temporary_name).unlink(missing_ok=True)
         new_digest = _sha256(encoded)
-        return self._replace_success_outcome(
-            call,
+        return self._record_workspace_memory_invalidation(
+            self._replace_success_outcome(
+                call,
+                relative,
+                digest,
+                new_digest,
+                expected_occurrences,
+                len(encoded),
+            ),
             relative,
-            digest,
-            new_digest,
-            expected_occurrences,
-            len(encoded),
         )
 
     def _memory_search(

@@ -241,9 +241,13 @@ recompute the complete chain because there is no secret or external trust anchor
   matched-term evidence, provenance, and a revision/fingerprint. `memory_save` and
   `memory_invalidate` are available only with `--allow-write`; saves are content-idempotent,
   can supersede an older entry, and can be safely retried after a crash.
+- Source references are first-class: a successful `create_file` or `replace_text` mutation
+  automatically appends invalidation events for active memories citing that exact workspace
+  path, including the crash-reconcile path. Explicit invalidation remains available for facts
+  that become stale for non-file reasons.
 - The store is advisory: the agent must call the tools explicitly, `global` entries can be
-  inherited by a project scope, and invalidation/supersession remain explicit. It is not
-  silently injected into every prompt and it never overrides the current workspace ledger.
+  inherited by a project scope, and it is not silently injected into every prompt or allowed to
+  override the current workspace ledger.
 
 ### ContextOpt engine — v0.1 algorithms, v0.3 live integration
 
@@ -278,8 +282,9 @@ recompute the complete chain because there is no secret or external trust anchor
 - A claim that the scripted demo measures model reasoning or real-world issue resolution.
 - Embedding-based retrieval, automatic memory consolidation, learned confidence calibration,
   or a statistically powered real-model coding benchmark. The v0.9 memory store is an
-  explicit lexical notebook; the harness is still a deterministic scripted comparison by
-  default and does not pretend memory receipts or protocol acceptance are model coding accuracy.
+  explicit lexical notebook with source-aware invalidation; the harness is still a
+  deterministic scripted comparison by default and does not pretend memory receipts or
+  protocol acceptance are model coding accuracy.
 - Exactly-once external side effects. Recovery is tool-specific and conservative;
   explicitly retrying a command can execute it again.
 
@@ -731,6 +736,8 @@ The retrieval metrics and committed dashboard are in
 [`experiments/v0.9-semantic-memory`](experiments/v0.9-semantic-memory/README.md), with the
 evaluation-specific [English PR note](docs/pr/0001-v0.9-semantic-memory-evaluation.md) and
 [Chinese version](docs/pr/0001-v0.9-semantic-memory-evaluation.zh-CN.md).
+The source-aware invalidation follow-up is documented in the [English PR note](docs/pr/0001-v0.9-source-aware-memory-invalidation.md)
+and [Chinese version](docs/pr/0001-v0.9-source-aware-memory-invalidation.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers. The
   manual workflow is the reproducibility entry point; the checked-in scripted artifacts remain
