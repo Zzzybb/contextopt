@@ -325,9 +325,10 @@ python -m contextopt agent-eval \
 故意失败的候选、正确候选、可见测试和不进入模型快照的独立隐藏 grader；报告会分开
 记录 visible success、hidden success、模型/角色调用、候选数、实际测试进程、缓存复用
 和 token 用量；同时给出描述性 Wilson 95% 区间，以及按相同 fixture/repetition 配对的
-胜/负/平、可见结果差值以及测试/token 成本均值和观测方差，不隐藏原始 ledger。每个
-run 还会记录本地墙钟 `duration_ms` 和配对耗时差值；它只是诊断指标，不是 provider
-延迟 SLA。
+胜/负/平、可见结果差值以及测试/token 成本均值和观测方差，不隐藏原始 ledger。对于
+配对二元结果，报告还会给出精确双侧 McNemar p 值；它只用于探索性的 discordant-pair
+诊断，不能当作有统计功效的显著性结论。每个 run 还会记录本地墙钟 `duration_ms` 和
+配对耗时差值；它只是诊断指标，不是 provider 延迟 SLA。
 
 如果要接入 OpenAI-compatible 模型，可使用：
 
@@ -447,6 +448,8 @@ python -m contextopt agent-eval \
 - v1.0 四任务控制产物与 adapter smoke：[docs/pr/0001-v1.0-four-fixture-control-artifact.zh-CN.md](docs/pr/0001-v1.0-four-fixture-control-artifact.zh-CN.md)
   和 [英文版](docs/pr/0001-v1.0-four-fixture-control-artifact.md)；固定 ledger 位于
   [experiments/v1.0-acm-math-4-fixtures](experiments/v1.0-acm-math-4-fixtures/README.zh-CN.md)
+- v1.0 配对结果 McNemar 诊断：[docs/pr/0001-v1.0-paired-mcnemar-evidence.zh-CN.md](docs/pr/0001-v1.0-paired-mcnemar-evidence.zh-CN.md)
+  和 [英文版](docs/pr/0001-v1.0-paired-mcnemar-evidence.md)
 - v1.0 Level 4 运行时鲁棒性矩阵：[docs/pr/0001-v1.0-robustness-eval.zh-CN.md](docs/pr/0001-v1.0-robustness-eval.zh-CN.md)
   和 [英文版](docs/pr/0001-v1.0-robustness-eval.md)；固定产物位于
   [experiments/v1.0-robustness-matrix](experiments/v1.0-robustness-matrix/README.zh-CN.md)

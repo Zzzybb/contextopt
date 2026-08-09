@@ -22,6 +22,7 @@ from contextopt.evaluation import (
     build_agent_eval_comparisons,
     build_algorithm_fixtures,
     build_openai_model_factory,
+    exact_mcnemar_pvalue,
     read_agent_evaluation_checkpoint,
     render_agent_evaluation_html,
     render_agent_evaluation_markdown,
@@ -308,6 +309,11 @@ class AgentEvaluationTests(unittest.TestCase):
         self.assertEqual(by_strategy["best_of_n"].visible_delta, 1.0)
         self.assertIsNone(by_strategy["best_of_n"].hidden_delta)
         self.assertEqual(by_strategy["best_of_n"].stddev_test_call_delta, 0.0)
+        self.assertAlmostEqual(
+            by_strategy["best_of_n"].visible_mcnemar_pvalue,
+            2 / (2**1),
+        )
+        self.assertIsNone(by_strategy["best_of_n"].hidden_mcnemar_pvalue)
         self.assertEqual(by_strategy["best_of_n"].stddev_token_delta, 0.0)
         self.assertTrue(
             all(comparison.stddev_duration_delta >= 0 for comparison in comparisons)
@@ -316,11 +322,19 @@ class AgentEvaluationTests(unittest.TestCase):
         self.assertGreaterEqual(low, 0.0)
         self.assertLessEqual(high, 1.0)
         self.assertLess(low, high)
+        self.assertAlmostEqual(exact_mcnemar_pvalue(1, 0), 1.0)
+        self.assertAlmostEqual(exact_mcnemar_pvalue(12, 0), 2 / (2**12))
+        self.assertEqual(exact_mcnemar_pvalue(0, 0), 1.0)
         markdown = render_agent_evaluation_markdown(self.report)
         self.assertIn("Visible 95% CI", markdown)
         self.assertIn("Paired comparisons", markdown)
         self.assertIn("Mean tokens Δ (stdev)", markdown)
         self.assertIn("Mean duration Δ ms (stdev)", markdown)
+        self.assertIn("Visible exact p", markdown)
+        html = render_agent_evaluation_html(self.report)
+        self.assertIn("visible exact p", html)
+        self.assertLess(html.index("visible Δ"), html.index("visible exact p"))
+        self.assertLess(html.index("visible exact p"), html.index("hidden Δ"))
 
     def test_hidden_tests_can_be_disabled_without_leaking_the_grader(self) -> None:
         report = run_agent_evaluation(

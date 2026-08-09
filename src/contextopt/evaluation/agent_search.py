@@ -25,7 +25,7 @@ import tempfile
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from html import escape
-from math import isfinite, sqrt
+from math import comb, isfinite, sqrt
 from pathlib import Path, PurePosixPath
 from statistics import fmean, pstdev
 from time import monotonic
@@ -1211,6 +1211,8 @@ class AgentEvalComparison:
     stddev_token_delta: float
     mean_duration_delta: float = 0.0
     stddev_duration_delta: float = 0.0
+    visible_mcnemar_pvalue: float = 1.0
+    hidden_mcnemar_pvalue: float | None = None
 
     def __post_init__(self) -> None:
         if self.baseline_strategy not in _STRATEGIES:
@@ -1255,6 +1257,20 @@ class AgentEvalComparison:
                 raise ValueError(f"{name} must be a number")
             if not isfinite(value):
                 raise ValueError(f"{name} must be finite")
+        if (
+            not isinstance(self.visible_mcnemar_pvalue, (int, float))
+            or isinstance(self.visible_mcnemar_pvalue, bool)
+            or not isfinite(self.visible_mcnemar_pvalue)
+            or not 0.0 <= self.visible_mcnemar_pvalue <= 1.0
+        ):
+            raise ValueError("visible_mcnemar_pvalue must be within [0, 1]")
+        if self.hidden_mcnemar_pvalue is not None and (
+            not isinstance(self.hidden_mcnemar_pvalue, (int, float))
+            or isinstance(self.hidden_mcnemar_pvalue, bool)
+            or not isfinite(self.hidden_mcnemar_pvalue)
+            or not 0.0 <= self.hidden_mcnemar_pvalue <= 1.0
+        ):
+            raise ValueError("hidden_mcnemar_pvalue must be within [0, 1] or null")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1276,6 +1292,8 @@ class AgentEvalComparison:
             "stddev_token_delta": self.stddev_token_delta,
             "mean_duration_delta": self.mean_duration_delta,
             "stddev_duration_delta": self.stddev_duration_delta,
+            "visible_mcnemar_pvalue": self.visible_mcnemar_pvalue,
+            "hidden_mcnemar_pvalue": self.hidden_mcnemar_pvalue,
         }
 
 
@@ -1299,6 +1317,28 @@ def wilson_interval(
         / denominator
     )
     return max(0.0, center - margin), min(1.0, center + margin)
+
+
+def exact_mcnemar_pvalue(wins: int, losses: int) -> float:
+    """Return a two-sided exact McNemar p-value for paired binary outcomes."""
+
+    if (
+        not isinstance(wins, int)
+        or isinstance(wins, bool)
+        or not isinstance(losses, int)
+        or isinstance(losses, bool)
+        or wins < 0
+        or losses < 0
+    ):
+        raise ValueError("wins and losses must be non-negative integers")
+    discordant = wins + losses
+    if discordant == 0:
+        return 1.0
+    lower_tail: int = sum(
+        comb(discordant, index) for index in range(min(wins, losses) + 1)
+    )
+    probability: float = 2.0 * lower_tail / (2**discordant)
+    return min(1.0, probability)
 
 
 def build_agent_eval_comparisons(
@@ -1378,6 +1418,12 @@ def build_agent_eval_comparisons(
                 stddev_token_delta=pstdev(token_deltas),
                 mean_duration_delta=fmean(duration_deltas),
                 stddev_duration_delta=pstdev(duration_deltas),
+                visible_mcnemar_pvalue=exact_mcnemar_pvalue(wins, losses),
+                hidden_mcnemar_pvalue=(
+                    None
+                    if not hidden_pairs
+                    else exact_mcnemar_pvalue(hidden_wins, hidden_losses)
+                ),
             )
         )
     return tuple(comparisons)
@@ -2227,6 +2273,10 @@ def _format_percent_delta(value: float | None) -> str:
     return "n/a" if value is None else f"{value:+.0%}"
 
 
+def _format_pvalue(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.3g}"
+
+
 def _comparison_baseline(report: AgentEvalReport) -> AgentStrategy | None:
     if len(report.config.strategies) < 2:
         return None
@@ -2298,16 +2348,19 @@ def render_agent_evaluation_markdown(report: AgentEvalReport) -> str:
                 "repetition; positive visible delta means more paired wins.",
                 "",
                 "| Strategy | Baseline | Paired | Wins | Losses | Ties | Visible Δ | "
-                "Hidden Δ | Mean tests Δ (stdev) | Mean tokens Δ (stdev) | "
+                "Visible exact p | Hidden Δ | Hidden exact p | "
+                "Mean tests Δ (stdev) | Mean tokens Δ (stdev) | "
                 "Mean duration Δ ms (stdev) |",
-                "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+                "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
             )
         )
         lines.extend(
             f"| `{comparison.strategy}` | `{comparison.baseline_strategy}` | "
             f"{comparison.paired_count} | {comparison.wins} | {comparison.losses} | "
             f"{comparison.ties} | {_format_percent_delta(comparison.visible_delta)} | "
+            f"{_format_pvalue(comparison.visible_mcnemar_pvalue)} | "
             f"{_format_percent_delta(comparison.hidden_delta)} | "
+            f"{_format_pvalue(comparison.hidden_mcnemar_pvalue)} | "
             f"{comparison.mean_test_call_delta:+.1f} "
             f"(stdev {comparison.stddev_test_call_delta:.1f}) | "
             f"{comparison.mean_token_delta:+.0f} "
@@ -2353,7 +2406,9 @@ def _render_agent_eval_comparison_html(report: AgentEvalReport) -> str:
         f"<td>{comparison.paired_count}</td>"
         f"<td>{comparison.wins}/{comparison.losses}/{comparison.ties}</td>"
         f"<td>{_format_percent_delta(comparison.visible_delta)}</td>"
+        f"<td>{_format_pvalue(comparison.visible_mcnemar_pvalue)}</td>"
         f"<td>{_format_percent_delta(comparison.hidden_delta)}</td>"
+        f"<td>{_format_pvalue(comparison.hidden_mcnemar_pvalue)}</td>"
         f"<td>{comparison.mean_test_call_delta:+.1f} "
         f"(stdev {comparison.stddev_test_call_delta:.1f})</td>"
         f"<td>{comparison.mean_token_delta:+.0f} "
@@ -2368,7 +2423,8 @@ def _render_agent_eval_comparison_html(report: AgentEvalReport) -> str:
         "<p class='muted'>Deltas are candidate minus baseline on the same "
         "fixture and repetition. Win/loss/tie is visible outcome count.</p>"
         "<table><thead><tr><th>strategy</th><th>baseline</th><th>paired</th>"
-        "<th>wins/losses/ties</th><th>visible Δ</th><th>hidden Δ</th>"
+        "<th>wins/losses/ties</th><th>visible Δ</th><th>visible exact p</th>"
+        "<th>hidden Δ</th><th>hidden exact p</th>"
         "<th>mean tests Δ (stdev)</th><th>mean tokens Δ (stdev)</th>"
         "<th>mean duration Δ ms (stdev)</th>"
         f"</tr></thead><tbody>{rows}</tbody></table>"
@@ -2462,6 +2518,7 @@ __all__ = [
     "build_agent_eval_comparisons",
     "build_algorithm_fixtures",
     "build_openai_model_factory",
+    "exact_mcnemar_pvalue",
     "read_agent_evaluation_checkpoint",
     "render_agent_evaluation_console",
     "render_agent_evaluation_html",

@@ -296,7 +296,11 @@ The Markdown, console, and HTML renderers also show a descriptive Wilson 95% int
 each visible success rate. When at least two strategies are present, they add paired
 comparisons against `single_pass` (or the first configured strategy): wins, losses, ties,
 visible outcome delta, hidden delta when both runs actually executed the hidden grader, and
-mean test/token/duration deltas with observed population standard deviations. Each run also
+mean test/token/duration deltas with observed population standard deviations. They also emit
+an exact two-sided McNemar p-value for the visible binary outcomes (and for the available
+hidden paired cells when both runs have a hidden result). This is a compact diagnostic over
+discordant pairs, not a multiple-comparison correction or a powered model-quality claim. Each
+run also
 stores local `duration_ms`; this is useful for paired diagnostics but is not a provider latency
 SLA. These values are derived from the raw fixture/repetition ledger; the added fields are
 backward-compatible and older reports default duration to zero. They must not be read as a

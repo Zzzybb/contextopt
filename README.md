@@ -237,8 +237,10 @@ recompute the complete chain because there is no secret or external trust anchor
   cache reuses, candidate proposals, and reported token usage without hiding failed runs.
   They also include descriptive Wilson 95% intervals and same-fixture/repetition paired
   deltas (wins/losses/ties plus mean and observed-variance test/token cost deltas) without
-  hiding the raw ledger. Each run also records local wall-clock `duration_ms` and paired
-  duration deltas; this is a diagnostic, not a provider latency SLA.
+  hiding the raw ledger. For paired binary outcomes, the report additionally emits an
+  exact two-sided McNemar p-value; it is an exploratory discordant-pair diagnostic, not
+  a powered significance claim. Each run also records local wall-clock `duration_ms` and
+  paired duration deltas; this is a diagnostic, not a provider latency SLA.
 - The evaluator defaults to deterministic scripted responses, but accepts an OpenAI-compatible
   model factory for exploratory runs; either mode keeps the independent hidden grader outside
   the candidate snapshot.
@@ -892,6 +894,8 @@ The paired matrix can persist independent planner/solver/reviewer model identiti
 checkpoint and manifest; the real-provider workflow exposes the same role overrides.
 The role-identity persistence change is documented in [the v1.0 note](docs/pr/0001-v1.0-role-model-overrides.md)
 and [Chinese version](docs/pr/0001-v1.0-role-model-overrides.zh-CN.md).
+The exact paired-outcome McNemar diagnostic is documented in [the v1.0 note](docs/pr/0001-v1.0-paired-mcnemar-evidence.md)
+and [Chinese version](docs/pr/0001-v1.0-paired-mcnemar-evidence.zh-CN.md).
 The cross-platform CI type-check fix is documented in [the v1.0 note](docs/pr/0001-v1.0-ci-cross-platform-typecheck.md)
 and [Chinese version](docs/pr/0001-v1.0-ci-cross-platform-typecheck.zh-CN.md).
 The real-provider workflow's secret boundary is documented in [the v0.9 note](docs/pr/0001-v0.9-real-provider-secret-scope.md)
