@@ -16,12 +16,11 @@ from contextopt.search import (
     ExecutableSearchConfig,
     OrchestrationConfig,
     ProposalConfig,
+    read_orchestration_checkpoint,
     render_orchestration_html,
     render_orchestration_markdown,
     run_orchestration,
-    read_orchestration_checkpoint,
 )
-
 
 OUTPUT_DIR = Path("experiments/v0.9-speculative-cancellation")
 ROOT_FILES = {
@@ -167,7 +166,8 @@ def main() -> None:
         OUTPUT_DIR / "report.json",
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
     )
-    # Rehydrate through the public report parser so the rendered artifacts use the same schema.
+    # Rehydrate through the public report parser so the rendered artifacts
+    # use the same schema.
     from contextopt.search import OrchestrationReport
 
     report = OrchestrationReport.from_dict(payload)
@@ -188,7 +188,8 @@ def main() -> None:
         if solver.cancellation_requests
         else "unsupported",
         "claim_boundary": (
-            "The winner is the first protocol-parseable candidate. Visible tests and reviewer "
+            "The winner is the first protocol-parseable candidate. Visible tests and "
+            "reviewer "
             "approval remain authoritative; provider cancellation is best-effort."
         ),
         "files": files,

@@ -10,8 +10,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CHECKS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("ruff check", ("ruff", "check", "src", "tests")),
-    ("ruff format", ("ruff", "format", "--check", "src", "tests")),
+    ("ruff check", ("ruff", "check", "src", "tests", "scripts")),
+    (
+        "ruff format",
+        ("ruff", "format", "--check", "src", "tests", "scripts"),
+    ),
     ("mypy", ("mypy", "src/contextopt")),
 )
 

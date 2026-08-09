@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import argparse
 import os
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 from contextopt.cli import main as contextopt_main
-
 
 LABELS = ("scripted-a", "scripted-b")
 
@@ -37,11 +36,9 @@ def _bundle_args(root: Path, label: str) -> tuple[str, ...]:
 
 
 def run(output_dir: Path) -> int:
-    # A local shell has no GITHUB_SHA.  Keep the demo's revision explicit and deterministic
-    # instead of weakening the analyzer's requirement for a provenance anchor.
-    os.environ.setdefault(
-        "CONTEXTOPT_GIT_REVISION", "provider-free-model-matrix-demo"
-    )
+    # A local shell has no GITHUB_SHA. Keep the demo's revision explicit and
+    # deterministic instead of weakening the analyzer's provenance requirement.
+    os.environ.setdefault("CONTEXTOPT_GIT_REVISION", "provider-free-model-matrix-demo")
     output_dir.mkdir(parents=True, exist_ok=True)
     for label in LABELS:
         status = contextopt_main(list(_bundle_args(output_dir, label)))
