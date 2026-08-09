@@ -10,6 +10,8 @@ pull requests, so a provider call (and its cost) only happens after an explicit 
 2. Open **Actions → real-agent-eval → Run workflow**.
 3. Enter the OpenAI-compatible `model` and `base_url`. Keep the default `all` fixtures,
    `single_pass,best_of_n,orchestrated` strategies, and `3` repetitions for the first run.
+   The workflow rejects fewer than three repetitions so the artifact follows the Level 3
+   exploratory comparison rule.
 4. Download the uploaded artifact bundle after the job finishes.
 
 The bundle contains the JSON ledger, Markdown summary, self-contained HTML dashboard, manifest,

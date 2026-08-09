@@ -49,15 +49,30 @@ jobs:
       - name: Validate provider secret
         shell: bash
         run: test -n "$CONTEXTOPT_API_KEY"
+      - name: Validate fixed-matrix repetition count
+        shell: bash
+        env:
+          EVAL_REPETITIONS: ${{ inputs.repetitions }}
+        run: |
+          if ! [[ "$EVAL_REPETITIONS" =~ ^[0-9]+$ ]] || (( EVAL_REPETITIONS < 3 )); then
+            echo "repetitions must be an integer >= 3 for the real-provider matrix"
+            exit 1
+          fi
       - name: Run paired real-provider matrix
+        env:
+          EVAL_MODEL: ${{ inputs.model }}
+          EVAL_BASE_URL: ${{ inputs.base_url }}
+          EVAL_FIXTURES: ${{ inputs.fixtures }}
+          EVAL_STRATEGIES: ${{ inputs.strategies }}
+          EVAL_REPETITIONS: ${{ inputs.repetitions }}
         run: >-
           python -m contextopt agent-eval
-          --model "${{ inputs.model }}"
-          --base-url "${{ inputs.base_url }}"
+          --model "$EVAL_MODEL"
+          --base-url "$EVAL_BASE_URL"
           --api-key-env CONTEXTOPT_API_KEY
-          --fixtures "${{ inputs.fixtures }}"
-          --strategies "${{ inputs.strategies }}"
-          --repetitions "${{ inputs.repetitions }}"
+          --fixtures "$EVAL_FIXTURES"
+          --strategies "$EVAL_STRATEGIES"
+          --repetitions "$EVAL_REPETITIONS"
           --output artifacts/agent-eval-real.json
           --markdown artifacts/agent-eval-real.md
           --html artifacts/agent-eval-real.html

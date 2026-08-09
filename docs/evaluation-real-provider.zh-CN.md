@@ -9,6 +9,7 @@
 2. 打开 **Actions → real-agent-eval → Run workflow**。
 3. 填写 OpenAI-compatible 的 `model` 与 `base_url`。第一次建议保留 `all` fixture、
    `single_pass,best_of_n,orchestrated` 策略和 `3` 次 repetition。
+   工作流会拒绝少于 3 次的 repetition，以满足 Level 3 探索性对比规则。
 4. 工作流完成后下载上传的 artifact bundle。
 
 bundle 包含 JSON ledger、Markdown 摘要、自包含 HTML dashboard、manifest 和原子 checkpoint。
