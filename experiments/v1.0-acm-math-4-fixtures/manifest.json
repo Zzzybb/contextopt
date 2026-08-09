@@ -15,9 +15,12 @@
     "max_rounds": 2,
     "max_test_calls": 2,
     "model_adapter": "scripted",
+    "planner_model": null,
     "repetitions": 3,
+    "reviewer_model": null,
     "sandbox": "host",
     "search_policy": "beam",
+    "solver_model": null,
     "strategies": [
       "single_pass",
       "best_of_n",
@@ -34,7 +37,7 @@
     "reviewer_model": null,
     "solver_model": null
   },
-  "repository_revision": "9b1bee2e96bf8fc2a77c513886102b9c3f2c90a8",
+  "repository_revision": "f868f930c7ad31380e839019473ae228acfb5490",
   "runtime": {
     "api_key_env": "CONTEXTOPT_API_KEY",
     "container_image": "python:3.12-slim",

@@ -29,6 +29,7 @@ The first real-provider run must keep the same fixture IDs, strategy set, budget
 and at least three repetitions before comparing against this control artifact.
 
 The manifest pins the source revision used for this baseline
-(`9b1bee2e96bf8fc2a77c513886102b9c3f2c90a8`). The checked-in report was regenerated after the
-provider cancellation and candidate-execution sandbox boundary work; its config records the default
-`sandbox=host` and image identity, while only provider-free scripted control data is included.
+(`f868f930c7ad31380e839019473ae228acfb5490`). The checked-in report was regenerated after the
+provider cancellation, candidate-execution sandbox, and role-model identity work; its config records
+the default `sandbox=host`, image identity, and null role overrides, while only provider-free scripted
+control data is included.

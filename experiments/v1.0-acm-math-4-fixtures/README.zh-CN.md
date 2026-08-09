@@ -28,6 +28,6 @@ python -m contextopt agent-eval --fixtures all --repetitions 3 \
 三次，之后才能与这份控制产物做对比。
 
 manifest 固定了本基线使用的源码 revision：
-`9b1bee2e96bf8fc2a77c513886102b9c3f2c90a8`。本次在 provider cancellation 和候选执行 sandbox 边界完成后
-重新生成了提交中的 report；config 记录默认的 `sandbox=host` 与 image identity，其中仍只有
-provider-free scripted control 数据。
+`f868f930c7ad31380e839019473ae228acfb5490`。本次在 provider cancellation、候选执行 sandbox
+和 role-model identity 完成后重新生成了提交中的 report；config 记录默认的 `sandbox=host`、
+image identity 和空的 role override，其中仍只有 provider-free scripted control 数据。
