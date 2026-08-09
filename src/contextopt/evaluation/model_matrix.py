@@ -69,6 +69,13 @@ def _integer(value: Any, label: str) -> int:
     return value
 
 
+def _non_negative_integer(value: Any, label: str) -> int:
+    result = _integer(value, label)
+    if result < 0:
+        raise ValueError(f"{label} must be non-negative")
+    return result
+
+
 def _read_json(path: str | Path, label: str) -> Mapping[str, Any]:
     target = Path(path)
     try:
@@ -88,6 +95,15 @@ def _protocol_payload(
         config[field] = None
     provider = _mapping(manifest.get("provider"), "agent-eval manifest provider")
     runtime = _mapping(manifest.get("runtime"), "agent-eval manifest runtime")
+    temperature = _finite(runtime.get("temperature"), "runtime.temperature")
+    if temperature < 0:
+        raise ValueError("runtime.temperature must be non-negative")
+    timeout_seconds = _finite(runtime.get("timeout_seconds"), "runtime.timeout_seconds")
+    if timeout_seconds <= 0:
+        raise ValueError("runtime.timeout_seconds must be positive")
+    sandbox = _text(runtime.get("sandbox"), "runtime.sandbox")
+    if sandbox not in {"host", "docker"}:
+        raise ValueError("runtime.sandbox must be 'host' or 'docker'")
     return {
         "adapter": _text(provider.get("adapter"), "provider.adapter"),
         "config": config,
@@ -95,11 +111,15 @@ def _protocol_payload(
             manifest.get("repository_revision"), "repository_revision"
         ),
         "runtime": {
-            "temperature": runtime.get("temperature"),
-            "timeout_seconds": runtime.get("timeout_seconds"),
-            "max_retries": runtime.get("max_retries"),
-            "sandbox": runtime.get("sandbox"),
-            "container_image": runtime.get("container_image"),
+            "temperature": temperature,
+            "timeout_seconds": timeout_seconds,
+            "max_retries": _non_negative_integer(
+                runtime.get("max_retries"), "runtime.max_retries"
+            ),
+            "sandbox": sandbox,
+            "container_image": _text(
+                runtime.get("container_image"), "runtime.container_image"
+            ),
         },
     }
 

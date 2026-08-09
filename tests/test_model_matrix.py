@@ -105,6 +105,19 @@ class AgentEvalModelMatrixTests(unittest.TestCase):
                     )
                 )
 
+    def test_malformed_runtime_boundary_is_rejected_before_fingerprinting(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            report_path, manifest_path = _write_bundle(root, "model-a")
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            del manifest["runtime"]["timeout_seconds"]
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "runtime.timeout_seconds"):
+                load_agent_eval_bundle("model-a", report_path, manifest_path)
+
     def test_cli_writes_machine_readable_and_dashboard_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
