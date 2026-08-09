@@ -627,11 +627,18 @@ class AgentEvaluationTests(unittest.TestCase):
 
     def test_report_roundtrip_and_tamper_detection(self) -> None:
         payload = self.report.to_dict()
+        self.assertIn("comparisons", payload)
+        self.assertEqual(len(payload["comparisons"]), 2)
         self.assertEqual(AgentEvalReport.from_dict(payload).to_dict(), payload)
 
         tampered = json.loads(json.dumps(payload))
         tampered["summaries"][1]["success_count"] = 0
         with self.assertRaisesRegex(ValueError, "success_rate|summary metrics"):
+            AgentEvalReport.from_dict(tampered)
+
+        tampered = json.loads(json.dumps(payload))
+        tampered["comparisons"][0]["visible_mcnemar_pvalue"] = 0.5
+        with self.assertRaisesRegex(ValueError, "comparisons"):
             AgentEvalReport.from_dict(tampered)
 
     def test_matrix_checkpoint_is_atomic_and_resume_reuses_completed_cells(

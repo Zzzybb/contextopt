@@ -1528,6 +1528,7 @@ class AgentEvalReport:
             "fixtures",
             "runs",
             "summaries",
+            "comparisons",
             "claim_boundary",
         }
         unknown = set(value) - allowed
@@ -1538,6 +1539,7 @@ class AgentEvalReport:
         raw_fixtures = value.get("fixtures")
         raw_runs = value.get("runs")
         raw_summaries = value.get("summaries")
+        raw_comparisons = value.get("comparisons")
         if (
             not isinstance(raw_fixtures, list)
             or not isinstance(raw_runs, list)
@@ -1584,7 +1586,7 @@ class AgentEvalReport:
             )
         if not isinstance(value.get("config"), Mapping):
             raise ValueError("agent evaluation config must be an object")
-        return cls(
+        report = cls(
             schema_version=str(value.get("schema_version", "")),
             config=AgentEvalConfig.from_dict(value["config"]),
             fixtures=tuple(fixtures),
@@ -1592,14 +1594,54 @@ class AgentEvalReport:
             summaries=tuple(AgentEvalSummary.from_dict(item) for item in raw_summaries),
             claim_boundary=_non_empty(value.get("claim_boundary"), "claim_boundary"),
         )
+        if raw_comparisons is not None:
+            if not isinstance(raw_comparisons, list):
+                raise ValueError("agent evaluation comparisons must be an array")
+            baseline_strategy = (
+                "single_pass"
+                if "single_pass" in report.config.strategies
+                else report.config.strategies[0]
+                if len(report.config.strategies) > 1
+                else None
+            )
+            expected_comparisons = [
+                comparison.to_dict()
+                for comparison in (
+                    ()
+                    if baseline_strategy is None
+                    else build_agent_eval_comparisons(
+                        report, baseline_strategy=baseline_strategy
+                    )
+                )
+            ]
+            if raw_comparisons != expected_comparisons:
+                raise ValueError("agent evaluation comparisons are inconsistent")
+        return report
 
     def to_dict(self) -> dict[str, Any]:
+        baseline_strategy = (
+            "single_pass"
+            if "single_pass" in self.config.strategies
+            else self.config.strategies[0]
+            if len(self.config.strategies) > 1
+            else None
+        )
         return {
             "schema_version": self.schema_version,
             "config": self.config.to_dict(),
             "fixtures": [fixture.to_dict() for fixture in self.fixtures],
             "runs": [run.to_dict() for run in self.runs],
             "summaries": [summary.to_dict() for summary in self.summaries],
+            "comparisons": [
+                comparison.to_dict()
+                for comparison in (
+                    ()
+                    if baseline_strategy is None
+                    else build_agent_eval_comparisons(
+                        self, baseline_strategy=baseline_strategy
+                    )
+                )
+            ],
             "claim_boundary": self.claim_boundary,
         }
 
