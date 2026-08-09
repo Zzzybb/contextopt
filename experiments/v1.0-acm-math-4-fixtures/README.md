@@ -28,4 +28,6 @@ python -m contextopt agent-eval --fixtures all --repetitions 3 \
 The first real-provider run must keep the same fixture IDs, strategy set, budgets, prompts,
 and at least three repetitions before comparing against this control artifact.
 
-The manifest pins the source revision used for this baseline (`4794ddbe6dc856939631b4f6cb1ead37c75d4c6b`).
+The manifest pins the source revision used for this baseline
+(`c27f5a291a3998eb0b0b40e16ca57a7ab66f2154`). The checked-in report was regenerated after the
+orchestration knowledge-snapshot work; only provider-free scripted control data is included.

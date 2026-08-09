@@ -108,7 +108,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 205.551,
+      "duration_ms": 148.076,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -130,7 +130,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 184.554,
+      "duration_ms": 132.09,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -152,7 +152,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 185.361,
+      "duration_ms": 140.023,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -174,7 +174,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 597.17,
+      "duration_ms": 403.491,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -196,7 +196,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 566.459,
+      "duration_ms": 422.063,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -218,7 +218,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 569.86,
+      "duration_ms": 417.849,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -240,7 +240,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 677.354,
+      "duration_ms": 494.493,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -262,7 +262,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 674.995,
+      "duration_ms": 474.798,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -284,7 +284,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 638.474,
+      "duration_ms": 476.556,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -306,7 +306,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 190.272,
+      "duration_ms": 138.671,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -328,7 +328,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 198.382,
+      "duration_ms": 135.294,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -350,7 +350,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 188.994,
+      "duration_ms": 136.827,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -372,7 +372,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 562.869,
+      "duration_ms": 422.001,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -394,7 +394,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 581.628,
+      "duration_ms": 420.462,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -416,7 +416,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 562.755,
+      "duration_ms": 406.251,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -438,7 +438,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 626.375,
+      "duration_ms": 471.492,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -460,7 +460,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 624.134,
+      "duration_ms": 508.013,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -482,7 +482,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 624.743,
+      "duration_ms": 489.509,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -504,7 +504,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 193.54,
+      "duration_ms": 150.444,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -526,7 +526,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 189.849,
+      "duration_ms": 149.17,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -548,7 +548,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 186.95,
+      "duration_ms": 162.596,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -570,7 +570,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 594.043,
+      "duration_ms": 463.603,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -592,7 +592,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 572.364,
+      "duration_ms": 452.539,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -614,7 +614,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 557.961,
+      "duration_ms": 469.586,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -636,7 +636,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 636.672,
+      "duration_ms": 489.108,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -658,7 +658,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 650.358,
+      "duration_ms": 512.817,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -680,7 +680,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 646.269,
+      "duration_ms": 508.916,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -702,7 +702,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 199.895,
+      "duration_ms": 146.268,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -724,7 +724,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 191.429,
+      "duration_ms": 142.651,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -746,7 +746,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 198.387,
+      "duration_ms": 151.401,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -768,7 +768,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 563.828,
+      "duration_ms": 465.376,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -790,7 +790,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 575.302,
+      "duration_ms": 464.768,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -812,7 +812,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 580.046,
+      "duration_ms": 425.639,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -834,7 +834,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 639.346,
+      "duration_ms": 567.962,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -856,7 +856,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 636.817,
+      "duration_ms": 518.409,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -878,7 +878,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 627.51,
+      "duration_ms": 526.483,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -905,7 +905,7 @@
       "hidden_success_count": 0,
       "hidden_success_rate": null,
       "mean_candidate_proposals": 1.0,
-      "mean_duration_ms": 192.76366666666664,
+      "mean_duration_ms": 144.45925,
       "mean_hidden_test_calls": 0.0,
       "mean_model_calls": 1.0,
       "mean_rounds": 1.0,
@@ -922,7 +922,7 @@
       "hidden_success_count": 12,
       "hidden_success_rate": 1.0,
       "mean_candidate_proposals": 2.0,
-      "mean_duration_ms": 573.6904166666667,
+      "mean_duration_ms": 436.1356666666666,
       "mean_hidden_test_calls": 1.0,
       "mean_model_calls": 1.0,
       "mean_rounds": 1.0,
@@ -939,7 +939,7 @@
       "hidden_success_count": 12,
       "hidden_success_rate": 1.0,
       "mean_candidate_proposals": 2.0,
-      "mean_duration_ms": 641.9205833333334,
+      "mean_duration_ms": 503.21299999999997,
       "mean_hidden_test_calls": 1.0,
       "mean_model_calls": 6.0,
       "mean_rounds": 2.0,
