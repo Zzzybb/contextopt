@@ -575,6 +575,12 @@ preserved, terminated, and safely continued.
 POSIX, plus an in-process registry. A second cooperative writer fails clearly. This is a
 single-host file lease, not a distributed consensus mechanism.
 
+Each `model.requested` event also records a deterministic `idempotency_key` derived from the
+run id, turn, and request SHA-256. The OpenAI-compatible adapter sends the same value in an
+`Idempotency-Key` header by default (set `idempotency_header=None` in programmatic use to omit
+it). This is a provider hook, not an exactly-once guarantee: providers may ignore the header,
+and a retry is still visible in the local ledger.
+
 ## Optional real-model boundary
 
 Without `--script`, the CLI can call a non-streaming OpenAI-compatible Chat Completions
@@ -616,13 +622,13 @@ maximum in-flight counts.
 
 Remaining milestones are:
 
-1. Add durable model-call idempotency hooks where providers expose them.
-2. Add provider-aware cancellation/winner selection and idempotency hooks around the current
-   bounded solver fan-out; completed lane responses are already checkpointed and reused, but a
-   crash in the small response-to-checkpoint window can still cause one lane to run again.
-3. Run the strategy harness against multiple real model versions and independent hidden
+1. Add provider-aware cancellation/winner selection around the current bounded solver fan-out;
+   completed lane responses are already checkpointed and reused, but a crash in the small
+   response-to-checkpoint window can still cause one lane to run again. The serial
+   OpenAI-compatible adapter now emits a deterministic idempotency hook.
+2. Run the strategy harness against multiple real model versions and independent hidden
    tests, preserving paired budgets and full ledgers.
-4. Add container/VM isolation and a controlled real-model coding benchmark with fixed
+3. Add container/VM isolation and a controlled real-model coding benchmark with fixed
    snapshots, versions, repetitions, and independent hidden tests.
 
 The repository still has no OS sandbox or published real-model benchmark. The explicit

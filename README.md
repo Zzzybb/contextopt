@@ -204,6 +204,9 @@ recompute the complete chain because there is no secret or external trust anchor
 - The five scenarios make pending-request reuse, durable final-response reuse, write
   reconciliation, duplicate-write avoidance, and conservative `run_tests` pause/`mark_failed`
   semantics visible in one ledger.
+- Every durable `model.requested` event has a stable request idempotency key; the
+  OpenAI-compatible adapter sends it through `Idempotency-Key` by default, while explicitly
+  documenting that provider support—not the local header—is what can suppress duplicates.
 - JSON, Markdown, self-contained HTML, and a protocol manifest are checked in under
   [`experiments/v0.9-recovery-matrix`](experiments/v0.9-recovery-matrix/README.md), with a
   Chinese explanation and a strict claim boundary.
@@ -224,11 +227,13 @@ recompute the complete chain because there is no secret or external trust anchor
 - Automatic workspace snapshots, migration to another workspace, or distributed
   coordination. `apply-best` and `rollback-best` are explicit local operator actions over
   the files named in the session baseline; they are not transparent workspace versioning.
-- A general speculative role graph, cancellation-aware winner-takes-all policy, and provider-side
-  idempotency are not claimed. The current `speculative_solver_width` fan-out is limited to the
+- A general speculative role graph and cancellation-aware winner-takes-all policy are not
+  claimed. The current `speculative_solver_width` fan-out is limited to the
   solver role; planner/reviewer calls remain sequential. A completed solver response is written
   into the pending lane map before the group is reduced, so resume reuses durable lanes and only
   retries lanes without a response (there is still a small crash window before that write).
+  The serial OpenAI-compatible adapter emits a deterministic provider idempotency hook, but
+  provider-side enforcement is not guaranteed.
   MCTS selects among generated candidates and does not generate patches itself.
 - A container or virtual-machine security boundary. Workspace path checks and permission
   flags reduce accidental access, but are not an OS sandbox. Registered test commands are
@@ -616,6 +621,8 @@ The corresponding [PR change note](docs/pr/0001-v0.8-scripted-control-artifact.m
 regeneration command and claim boundary.
 The bounded long-horizon recovery matrix is documented in [the v0.9 PR change note](docs/pr/0001-v0.9-recovery-matrix.md)
 and [Chinese version](docs/pr/0001-v0.9-recovery-matrix.zh-CN.md).
+The model-request idempotency hook is documented in [the v0.9 idempotency addendum](docs/pr/0001-v0.9-idempotency-hook.md)
+and [Chinese version](docs/pr/0001-v0.9-idempotency-hook.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers.
 

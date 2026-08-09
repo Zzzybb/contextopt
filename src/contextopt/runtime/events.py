@@ -482,6 +482,9 @@ def _trace_detail(event: Mapping[str, Any]) -> str:
                 f" blocks={len(selected) if isinstance(selected, list) else '?'}"
                 f" evicted={len(evicted) if isinstance(evicted, list) else '?'}"
             )
+        idempotency_key = payload.get("idempotency_key")
+        if isinstance(idempotency_key, str):
+            detail += f" idempotency={idempotency_key[:20]}"
         return detail
     if event_type == "model.responded":
         tool_calls = payload.get("tool_calls", [])

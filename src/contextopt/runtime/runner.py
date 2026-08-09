@@ -17,7 +17,7 @@ from contextopt.runtime.context import (
 )
 from contextopt.runtime.errors import ModelError, RuntimeContractError
 from contextopt.runtime.events import EventLog, read_events
-from contextopt.runtime.identity import stable_hash
+from contextopt.runtime.identity import model_request_idempotency_key, stable_hash
 from contextopt.runtime.prompts import DEFAULT_CODING_SYSTEM_PROMPT
 from contextopt.runtime.protocol import (
     AgentMessage,
@@ -273,12 +273,18 @@ class AgentRunner:
     ) -> RunProjection:
         request, compiled = self._request(state, self.tools)
         request_sha256 = self._request_sha256(request)
+        request_idempotency_key = model_request_idempotency_key(
+            run_id=request.run_id,
+            turn=request.turn,
+            request_sha256=request_sha256,
+        )
         if state.pending_model is None:
             request_data: dict[str, object] = {
                 "turn": request.turn,
                 "message_count": len(request.messages),
                 "message_roles": [message.role for message in request.messages],
                 "request_sha256": request_sha256,
+                "idempotency_key": request_idempotency_key,
                 "max_output_tokens": request.max_output_tokens,
             }
             if compiled is not None:

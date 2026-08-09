@@ -32,6 +32,9 @@ runner/model/tools 恢复同一份日志。它覆盖 pending request 复用、�
 调用、写操作 reconciliation、重复写入避免，以及 `run_tests` 的暂停和显式
 `mark_failed`。五个场景的 JSON、Markdown、HTML、manifest 产物在
 [`experiments/v0.9-recovery-matrix`](experiments/v0.9-recovery-matrix/README.zh-CN.md)。
+每个 durable `model.requested` 事件还会记录稳定的 request idempotency key；
+OpenAI-compatible adapter 默认通过 `Idempotency-Key` 发送它，但是否去重取决于 provider
+是否真正支持该 header，项目不把本地 header 包装成 exactly-once 保证。
 
 ## 为什么适合面试 Agent 开发岗
 
@@ -201,6 +204,8 @@ python -m contextopt agent-eval \
 [英文版](docs/pr/0001-v0.8-scripted-control-artifact.md) 记录了复现命令与 claim boundary。
 - v0.9 长程恢复矩阵补充：[docs/pr/0001-v0.9-recovery-matrix.zh-CN.md](docs/pr/0001-v0.9-recovery-matrix.zh-CN.md)
   和 [英文版](docs/pr/0001-v0.9-recovery-matrix.md)
+- v0.9 model request 幂等钩子：[docs/pr/0001-v0.9-idempotency-hook.zh-CN.md](docs/pr/0001-v0.9-idempotency-hook.zh-CN.md)
+  和 [英文版](docs/pr/0001-v0.9-idempotency-hook.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、
 指标名称是权威定义。

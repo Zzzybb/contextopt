@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from contextopt.runtime.errors import ModelError, RuntimeContractError
-from contextopt.runtime.identity import stable_hash
+from contextopt.runtime.identity import model_request_idempotency_key, stable_hash
 from contextopt.runtime.protocol import (
     AgentMessage,
     ModelRequest,
@@ -222,6 +222,7 @@ class OpenAICompatibleModel:
         timeout_seconds: float = 90.0,
         max_retries: int = 2,
         temperature: float | None = 0.0,
+        idempotency_header: str | None = "Idempotency-Key",
     ) -> None:
         if not base_url.startswith(("http://", "https://")):
             raise ValueError("base_url must use http or https")
@@ -233,12 +234,15 @@ class OpenAICompatibleModel:
             raise ValueError("timeout_seconds must be positive")
         if max_retries < 0:
             raise ValueError("max_retries must be non-negative")
+        if idempotency_header is not None and not idempotency_header.strip():
+            raise ValueError("idempotency_header must be non-empty when provided")
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
         self.temperature = temperature
+        self.idempotency_header = idempotency_header
 
     @property
     def name(self) -> str:
@@ -255,6 +259,7 @@ class OpenAICompatibleModel:
             "timeout_seconds": self.timeout_seconds,
             "max_retries": self.max_retries,
             "temperature": self.temperature,
+            "idempotency_header": self.idempotency_header,
         }
 
     @property
@@ -269,6 +274,15 @@ class OpenAICompatibleModel:
 
     async def complete(self, request: ModelRequest) -> ModelResponse:
         return await asyncio.to_thread(self._complete_sync, request)
+
+    def request_idempotency_key(self, request: ModelRequest) -> str:
+        """Return the stable key used for provider retries and run recovery."""
+
+        return model_request_idempotency_key(
+            run_id=request.run_id,
+            turn=request.turn,
+            request_sha256=self._request_sha256(request),
+        )
 
     def _complete_sync(self, request: ModelRequest) -> ModelResponse:
         payload: dict[str, Any] = {
@@ -293,17 +307,20 @@ class OpenAICompatibleModel:
         if self.temperature is not None:
             payload["temperature"] = self.temperature
         encoded = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "User-Agent": "contextopt-runtime/0.2",
+        }
+        if self.idempotency_header is not None:
+            headers[self.idempotency_header] = self.request_idempotency_key(request)
         endpoint = self.base_url + "/chat/completions"
         last_error: ModelError | None = None
         for attempt in range(self.max_retries + 1):
             http_request = urllib.request.Request(
                 endpoint,
                 data=encoded,
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                    "User-Agent": "contextopt-runtime/0.2",
-                },
+                headers=headers,
                 method="POST",
             )
             try:
@@ -332,6 +349,16 @@ class OpenAICompatibleModel:
                 raise last_error
             time.sleep(min(0.25 * (2**attempt), 2.0))
         raise last_error or ModelError("model request failed", code="unknown")
+
+    @staticmethod
+    def _request_sha256(request: ModelRequest) -> str:
+        return stable_hash(
+            {
+                "messages": [message.to_dict() for message in request.messages],
+                "tools": [tool.to_dict() for tool in request.tools],
+                "max_output_tokens": request.max_output_tokens,
+            }
+        )
 
     @staticmethod
     def _message_payload(message: AgentMessage) -> dict[str, Any]:

@@ -964,6 +964,7 @@ def reduce_event(
                     "message_roles",
                     "max_output_tokens",
                     "context",
+                    "idempotency_key",
                 }
             ),
             label="model.requested data",
@@ -1089,6 +1090,12 @@ def reduce_event(
                 data["max_output_tokens"],
                 "model request max_output_tokens",
                 minimum=1,
+            )
+        if "idempotency_key" in data:
+            _string(
+                data["idempotency_key"],
+                "model request idempotency_key",
+                allow_empty=False,
             )
         return _advance(
             state,

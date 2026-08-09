@@ -38,6 +38,7 @@ class _LocalModelServer:
                             "path": self.path,
                             "authorization": self.headers.get("Authorization"),
                             "content_type": self.headers.get("Content-Type"),
+                            "idempotency_key": self.headers.get("Idempotency-Key"),
                             "payload": request_payload,
                         }
                     )
@@ -179,6 +180,9 @@ class OpenAICompatibleModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(captured["path"], "/v1/chat/completions")
         self.assertEqual(captured["authorization"], f"Bearer {secret}")
         self.assertEqual(captured["content_type"], "application/json")
+        expected_key = model.request_idempotency_key(_model_request())
+        self.assertEqual(captured["idempotency_key"], expected_key)
+        self.assertTrue(expected_key.startswith("contextopt-"))
         payload = captured["payload"]
         self.assertEqual(payload["model"], "unit-model")
         self.assertEqual(payload["max_tokens"], 321)
@@ -207,6 +211,10 @@ class OpenAICompatibleModelTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(response.response_id, "chatcmpl-test")
         self.assertEqual(len(server.requests), 2)
+        self.assertEqual(
+            server.requests[0]["idempotency_key"],
+            server.requests[1]["idempotency_key"],
+        )
         sleep.assert_called_once_with(0.25)
 
     async def test_does_not_retry_401_or_expose_api_key(self) -> None:
@@ -234,7 +242,23 @@ class OpenAICompatibleModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(secret, str(raised.exception))
         self.assertEqual(len(server.requests), 1)
         self.assertEqual(server.requests[0]["authorization"], f"Bearer {secret}")
+        self.assertIsNotNone(server.requests[0]["idempotency_key"])
         sleep.assert_not_called()
+
+    async def test_idempotency_key_changes_when_logical_request_changes(self) -> None:
+        with _LocalModelServer([(200, _tool_call_response())]) as server:
+            model = OpenAICompatibleModel(
+                base_url=server.base_url,
+                api_key="key",
+                model="unit-model",
+                max_retries=0,
+            )
+            first = model.request_idempotency_key(_model_request(turn=1))
+            second = model.request_idempotency_key(_model_request(turn=2))
+
+        self.assertNotEqual(first, second)
+        self.assertEqual(len(first), 75)
+        self.assertEqual(len(second), 75)
 
 
 class ScriptedModelTests(unittest.IsolatedAsyncioTestCase):

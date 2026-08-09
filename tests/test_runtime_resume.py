@@ -599,6 +599,14 @@ class RuntimeResumeTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(event_types.count("model.requested"), 1)
             self.assertEqual(event_types.count("model.responded"), 1)
             self.assertEqual(event_types.count("run.completed"), 1)
+            requested = next(
+                event
+                for event in read_events(event_path)
+                if event["type"] == "model.requested"
+            )
+            self.assertTrue(
+                requested["data"]["idempotency_key"].startswith("contextopt-")
+            )
             self.assertIn("run.interrupted", event_types)
             self.assertIn("run.resumed", event_types)
             _assert_checkpoint_covers_log(self, event_path)
