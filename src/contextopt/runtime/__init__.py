@@ -48,6 +48,8 @@ from contextopt.runtime.recovery import (
 from contextopt.runtime.runner import AgentRunner, PendingToolResolution
 from contextopt.runtime.semantic_memory import (
     SEMANTIC_MEMORY_SCHEMA_VERSION,
+    MemoryFeedbackLabel,
+    MemoryFeedbackResult,
     MemoryKind,
     MemoryStatus,
     MemoryWriteResult,
@@ -75,6 +77,8 @@ __all__ = [
     "EventLog",
     "EventScan",
     "EvidenceRecord",
+    "MemoryFeedbackLabel",
+    "MemoryFeedbackResult",
     "MemoryKind",
     "MemorySnapshot",
     "MemoryStatus",

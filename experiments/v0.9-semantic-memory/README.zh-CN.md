@@ -2,6 +2,7 @@
 
 这个产物只评测持久化跨运行记忆边界，不调用模型。它在 append-only store 中创建五条带
 类型的记忆，显式失效一条旧记忆，然后对五个带 scope/tag 的查询各重复三次。
+此外还会重复提交一次 helpful feedback，验证反馈事件不会因为重试而重复计数。
 
 ## 复现
 
@@ -26,6 +27,8 @@ python -m contextopt memory-eval \
 | scope 隔离率 | 1.000 |
 | 已失效记忆排除率 | 1.000 |
 | 确定性重放率 | 1.000 |
+| feedback 重试幂等 | `true` |
+| feedback 后分数提升 | `true` |
 
 ## 指标和边界
 
@@ -35,7 +38,9 @@ python -m contextopt memory-eval \
   当前 project scope 的结果；
 - 已失效排除检查显式 invalidated 的 memory id 不会出现在检索结果；确定性重放要求重复
   查询的结果 id 和序列化 match digest 一致。
+- feedback 幂等要求相同 tool-call feedback id 只追加一个事件；有界的 helpful 信号必须让
+  probe 分数提升，但不能修改记忆正文。
 
 这些是无 provider 的检索和持久化检查，不是 embedding 质量、语义理解、模型是否会主动
-查询记忆或生成代码成功率。实现明确报告 lexical baseline，不把固定 fixture 包装成学习型
-记忆结论。
+查询记忆或生成代码成功率。实现明确报告 lexical baseline 加可审计反馈启发式，不把固定
+fixture 包装成学习型记忆结论。

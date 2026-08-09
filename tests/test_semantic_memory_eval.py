@@ -23,7 +23,7 @@ class SemanticMemoryEvaluationTests(unittest.TestCase):
             SemanticMemoryEvalConfig(repetitions=3, limit=3)
         )
         self.assertEqual(report["model_calls"], 0)
-        self.assertEqual(report["store_revision"], 6)
+        self.assertEqual(report["store_revision"], 7)
         summary = report["summary"]
         self.assertEqual(summary["hit_at_1_rate"], 1.0)
         self.assertEqual(summary["hit_at_k_rate"], 1.0)
@@ -32,6 +32,10 @@ class SemanticMemoryEvaluationTests(unittest.TestCase):
         self.assertEqual(summary["scope_isolation_rate"], 1.0)
         self.assertEqual(summary["invalidated_exclusion_rate"], 1.0)
         self.assertEqual(summary["deterministic_rate"], 1.0)
+        self.assertTrue(summary["feedback_idempotent"])
+        self.assertTrue(summary["feedback_score_improved"])
+        self.assertTrue(report["feedback_probe"]["first_created"])
+        self.assertFalse(report["feedback_probe"]["duplicate_created"])
         self.assertTrue(all(run["deterministic"] for run in report["runs"]))
         self.assertIn("does not measure", report["claim_boundary"])
 

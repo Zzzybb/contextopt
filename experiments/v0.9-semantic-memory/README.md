@@ -1,8 +1,8 @@
 # v0.9 semantic-memory retrieval conformance
 
 This artifact evaluates the durable cross-run memory boundary without calling a model. It
-creates five typed entries in an append-only store, explicitly invalidates one stale entry, and
-runs five scoped/tagged queries three times each.
+creates five typed entries in an append-only store, explicitly invalidates one stale entry, runs
+five scoped/tagged queries three times each, and retries one helpful feedback event.
 
 ## Reproduce
 
@@ -27,6 +27,8 @@ digests, and a self-contained HTML dashboard. The committed deterministic result
 | scope-isolation rate | 1.000 |
 | invalidated-exclusion rate | 1.000 |
 | deterministic replay rate | 1.000 |
+| feedback retry idempotent | `true` |
+| feedback score improved | `true` |
 
 ## Metric definitions and boundary
 
@@ -36,8 +38,10 @@ digests, and a self-contained HTML dashboard. The committed deterministic result
   isolation counts only `global` and the requested project scope as valid results.
 - Invalidated-exclusion checks that an explicitly invalidated memory id never appears in search.
   Deterministic replay requires the repeated result ids and serialized match digests to agree.
+- Feedback retry idempotence requires the same tool-call feedback id to append exactly one event;
+  the bounded helpful signal must increase the selected probe's score without editing its text.
 
 These are provider-free retrieval and persistence checks. They do not measure embedding quality,
 semantic understanding, whether a model asks for useful memories, or whether memory improves a
-generated patch. The implementation intentionally reports a lexical baseline rather than
-turning a fixed fixture into a learned-memory claim.
+generated patch. The implementation intentionally reports a lexical baseline plus an auditable
+feedback heuristic rather than turning a fixed fixture into a learned-memory claim.

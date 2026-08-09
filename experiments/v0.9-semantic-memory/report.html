@@ -26,21 +26,37 @@ padding:1rem;overflow:auto}
 <div class="metric"><b>1.000</b>scope isolation</div>
 <div class="metric"><b>1.000</b>invalidated excluded</div>
 <div class="metric"><b>1.000</b>deterministic</div>
+<div class="metric"><b>True</b>feedback idempotent</div>
+<div class="metric"><b>True</b>feedback improved</div>
 </section>
 <table><thead><tr><th>Case</th><th>Scope</th><th>Hit@1</th>
 <th>Hit@k</th><th>MRR</th><th>Negative pass</th>
 <th>Deterministic</th><th>Scope leakage</th>
 <th>Invalidated returned</th></tr></thead>
 <tbody><tr><td>global-cas-procedure</td><td>project:parser</td><td>True</td><td>True</td><td>1.000</td><td>None</td><td>True</td><td>0</td><td>0</td></tr><tr><td>parser-protocol-rule</td><td>project:parser</td><td>True</td><td>True</td><td>1.000</td><td>None</td><td>True</td><td>0</td><td>0</td></tr><tr><td>math-bezout-rule</td><td>project:math</td><td>True</td><td>True</td><td>1.000</td><td>None</td><td>True</td><td>0</td><td>0</td></tr><tr><td>scope-isolation</td><td>project:math</td><td>None</td><td>None</td><td>n/a</td><td>True</td><td>True</td><td>0</td><td>0</td></tr><tr><td>invalidated-rule-excluded</td><td>project:parser</td><td>None</td><td>None</td><td>n/a</td><td>True</td><td>True</td><td>0</td><td>0</td></tr></tbody></table>
-<p>This is a provider-free memory retrieval and persistence conformance fixture. It measures hit@k, reciprocal rank, scope isolation, invalidation exclusion, and deterministic replay; it does not measure embedding quality, model use of memory, or coding success.</p>
+<p>This is a provider-free memory retrieval and persistence conformance fixture. It measures hit@k, reciprocal rank, scope isolation, invalidation exclusion, and deterministic replay, plus an idempotent helpful-feedback score change; it does not measure embedding quality, model use of memory, or coding success.</p>
 <details><summary>Full JSON ledger</summary><pre>{
-  &quot;claim_boundary&quot;: &quot;This is a provider-free memory retrieval and persistence conformance fixture. It measures hit@k, reciprocal rank, scope isolation, invalidation exclusion, and deterministic replay; it does not measure embedding quality, model use of memory, or coding success.&quot;,
+  &quot;claim_boundary&quot;: &quot;This is a provider-free memory retrieval and persistence conformance fixture. It measures hit@k, reciprocal rank, scope isolation, invalidation exclusion, and deterministic replay, plus an idempotent helpful-feedback score change; it does not measure embedding quality, model use of memory, or coding success.&quot;,
   &quot;config&quot;: {
     &quot;limit&quot;: 3,
     &quot;repetitions&quot;: 3
   },
   &quot;embedding_used&quot;: false,
   &quot;evaluation&quot;: &quot;semantic-memory-retrieval-conformance&quot;,
+  &quot;feedback_probe&quot;: {
+    &quot;after_feedback_signal&quot;: 1.0,
+    &quot;after_score&quot;: 0.865,
+    &quot;before_feedback_signal&quot;: 0.0,
+    &quot;before_score&quot;: 0.815,
+    &quot;duplicate_created&quot;: false,
+    &quot;first_created&quot;: true,
+    &quot;idempotent&quot;: true,
+    &quot;memory_id&quot;: &quot;mem-20cb070444648663015c7a415ce891eb&quot;,
+    &quot;query&quot;: &quot;negative Bezout&quot;,
+    &quot;revision_after_duplicate&quot;: 7,
+    &quot;revision_after_first&quot;: 7,
+    &quot;score_improved&quot;: true
+  },
   &quot;fixture&quot;: {
     &quot;cases&quot;: [
       {
@@ -242,9 +258,9 @@ padding:1rem;overflow:auto}
       &quot;query&quot;: &quot;latest sha256 replace_text&quot;,
       &quot;rank&quot;: 1,
       &quot;repetition_digests&quot;: [
-        &quot;bc2875a8d82b7f001dcf0f3d380061ea2e48883843ffc38020ed6e4ff230e9a9&quot;,
-        &quot;bc2875a8d82b7f001dcf0f3d380061ea2e48883843ffc38020ed6e4ff230e9a9&quot;,
-        &quot;bc2875a8d82b7f001dcf0f3d380061ea2e48883843ffc38020ed6e4ff230e9a9&quot;
+        &quot;173ee78ece64fed497dfdbc9ee8a2d72fba5a32b24365886cfe45568513810d3&quot;,
+        &quot;173ee78ece64fed497dfdbc9ee8a2d72fba5a32b24365886cfe45568513810d3&quot;,
+        &quot;173ee78ece64fed497dfdbc9ee8a2d72fba5a32b24365886cfe45568513810d3&quot;
       ],
       &quot;result_memory_ids&quot;: [
         &quot;mem-4a8791a4e05db52d8ec3d3561b92db29&quot;
@@ -278,9 +294,9 @@ padding:1rem;overflow:auto}
       &quot;query&quot;: &quot;duplicate tool call ids&quot;,
       &quot;rank&quot;: 1,
       &quot;repetition_digests&quot;: [
-        &quot;e29dd5bbb7a798bb526a7f25a74d04d26c81730a59c4e78aa24f5c4b383e803b&quot;,
-        &quot;e29dd5bbb7a798bb526a7f25a74d04d26c81730a59c4e78aa24f5c4b383e803b&quot;,
-        &quot;e29dd5bbb7a798bb526a7f25a74d04d26c81730a59c4e78aa24f5c4b383e803b&quot;
+        &quot;5c1139861cbe0fb11ef7711d0ffad962bb5c3242108961c50757896ba840251b&quot;,
+        &quot;5c1139861cbe0fb11ef7711d0ffad962bb5c3242108961c50757896ba840251b&quot;,
+        &quot;5c1139861cbe0fb11ef7711d0ffad962bb5c3242108961c50757896ba840251b&quot;
       ],
       &quot;result_memory_ids&quot;: [
         &quot;mem-7511087f673775ccad6c18a4c5f8f0e0&quot;
@@ -312,9 +328,9 @@ padding:1rem;overflow:auto}
       &quot;query&quot;: &quot;negative Bezout&quot;,
       &quot;rank&quot;: 1,
       &quot;repetition_digests&quot;: [
-        &quot;11479531221006c98e6e4646b80cc814178bcd69e8e5eb84a4bbc3e5cdd05744&quot;,
-        &quot;11479531221006c98e6e4646b80cc814178bcd69e8e5eb84a4bbc3e5cdd05744&quot;,
-        &quot;11479531221006c98e6e4646b80cc814178bcd69e8e5eb84a4bbc3e5cdd05744&quot;
+        &quot;efb4ed71e23f5c794fb976f0407b797488e59ed82cedfdb880eb882fb1d3bba0&quot;,
+        &quot;efb4ed71e23f5c794fb976f0407b797488e59ed82cedfdb880eb882fb1d3bba0&quot;,
+        &quot;efb4ed71e23f5c794fb976f0407b797488e59ed82cedfdb880eb882fb1d3bba0&quot;
       ],
       &quot;result_memory_ids&quot;: [
         &quot;mem-20cb070444648663015c7a415ce891eb&quot;
@@ -322,7 +338,7 @@ padding:1rem;overflow:auto}
       &quot;scope&quot;: &quot;project:math&quot;,
       &quot;scope_leakage_count&quot;: 0,
       &quot;scores&quot;: [
-        0.815
+        0.865
       ]
     },
     {
@@ -375,11 +391,13 @@ padding:1rem;overflow:auto}
     }
   ],
   &quot;schema_version&quot;: &quot;1&quot;,
-  &quot;store_fingerprint&quot;: &quot;fdae32ad0c6fa4a62daea2116dbea1821beb594388a48cbef04b9e8a8e051b6b&quot;,
-  &quot;store_revision&quot;: 6,
+  &quot;store_fingerprint&quot;: &quot;bfa8d0fa6b6119a2cd49ad27979ea2010fb43ce96cf315036919615627b2eee6&quot;,
+  &quot;store_revision&quot;: 7,
   &quot;summary&quot;: {
     &quot;case_count&quot;: 5,
     &quot;deterministic_rate&quot;: 1.0,
+    &quot;feedback_idempotent&quot;: true,
+    &quot;feedback_score_improved&quot;: true,
     &quot;hit_at_1_rate&quot;: 1.0,
     &quot;hit_at_k_rate&quot;: 1.0,
     &quot;invalidated_exclusion_rate&quot;: 1.0,

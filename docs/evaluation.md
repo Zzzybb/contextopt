@@ -325,13 +325,18 @@ that identical content is idempotent, that scope/tag filters and lexical matches
 deterministic, and that explicit supersession/invalidation change the active view without
 rewriting the append-only history. Tool tests additionally verify that `memory_save` is hidden
 without `--allow-write`, that `memory_search` returns revision and matched-term evidence,
-that save/supersede/invalidate remain explicit and replay-safe, and that the store identity
+that save/supersede/invalidate/feedback remain explicit and replay-safe, and that the store identity
 participates in the runtime tool configuration fingerprint.
 
 The runtime-tool suite also covers source-aware freshness: a memory citing a workspace path is
 automatically invalidated after a successful write to that exact path, and the same update is
 replayed when a prepared write is recovered from its durable postcondition. This protects the
 long-horizon boundary from silently reusing a fact about code that has just changed.
+
+The fixed retrieval artifact also records one `helpful` feedback event and retries it with the
+same tool-call id. It requires one event, proves the duplicate is a no-op, and checks that the
+bounded feedback signal changes the subsequent score. This is an adaptive-ranking protocol
+check, not learned retrieval or model-use evidence.
 
 These checks measure persistence, provenance, permission boundaries, and retry safety. They do
 not measure semantic recall, embedding quality, summarization quality, or whether a model uses a

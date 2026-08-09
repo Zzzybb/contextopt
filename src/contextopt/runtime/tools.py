@@ -223,6 +223,7 @@ class WorkspaceTools:
             if self.permissions.allow_write:
                 self._handlers["memory_save"] = self._memory_save
                 self._handlers["memory_invalidate"] = self._memory_invalidate
+                self._handlers["memory_feedback"] = self._memory_feedback
         if self._test_commands:
             self._handlers["run_tests"] = self._run_tests
         self._definitions = self._build_definitions()
@@ -937,6 +938,30 @@ class WorkspaceTools:
                         },
                     )
                 )
+                definitions.append(
+                    ToolDefinition(
+                        name="memory_feedback",
+                        description=(
+                            "Record whether one retrieved durable memory was useful. "
+                            "The feedback id makes retries idempotent and changes only "
+                            "future ranking; it never edits the memory text."
+                        ),
+                        input_schema={
+                            "type": "object",
+                            "properties": {
+                                "memory_id": {"type": "string"},
+                                "label": {
+                                    "type": "string",
+                                    "enum": ["helpful", "not_helpful"],
+                                },
+                                "query": {"type": "string"},
+                                "source_run_id": {"type": "string"},
+                            },
+                            "required": ["memory_id", "label"],
+                            "additionalProperties": False,
+                        },
+                    )
+                )
         return tuple(definitions)
 
     @staticmethod
@@ -1317,6 +1342,39 @@ class WorkspaceTools:
                 "status": entry.status,
                 "revision": self._memory_store.revision,
             },
+        )
+
+    def _memory_feedback(
+        self, call: ToolCall, arguments: Mapping[str, Any]
+    ) -> ToolOutcome:
+        if self._memory_store is None:
+            return _error(
+                call, "memory_unavailable", "semantic memory is not configured"
+            )
+        if not self.permissions.allow_write:
+            return _error(call, "write_denied", "memory write permission is disabled")
+        memory_id = _require_string(arguments, "memory_id")
+        label = _require_string(arguments, "label")
+        query_value = arguments.get("query")
+        if query_value is not None and not isinstance(query_value, str):
+            raise ValueError("query must be a string")
+        source_run_id = arguments.get("source_run_id")
+        if source_run_id is not None and not isinstance(source_run_id, str):
+            raise ValueError("source_run_id must be a string")
+        result = self._memory_store.feedback(
+            memory_id,
+            label,  # type: ignore[arg-type]
+            feedback_id=call.id,
+            source_run_id=source_run_id,
+            query=query_value,
+        )
+        payload = result.to_dict()
+        return ToolOutcome(
+            call_id=call.id,
+            tool_name=call.name,
+            ok=True,
+            content=json.dumps(payload, ensure_ascii=False, sort_keys=True),
+            metadata=payload,
         )
 
     def _run_tests(self, call: ToolCall, arguments: Mapping[str, Any]) -> ToolOutcome:

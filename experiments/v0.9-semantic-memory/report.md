@@ -19,5 +19,7 @@
 - Scope-isolation rate: `1.000`
 - Invalidated-exclusion rate: `1.000`
 - Deterministic replay rate: `1.000`
+- Feedback retry idempotent: `True`
+- Feedback score improved: `True`
 
-This is a provider-free memory retrieval and persistence conformance fixture. It measures hit@k, reciprocal rank, scope isolation, invalidation exclusion, and deterministic replay; it does not measure embedding quality, model use of memory, or coding success.
+This is a provider-free memory retrieval and persistence conformance fixture. It measures hit@k, reciprocal rank, scope isolation, invalidation exclusion, and deterministic replay, plus an idempotent helpful-feedback score change; it does not measure embedding quality, model use of memory, or coding success.

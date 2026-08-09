@@ -1407,8 +1407,8 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--memory-store",
         help=(
-            "append-only JSONL store exposed through memory_search; memory_save also "
-            "requires --allow-write"
+            "append-only JSONL store exposed through memory_search; memory_save and "
+            "memory_feedback also require --allow-write"
         ),
     )
     run.add_argument("--max-turns", type=int, default=20)

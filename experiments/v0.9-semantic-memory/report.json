@@ -1,11 +1,25 @@
 {
-  "claim_boundary": "This is a provider-free memory retrieval and persistence conformance fixture. It measures hit@k, reciprocal rank, scope isolation, invalidation exclusion, and deterministic replay; it does not measure embedding quality, model use of memory, or coding success.",
+  "claim_boundary": "This is a provider-free memory retrieval and persistence conformance fixture. It measures hit@k, reciprocal rank, scope isolation, invalidation exclusion, and deterministic replay, plus an idempotent helpful-feedback score change; it does not measure embedding quality, model use of memory, or coding success.",
   "config": {
     "limit": 3,
     "repetitions": 3
   },
   "embedding_used": false,
   "evaluation": "semantic-memory-retrieval-conformance",
+  "feedback_probe": {
+    "after_feedback_signal": 1.0,
+    "after_score": 0.865,
+    "before_feedback_signal": 0.0,
+    "before_score": 0.815,
+    "duplicate_created": false,
+    "first_created": true,
+    "idempotent": true,
+    "memory_id": "mem-20cb070444648663015c7a415ce891eb",
+    "query": "negative Bezout",
+    "revision_after_duplicate": 7,
+    "revision_after_first": 7,
+    "score_improved": true
+  },
   "fixture": {
     "cases": [
       {
@@ -207,9 +221,9 @@
       "query": "latest sha256 replace_text",
       "rank": 1,
       "repetition_digests": [
-        "bc2875a8d82b7f001dcf0f3d380061ea2e48883843ffc38020ed6e4ff230e9a9",
-        "bc2875a8d82b7f001dcf0f3d380061ea2e48883843ffc38020ed6e4ff230e9a9",
-        "bc2875a8d82b7f001dcf0f3d380061ea2e48883843ffc38020ed6e4ff230e9a9"
+        "173ee78ece64fed497dfdbc9ee8a2d72fba5a32b24365886cfe45568513810d3",
+        "173ee78ece64fed497dfdbc9ee8a2d72fba5a32b24365886cfe45568513810d3",
+        "173ee78ece64fed497dfdbc9ee8a2d72fba5a32b24365886cfe45568513810d3"
       ],
       "result_memory_ids": [
         "mem-4a8791a4e05db52d8ec3d3561b92db29"
@@ -243,9 +257,9 @@
       "query": "duplicate tool call ids",
       "rank": 1,
       "repetition_digests": [
-        "e29dd5bbb7a798bb526a7f25a74d04d26c81730a59c4e78aa24f5c4b383e803b",
-        "e29dd5bbb7a798bb526a7f25a74d04d26c81730a59c4e78aa24f5c4b383e803b",
-        "e29dd5bbb7a798bb526a7f25a74d04d26c81730a59c4e78aa24f5c4b383e803b"
+        "5c1139861cbe0fb11ef7711d0ffad962bb5c3242108961c50757896ba840251b",
+        "5c1139861cbe0fb11ef7711d0ffad962bb5c3242108961c50757896ba840251b",
+        "5c1139861cbe0fb11ef7711d0ffad962bb5c3242108961c50757896ba840251b"
       ],
       "result_memory_ids": [
         "mem-7511087f673775ccad6c18a4c5f8f0e0"
@@ -277,9 +291,9 @@
       "query": "negative Bezout",
       "rank": 1,
       "repetition_digests": [
-        "11479531221006c98e6e4646b80cc814178bcd69e8e5eb84a4bbc3e5cdd05744",
-        "11479531221006c98e6e4646b80cc814178bcd69e8e5eb84a4bbc3e5cdd05744",
-        "11479531221006c98e6e4646b80cc814178bcd69e8e5eb84a4bbc3e5cdd05744"
+        "efb4ed71e23f5c794fb976f0407b797488e59ed82cedfdb880eb882fb1d3bba0",
+        "efb4ed71e23f5c794fb976f0407b797488e59ed82cedfdb880eb882fb1d3bba0",
+        "efb4ed71e23f5c794fb976f0407b797488e59ed82cedfdb880eb882fb1d3bba0"
       ],
       "result_memory_ids": [
         "mem-20cb070444648663015c7a415ce891eb"
@@ -287,7 +301,7 @@
       "scope": "project:math",
       "scope_leakage_count": 0,
       "scores": [
-        0.815
+        0.865
       ]
     },
     {
@@ -340,11 +354,13 @@
     }
   ],
   "schema_version": "1",
-  "store_fingerprint": "fdae32ad0c6fa4a62daea2116dbea1821beb594388a48cbef04b9e8a8e051b6b",
-  "store_revision": 6,
+  "store_fingerprint": "bfa8d0fa6b6119a2cd49ad27979ea2010fb43ce96cf315036919615627b2eee6",
+  "store_revision": 7,
   "summary": {
     "case_count": 5,
     "deterministic_rate": 1.0,
+    "feedback_idempotent": true,
+    "feedback_score_improved": true,
     "hit_at_1_rate": 1.0,
     "hit_at_k_rate": 1.0,
     "invalidated_exclusion_rate": 1.0,

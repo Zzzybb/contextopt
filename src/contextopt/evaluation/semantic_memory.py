@@ -3,8 +3,10 @@
 This evaluator deliberately measures the memory boundary, not model intelligence.  It
 uses fixed facts, project scopes, tags, and an explicitly invalidated entry to check
 retrieval evidence, scope isolation, negative queries, invalidation exclusion, and
-byte-level determinism.  The lexical scorer is a transparent baseline; the report does
-not claim semantic understanding or coding-task improvement.
+byte-level determinism.  It also exercises the idempotent usefulness-feedback loop that
+nudges later lexical ranking without pretending to learn embeddings.  The lexical scorer
+is a transparent baseline; the report does not claim semantic understanding or
+coding-task improvement.
 """
 
 from __future__ import annotations
@@ -289,6 +291,59 @@ def build_semantic_memory_fixture(
     return _fixture(store, limit)
 
 
+def _feedback_probe(
+    store: SemanticMemoryStore, fixture: SemanticMemoryEvalFixture
+) -> dict[str, Any]:
+    """Exercise one helpful vote and its retry without changing fixture membership."""
+
+    case = next(case for case in fixture.cases if case.case_id == "math-bezout-rule")
+    target_id = case.expected_memory_ids[0]
+    before = store.search(
+        case.query,
+        scope=case.scope,
+        tags=case.tags,
+        limit=case.limit,
+    )
+    before_match = next(match for match in before if match.entry.memory_id == target_id)
+    first = store.feedback(
+        target_id,
+        "helpful",
+        feedback_id="semantic-memory-eval-feedback-v1",
+        source_run_id="semantic-memory-eval",
+        query=case.query,
+    )
+    duplicate = store.feedback(
+        target_id,
+        "helpful",
+        feedback_id="semantic-memory-eval-feedback-v1",
+        source_run_id="semantic-memory-eval",
+        query=case.query,
+    )
+    after = store.search(
+        case.query,
+        scope=case.scope,
+        tags=case.tags,
+        limit=case.limit,
+    )
+    after_match = next(match for match in after if match.entry.memory_id == target_id)
+    return {
+        "memory_id": target_id,
+        "query": case.query,
+        "before_score": before_match.score,
+        "after_score": after_match.score,
+        "before_feedback_signal": before_match.feedback_signal,
+        "after_feedback_signal": after_match.feedback_signal,
+        "first_created": first.created,
+        "duplicate_created": duplicate.created,
+        "revision_after_first": first.revision,
+        "revision_after_duplicate": duplicate.revision,
+        "idempotent": first.created
+        and not duplicate.created
+        and first.revision == duplicate.revision,
+        "score_improved": after_match.score > before_match.score,
+    }
+
+
 def _search_digest(matches: Sequence[SemanticMemoryMatch]) -> str:
     return stable_hash([match.to_dict() for match in matches])
 
@@ -355,7 +410,10 @@ def _mean(values: Sequence[float]) -> float | None:
     return None if not values else round(fmean(values), 6)
 
 
-def _summary(runs: Sequence[SemanticMemoryEvalRun]) -> dict[str, Any]:
+def _summary(
+    runs: Sequence[SemanticMemoryEvalRun],
+    feedback_probe: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     positive = [run for run in runs if run.expected_memory_ids]
     negative = [run for run in runs if not run.expected_memory_ids]
     excluded = [run for run in runs if run.excluded_memory_ids]
@@ -388,6 +446,12 @@ def _summary(runs: Sequence[SemanticMemoryEvalRun]) -> dict[str, Any]:
         "deterministic_rate": _mean([float(run.deterministic) for run in runs]),
         "total_scope_leakage": sum(run.scope_leakage_count for run in runs),
         "total_excluded_returned": sum(run.excluded_returned_count for run in runs),
+        "feedback_idempotent": (
+            None if feedback_probe is None else bool(feedback_probe["idempotent"])
+        ),
+        "feedback_score_improved": (
+            None if feedback_probe is None else bool(feedback_probe["score_improved"])
+        ),
     }
 
 
@@ -402,6 +466,7 @@ def run_semantic_memory_evaluation(
         SemanticMemoryStore(Path(directory) / "memory.jsonl") as store,
     ):
         fixture = build_semantic_memory_fixture(store, limit=selected.limit)
+        feedback_probe = _feedback_probe(store, fixture)
         runs = tuple(
             _run_case(store, case, selected.repetitions) for case in fixture.cases
         )
@@ -415,14 +480,16 @@ def run_semantic_memory_evaluation(
             "store_revision": store.revision,
             "store_fingerprint": store.fingerprint,
             "fixture": fixture.to_dict(),
-            "summary": _summary(runs),
+            "feedback_probe": feedback_probe,
+            "summary": _summary(runs, feedback_probe),
             "runs": [run.to_dict() for run in runs],
             "claim_boundary": (
                 "This is a provider-free memory retrieval and persistence "
                 "conformance fixture. It measures hit@k, reciprocal rank, "
                 "scope isolation, invalidation exclusion, and deterministic "
-                "replay; it does not measure embedding quality, model use of "
-                "memory, or coding success."
+                "replay, plus an idempotent helpful-feedback score change; it "
+                "does not measure embedding quality, model use of memory, or "
+                "coding success."
             ),
         }
     return report
@@ -487,7 +554,9 @@ def render_semantic_memory_console(report: Mapping[str, Any]) -> str:
             f"negative={_metric(summary['negative_pass_rate'])} "
             f"scope={_metric(summary['scope_isolation_rate'])} "
             f"invalidated={_metric(summary['invalidated_exclusion_rate'])} "
-            f"deterministic={_metric(summary['deterministic_rate'])}",
+            f"deterministic={_metric(summary['deterministic_rate'])} "
+            f"feedback_idempotent={summary['feedback_idempotent']} "
+            f"feedback_improved={summary['feedback_score_improved']}",
         )
     )
 
@@ -541,6 +610,8 @@ def render_semantic_memory_markdown(report: Mapping[str, Any]) -> str:
             "- Invalidated-exclusion rate: "
             f"`{_metric(summary['invalidated_exclusion_rate'])}`",
             f"- Deterministic replay rate: `{_metric(summary['deterministic_rate'])}`",
+            f"- Feedback retry idempotent: `{summary['feedback_idempotent']}`",
+            f"- Feedback score improved: `{summary['feedback_score_improved']}`",
             "",
             str(report["claim_boundary"]),
         )
@@ -578,6 +649,8 @@ def render_semantic_memory_html(report: Mapping[str, Any]) -> str:
     scope_isolation = escape(_metric(summary["scope_isolation_rate"]))
     invalidated_excluded = escape(_metric(summary["invalidated_exclusion_rate"]))
     deterministic = escape(_metric(summary["deterministic_rate"]))
+    feedback_idempotent = escape(str(summary["feedback_idempotent"]))
+    feedback_improved = escape(str(summary["feedback_score_improved"]))
     html_lines = [
         "<!doctype html>",
         '<html lang="en"><head><meta charset="utf-8">',
@@ -608,6 +681,8 @@ def render_semantic_memory_html(report: Mapping[str, Any]) -> str:
         f'<div class="metric"><b>{scope_isolation}</b>scope isolation</div>',
         f'<div class="metric"><b>{invalidated_excluded}</b>invalidated excluded</div>',
         f'<div class="metric"><b>{deterministic}</b>deterministic</div>',
+        f'<div class="metric"><b>{feedback_idempotent}</b>feedback idempotent</div>',
+        f'<div class="metric"><b>{feedback_improved}</b>feedback improved</div>',
         "</section>",
         "<table><thead><tr><th>Case</th><th>Scope</th><th>Hit@1</th>",
         "<th>Hit@k</th><th>MRR</th><th>Negative pass</th>",

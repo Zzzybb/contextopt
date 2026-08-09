@@ -240,7 +240,9 @@ recompute the complete chain because there is no secret or external trust anchor
 - `memory_search` exposes deterministic lexical retrieval with scope, tags, confidence,
   matched-term evidence, provenance, and a revision/fingerprint. `memory_save` and
   `memory_invalidate` are available only with `--allow-write`; saves are content-idempotent,
-  can supersede an older entry, and can be safely retried after a crash.
+  can supersede an older entry, and can be safely retried after a crash. `memory_feedback`
+  records a helpful/not-helpful label with the tool-call id as an idempotency key, adding a
+  bounded ranking adjustment without editing the memory text.
 - Source references are first-class: a successful `create_file` or `replace_text` mutation
   automatically appends invalidation events for active memories citing that exact workspace
   path, including the crash-reconcile path. Explicit invalidation remains available for facts
@@ -738,6 +740,8 @@ evaluation-specific [English PR note](docs/pr/0001-v0.9-semantic-memory-evaluati
 [Chinese version](docs/pr/0001-v0.9-semantic-memory-evaluation.zh-CN.md).
 The source-aware invalidation follow-up is documented in the [English PR note](docs/pr/0001-v0.9-source-aware-memory-invalidation.md)
 and [Chinese version](docs/pr/0001-v0.9-source-aware-memory-invalidation.zh-CN.md).
+The idempotent feedback loop is documented in the [English PR note](docs/pr/0001-v0.9-memory-feedback.md)
+and [Chinese version](docs/pr/0001-v0.9-memory-feedback.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers. The
   manual workflow is the reproducibility entry point; the checked-in scripted artifacts remain

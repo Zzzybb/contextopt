@@ -117,6 +117,49 @@ class SemanticMemoryStoreTests(unittest.TestCase):
                 )
                 self.assertTrue(reopened.get(unrelated.entry.memory_id).active)
 
+    def test_feedback_is_idempotent_and_changes_future_ranking(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "memory.jsonl"
+            with SemanticMemoryStore(path) as store:
+                saved = store.put(
+                    "The parser rejects duplicate tool call ids.",
+                    scope="project:demo",
+                    kind="decision",
+                    confidence=0.8,
+                )
+                before = store.search("parser duplicate tool call ids")[0]
+                first = store.feedback(
+                    saved.entry.memory_id,
+                    "helpful",
+                    feedback_id="tool-call-1",
+                    source_run_id="run-1",
+                    query="parser duplicate tool call ids",
+                )
+                duplicate = store.feedback(
+                    saved.entry.memory_id,
+                    "helpful",
+                    feedback_id="tool-call-1",
+                    source_run_id="run-1",
+                    query="parser duplicate tool call ids",
+                )
+                after = store.search("parser duplicate tool call ids")[0]
+                self.assertTrue(first.created)
+                self.assertFalse(duplicate.created)
+                self.assertEqual(duplicate.revision, first.revision)
+                self.assertEqual(first.helpful_count, 1)
+                self.assertEqual(first.not_helpful_count, 0)
+                self.assertEqual(after.feedback_signal, 1.0)
+                self.assertGreater(after.score, before.score)
+
+            with SemanticMemoryStore(path) as reopened:
+                self.assertEqual(reopened.revision, 2)
+                self.assertEqual(
+                    reopened.search("parser duplicate tool call ids")[
+                        0
+                    ].feedback_signal,
+                    1.0,
+                )
+
 
 class SemanticMemoryToolTests(unittest.IsolatedAsyncioTestCase):
     async def test_memory_save_requires_write_permission(self) -> None:
@@ -131,6 +174,9 @@ class SemanticMemoryToolTests(unittest.IsolatedAsyncioTestCase):
                 )
                 self.assertNotIn(
                     "memory_save", {item.name for item in tools.definitions}
+                )
+                self.assertNotIn(
+                    "memory_feedback", {item.name for item in tools.definitions}
                 )
                 outcome = await tools.execute(
                     ToolCall(
@@ -343,6 +389,50 @@ class SemanticMemoryToolTests(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(invalidated.ok)
                 self.assertIn(
                     "memory_invalidate", {item.name for item in tools.definitions}
+                )
+                tools.close()
+
+    async def test_memory_feedback_tool_is_retry_safe(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "workspace"
+            workspace.mkdir()
+            with SemanticMemoryStore(root / "memory.jsonl") as store:
+                saved = store.put(
+                    "Run the visible tests before accepting the patch.",
+                    scope="project:demo",
+                    kind="procedure",
+                )
+                tools = WorkspaceTools(
+                    workspace,
+                    permissions=RunPermissions(allow_write=True),
+                    memory_store=store,
+                )
+                call = ToolCall(
+                    id="feedback-1",
+                    name="memory_feedback",
+                    arguments_json=json.dumps(
+                        {
+                            "memory_id": saved.entry.memory_id,
+                            "label": "helpful",
+                            "query": "visible tests patch",
+                            "source_run_id": "reader-run",
+                        }
+                    ),
+                )
+                first = await tools.execute(call)
+                duplicate = await tools.execute(call)
+                self.assertTrue(first.ok)
+                self.assertTrue(duplicate.ok)
+                self.assertTrue(first.metadata["created"])
+                self.assertFalse(duplicate.metadata["created"])
+                self.assertEqual(first.metadata["revision"], 2)
+                self.assertEqual(duplicate.metadata["revision"], 2)
+                self.assertIn(
+                    "memory_feedback", {item.name for item in tools.definitions}
+                )
+                self.assertEqual(
+                    store.search("visible tests patch")[0].feedback_signal, 1.0
                 )
                 tools.close()
 

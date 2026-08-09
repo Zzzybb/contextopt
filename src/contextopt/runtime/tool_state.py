@@ -25,6 +25,7 @@ _SAFE_REPLAY_TOOLS = frozenset(
         "memory_search",
         "memory_save",
         "memory_invalidate",
+        "memory_feedback",
     }
 )
 _RECONCILED_WRITE_TOOLS = frozenset({"create_file", "replace_text"})

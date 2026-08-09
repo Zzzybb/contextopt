@@ -26,9 +26,11 @@ from contextopt.runtime.identity import stable_hash
 SEMANTIC_MEMORY_SCHEMA_VERSION = "1"
 MemoryKind = Literal["fact", "decision", "procedure", "failure"]
 MemoryStatus = Literal["active", "superseded", "invalidated"]
+MemoryFeedbackLabel = Literal["helpful", "not_helpful"]
 
 _KINDS = frozenset({"fact", "decision", "procedure", "failure"})
 _STATUSES = frozenset({"active", "superseded", "invalidated"})
+_FEEDBACK_LABELS = frozenset({"helpful", "not_helpful"})
 _TOKEN_RE = re.compile(r"[A-Za-z0-9_]+|[\u3400-\u4dbf\u4e00-\u9fff]")
 _MAX_TEXT_BYTES = 16 * 1024
 _MAX_SCOPE_CHARS = 128
@@ -36,6 +38,8 @@ _MAX_TAG_CHARS = 64
 _MAX_TAGS = 24
 _MAX_SOURCE_REFS = 32
 _MAX_SOURCE_REF_CHARS = 256
+_MAX_FEEDBACK_ID_CHARS = 96
+_MAX_FEEDBACK_QUERY_CHARS = 512
 
 
 def _string(value: Any, label: str, *, allow_empty: bool = False) -> str:
@@ -307,6 +311,7 @@ class SemanticMemoryMatch:
     entry: SemanticMemoryEntry
     score: float
     matched_terms: tuple[str, ...]
+    feedback_signal: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -321,6 +326,7 @@ class SemanticMemoryMatch:
             "content_sha256": self.entry.content_sha256,
             "score": self.score,
             "matched_terms": list(self.matched_terms),
+            "feedback_signal": self.feedback_signal,
         }
 
 
@@ -329,6 +335,32 @@ class MemoryWriteResult:
     entry: SemanticMemoryEntry
     created: bool
     revision: int
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryFeedbackResult:
+    """One idempotent usefulness label recorded against a memory entry."""
+
+    feedback_id: str
+    memory_id: str
+    label: MemoryFeedbackLabel
+    created: bool
+    revision: int
+    helpful_count: int
+    not_helpful_count: int
+    signal: float
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "feedback_id": self.feedback_id,
+            "memory_id": self.memory_id,
+            "label": self.label,
+            "created": self.created,
+            "revision": self.revision,
+            "helpful_count": self.helpful_count,
+            "not_helpful_count": self.not_helpful_count,
+            "signal": self.signal,
+        }
 
 
 class SemanticMemoryStore:
@@ -349,6 +381,10 @@ class SemanticMemoryStore:
         )
         self._lock = RLock()
         self._entries: dict[str, SemanticMemoryEntry] = {}
+        self._feedback: dict[str, dict[str, int]] = {}
+        self._feedback_events: dict[
+            str, tuple[str, MemoryFeedbackLabel, str | None, str | None]
+        ] = {}
         for event in read_events(self.path):
             self._apply_event(event)
         self._revision = self._log.event_count
@@ -381,6 +417,16 @@ class SemanticMemoryStore:
                         for entry in sorted(
                             self._entries.values(), key=lambda item: item.memory_id
                         )
+                    ],
+                    "feedback": [
+                        {
+                            "feedback_id": feedback_id,
+                            "memory_id": value[0],
+                            "label": value[1],
+                            "source_run_id": value[2],
+                            "query": value[3],
+                        }
+                        for feedback_id, value in sorted(self._feedback_events.items())
                     ],
                 }
             )
@@ -520,6 +566,108 @@ class SemanticMemoryStore:
                 )
             return tuple(self._entries[entry.memory_id] for entry in matching)
 
+    def feedback(
+        self,
+        memory_id: str,
+        label: MemoryFeedbackLabel,
+        *,
+        feedback_id: str,
+        source_run_id: str | None = None,
+        query: str | None = None,
+    ) -> MemoryFeedbackResult:
+        """Record one idempotent usefulness label for an active memory.
+
+        ``feedback_id`` is normally the durable tool-call id.  Replaying the same
+        call therefore returns the original aggregate without appending a second
+        vote, while reusing the id with different payload is rejected.
+        """
+
+        normalized_memory_id = _key(memory_id, "memory_id", maximum=96)
+        normalized_feedback_id = _key(
+            feedback_id, "feedback_id", maximum=_MAX_FEEDBACK_ID_CHARS
+        )
+        if not isinstance(label, str) or label not in _FEEDBACK_LABELS:
+            raise ValueError(f"unsupported feedback label: {label!r}")
+        normalized_source_run_id = (
+            None
+            if source_run_id is None
+            else _key(source_run_id, "source_run_id", maximum=128)
+        )
+        normalized_query = (
+            None
+            if query is None
+            else _key(query, "query", maximum=_MAX_FEEDBACK_QUERY_CHARS)
+        )
+        signature = (
+            normalized_memory_id,
+            label,
+            normalized_source_run_id,
+            normalized_query,
+        )
+        with self._lock:
+            entry = self._entries.get(normalized_memory_id)
+            if entry is None:
+                raise ValueError(f"unknown memory: {normalized_memory_id}")
+            existing = self._feedback_events.get(normalized_feedback_id)
+            if existing is not None:
+                if existing != signature:
+                    raise ValueError(
+                        f"feedback_id already identifies a different feedback: "
+                        f"{normalized_feedback_id}"
+                    )
+                return self._feedback_result(
+                    normalized_feedback_id, signature, created=False
+                )
+            if not entry.active:
+                raise ValueError("feedback requires an active memory")
+            self._append(
+                "memory.feedback",
+                {
+                    "feedback_id": normalized_feedback_id,
+                    "memory_id": normalized_memory_id,
+                    "label": label,
+                    "source_run_id": normalized_source_run_id,
+                    "query": normalized_query,
+                },
+            )
+            return self._feedback_result(
+                normalized_feedback_id, signature, created=True
+            )
+
+    def _feedback_result(
+        self,
+        feedback_id: str,
+        signature: tuple[str, MemoryFeedbackLabel, str | None, str | None],
+        *,
+        created: bool,
+    ) -> MemoryFeedbackResult:
+        memory_id, label, _, _ = signature
+        counts = self._feedback.get(memory_id, {"helpful": 0, "not_helpful": 0})
+        signal = self._feedback_signal_from_counts(counts)
+        return MemoryFeedbackResult(
+            feedback_id=feedback_id,
+            memory_id=memory_id,
+            label=label,
+            created=created,
+            revision=self._revision,
+            helpful_count=counts.get("helpful", 0),
+            not_helpful_count=counts.get("not_helpful", 0),
+            signal=signal,
+        )
+
+    @staticmethod
+    def _feedback_signal_from_counts(counts: Mapping[str, int]) -> float:
+        helpful = counts.get("helpful", 0)
+        not_helpful = counts.get("not_helpful", 0)
+        total = helpful + not_helpful
+        if total == 0:
+            return 0.0
+        return round((helpful - not_helpful) / total, 6)
+
+    def _feedback_signal(self, memory_id: str) -> float:
+        with self._lock:
+            return self._feedback_signal_from_counts(self._feedback.get(memory_id, {}))
+
     def search(
         self,
         query: str,
@@ -554,13 +702,16 @@ class SemanticMemoryStore:
                 continue
             overlap = len(matched) / len(set(query_terms))
             phrase_bonus = 1.0 if query_phrase in " ".join(entry_terms) else 0.0
-            score = round(
-                0.68 * overlap + 0.17 * phrase_bonus + 0.15 * entry.confidence, 6
+            lexical_score = (
+                0.68 * overlap + 0.17 * phrase_bonus + 0.15 * entry.confidence
             )
-            matches.append(SemanticMemoryMatch(entry, score, matched))
+            feedback_signal = self._feedback_signal(entry.memory_id)
+            score = round(max(0.0, min(1.0, lexical_score + 0.05 * feedback_signal)), 6)
+            matches.append(SemanticMemoryMatch(entry, score, matched, feedback_signal))
         matches.sort(
             key=lambda match: (
                 -match.score,
+                -match.feedback_signal,
                 -match.entry.confidence,
                 -match.entry.updated_seq,
                 match.entry.memory_id,
@@ -613,6 +764,54 @@ class SemanticMemoryStore:
                 invalidation_reason=reason,
             )
             return
+        if event_type == "memory.feedback":
+            feedback_id = _key(
+                data.get("feedback_id"),
+                "feedback_id",
+                maximum=_MAX_FEEDBACK_ID_CHARS,
+            )
+            memory_id = _key(data.get("memory_id"), "memory_id", maximum=96)
+            label = _string(data.get("label"), "label")
+            if label not in _FEEDBACK_LABELS:
+                raise ValueError(f"unsupported feedback label: {label!r}")
+            source_run_id = (
+                None
+                if data.get("source_run_id") is None
+                else _key(data.get("source_run_id"), "source_run_id", maximum=128)
+            )
+            query = (
+                None
+                if data.get("query") is None
+                else _key(
+                    data.get("query"),
+                    "query",
+                    maximum=_MAX_FEEDBACK_QUERY_CHARS,
+                )
+            )
+            signature = (
+                memory_id,
+                cast(MemoryFeedbackLabel, label),
+                source_run_id,
+                query,
+            )
+            existing = self._feedback_events.get(feedback_id)
+            if existing is not None:
+                if existing != signature:
+                    raise ValueError(
+                        f"duplicate feedback id has different payload: {feedback_id}"
+                    )
+                return
+            current_entry = self._entries.get(memory_id)
+            if current_entry is None:
+                raise ValueError(f"memory event feedbacks unknown entry: {memory_id}")
+            if not current_entry.active:
+                raise ValueError("memory feedback event targets an inactive entry")
+            counts = self._feedback.setdefault(
+                memory_id, {"helpful": 0, "not_helpful": 0}
+            )
+            counts[label] = counts.get(label, 0) + 1
+            self._feedback_events[feedback_id] = signature
+            return
         raise ValueError(f"unknown semantic memory event type: {event_type!r}")
 
     def close(self) -> None:
@@ -633,6 +832,8 @@ class SemanticMemoryStore:
 
 __all__ = [
     "SEMANTIC_MEMORY_SCHEMA_VERSION",
+    "MemoryFeedbackLabel",
+    "MemoryFeedbackResult",
     "MemoryKind",
     "MemoryStatus",
     "MemoryWriteResult",

@@ -46,6 +46,9 @@ The runtime currently exposes:
   the caller enabled `--allow-write`;
 - `memory_invalidate`: mark one entry invalid with an explicit reason when the caller enabled
   `--allow-write`.
+- `memory_feedback`: record an idempotent `helpful` or `not_helpful` label for an active entry;
+  future lexical scores receive a bounded adjustment, while the memory text and provenance
+  remain unchanged.
 
 `run_tests` returning exit code 1 is a successful tool execution with a failing code test.
 The observation includes the exit code and captured output so the model can react. A path
@@ -223,8 +226,8 @@ contextopt run "Fix the parser" \
   --event-log <temporary-events.jsonl>
 ```
 
-`memory_search` is available whenever the store is attached. `memory_save` and
-`memory_invalidate` are exposed only with `--allow-write`; save accepts a short `fact`,
+`memory_search` is available whenever the store is attached. `memory_save`,
+`memory_invalidate`, and `memory_feedback` are exposed only with `--allow-write`; save accepts a short `fact`,
 `decision`, `procedure`, or `failure` plus scope, tags, confidence, source references, and an
 optional `supersedes` id. Invalidate takes an id and a reason. The store is append-only,
 hash-chained, and protected by the same single-host lease as runtime traces. Content-derived
@@ -239,6 +242,12 @@ events for matching active entries. If the process stops after the file write bu
 ledger update, write reconciliation repeats the same invalidation step. Matching is exact after
 slash and case normalization, so unrelated files are not invalidated; non-file staleness still
 requires an explicit `memory_invalidate` call.
+
+When a model has actually used a search result, it can call `memory_feedback` with
+`helpful` or `not_helpful`. The tool-call id is the feedback event's idempotency key, so replaying
+an interrupted call cannot double-count the vote. Search applies at most a small bounded signal
+to the lexical score and exposes that signal in the result; this is an auditable heuristic, not
+learned confidence calibration.
 
 This layer is deliberately lexical and provider-free. It has no embedding index, automatic
 consolidation, or learned confidence calibration. The model must ask for memory explicitly, and
