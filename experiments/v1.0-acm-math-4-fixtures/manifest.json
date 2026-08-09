@@ -1,6 +1,7 @@
 {
   "claim_boundary": "The manifest records experiment identity and configuration; it does not prove model quality or provider reproducibility.",
   "config": {
+    "container_image": "python:3.12-slim",
     "exploration_constant": 1.0,
     "fixtures": [
       "two-sum",
@@ -15,6 +16,7 @@
     "max_test_calls": 2,
     "model_adapter": "scripted",
     "repetitions": 3,
+    "sandbox": "host",
     "search_policy": "beam",
     "strategies": [
       "single_pass",
@@ -26,15 +28,18 @@
   "provider": {
     "adapter": "scripted",
     "base_url": null,
+    "cancellation_url": null,
     "model": null,
     "planner_model": null,
     "reviewer_model": null,
     "solver_model": null
   },
-  "repository_revision": "c27f5a291a3998eb0b0b40e16ca57a7ab66f2154",
+  "repository_revision": "9b1bee2e96bf8fc2a77c513886102b9c3f2c90a8",
   "runtime": {
     "api_key_env": "CONTEXTOPT_API_KEY",
+    "container_image": "python:3.12-slim",
     "max_retries": 2,
+    "sandbox": "host",
     "temperature": 0.0,
     "timeout_seconds": 90.0
   },

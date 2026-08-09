@@ -1,6 +1,7 @@
 {
   "claim_boundary": "This is a deterministic control-policy and protocol evaluation with scripted model responses. It measures visible-test success, role/model-call budgets, independent hidden-test success when enabled, candidate accounting, and token accounting on the bundled fixtures, plus local wall-clock duration; it does not measure general model capability, provider latency, provider reliability, or production safety.",
   "config": {
+    "container_image": "python:3.12-slim",
     "exploration_constant": 1.0,
     "fixtures": [
       "two-sum",
@@ -15,6 +16,7 @@
     "max_test_calls": 2,
     "model_adapter": "scripted",
     "repetitions": 3,
+    "sandbox": "host",
     "search_policy": "beam",
     "strategies": [
       "single_pass",
@@ -108,7 +110,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 148.076,
+      "duration_ms": 151.845,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -130,7 +132,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 132.09,
+      "duration_ms": 141.976,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -152,7 +154,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 140.023,
+      "duration_ms": 137.501,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -174,7 +176,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 403.491,
+      "duration_ms": 400.715,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -196,7 +198,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 422.063,
+      "duration_ms": 412.446,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -218,7 +220,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 417.849,
+      "duration_ms": 427.703,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -240,7 +242,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 494.493,
+      "duration_ms": 511.72,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -262,7 +264,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 474.798,
+      "duration_ms": 497.431,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -284,7 +286,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 476.556,
+      "duration_ms": 505.106,
       "error": null,
       "fixture_id": "two-sum",
       "hidden_error": null,
@@ -306,7 +308,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 138.671,
+      "duration_ms": 148.06,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -328,7 +330,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 135.294,
+      "duration_ms": 141.215,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -350,7 +352,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 136.827,
+      "duration_ms": 148.033,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -372,7 +374,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 422.001,
+      "duration_ms": 438.052,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -394,7 +396,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 420.462,
+      "duration_ms": 444.155,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -416,7 +418,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 406.251,
+      "duration_ms": 430.027,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -438,7 +440,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 471.492,
+      "duration_ms": 509.345,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -460,7 +462,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 508.013,
+      "duration_ms": 488.956,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -482,7 +484,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 489.509,
+      "duration_ms": 518.721,
       "error": null,
       "fixture_id": "extended-gcd",
       "hidden_error": null,
@@ -504,7 +506,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 150.444,
+      "duration_ms": 160.447,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -526,7 +528,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 149.17,
+      "duration_ms": 164.236,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -548,7 +550,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 162.596,
+      "duration_ms": 158.765,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -570,7 +572,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 463.603,
+      "duration_ms": 462.014,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -592,7 +594,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 452.539,
+      "duration_ms": 467.466,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -614,7 +616,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 469.586,
+      "duration_ms": 480.841,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -636,7 +638,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 489.108,
+      "duration_ms": 565.51,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -658,7 +660,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 512.817,
+      "duration_ms": 553.08,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -680,7 +682,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 508.916,
+      "duration_ms": 599.768,
       "error": null,
       "fixture_id": "merge-intervals",
       "hidden_error": null,
@@ -702,7 +704,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 146.268,
+      "duration_ms": 168.395,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -724,7 +726,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 142.651,
+      "duration_ms": 165.886,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -746,7 +748,7 @@
     {
       "best_candidate_id": "round-0-single-bad",
       "candidate_proposals": 1,
-      "duration_ms": 151.401,
+      "duration_ms": 160.842,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -768,7 +770,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 465.376,
+      "duration_ms": 478.143,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -790,7 +792,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 464.768,
+      "duration_ms": 486.572,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -812,7 +814,7 @@
     {
       "best_candidate_id": "round-0-best-good",
       "candidate_proposals": 2,
-      "duration_ms": 425.639,
+      "duration_ms": 514.476,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -834,7 +836,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 567.962,
+      "duration_ms": 548.394,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -856,7 +858,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 518.409,
+      "duration_ms": 556.647,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -878,7 +880,7 @@
     {
       "best_candidate_id": "round-1-orchestrated-good",
       "candidate_proposals": 2,
-      "duration_ms": 526.483,
+      "duration_ms": 561.035,
       "error": null,
       "fixture_id": "modular-inverse",
       "hidden_error": null,
@@ -905,7 +907,7 @@
       "hidden_success_count": 0,
       "hidden_success_rate": null,
       "mean_candidate_proposals": 1.0,
-      "mean_duration_ms": 144.45925,
+      "mean_duration_ms": 153.93341666666666,
       "mean_hidden_test_calls": 0.0,
       "mean_model_calls": 1.0,
       "mean_rounds": 1.0,
@@ -922,7 +924,7 @@
       "hidden_success_count": 12,
       "hidden_success_rate": 1.0,
       "mean_candidate_proposals": 2.0,
-      "mean_duration_ms": 436.1356666666666,
+      "mean_duration_ms": 453.5508333333333,
       "mean_hidden_test_calls": 1.0,
       "mean_model_calls": 1.0,
       "mean_rounds": 1.0,
@@ -939,7 +941,7 @@
       "hidden_success_count": 12,
       "hidden_success_rate": 1.0,
       "mean_candidate_proposals": 2.0,
-      "mean_duration_ms": 503.21299999999997,
+      "mean_duration_ms": 534.64275,
       "mean_hidden_test_calls": 1.0,
       "mean_model_calls": 6.0,
       "mean_rounds": 2.0,
