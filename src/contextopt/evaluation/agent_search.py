@@ -27,6 +27,7 @@ from html import escape
 from math import isfinite, sqrt
 from pathlib import Path, PurePosixPath
 from statistics import fmean, pstdev
+from time import monotonic
 from typing import Any, Literal, cast
 
 from contextopt.runtime.errors import ModelError, RuntimeContractError
@@ -60,15 +61,17 @@ _CLAIM_BOUNDARY = (
     "This is a deterministic control-policy and protocol evaluation with scripted "
     "model responses. It measures visible-test success, role/model-call budgets, "
     "independent hidden-test success when enabled, candidate accounting, and token "
-    "accounting on the bundled fixtures; it does not measure general model capability, "
-    "latency, provider reliability, or production safety."
+    "accounting on the bundled fixtures, plus local wall-clock duration; it does not "
+    "measure general model capability, provider latency, provider reliability, or "
+    "production safety."
 )
 _REAL_MODEL_CLAIM_BOUNDARY = (
     "This is an exploratory fixed-fixture provider evaluation. It records visible-test "
     "and independent hidden-test outcomes, role/model-call budgets, candidate "
-    "accounting, and provider-reported token usage for the selected model; it is not "
+    "accounting, provider-reported token usage, and local wall-clock duration for the "
+    "selected model; it is not "
     "a statistically powered benchmark and does not establish general coding ability, "
-    "latency, provider "
+    "provider latency, provider "
     "reliability, security isolation, or production safety."
 )
 
@@ -626,6 +629,7 @@ class AgentEvalRun:
     hidden_test_calls: int = 0
     hidden_success: bool | None = None
     hidden_error: str | None = None
+    duration_ms: float = 0.0
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -688,6 +692,13 @@ class AgentEvalRun:
             object.__setattr__(
                 self, "hidden_error", _non_empty(self.hidden_error, "hidden_error")
             )
+        if (
+            not isinstance(self.duration_ms, (int, float))
+            or isinstance(self.duration_ms, bool)
+            or not isfinite(self.duration_ms)
+            or self.duration_ms < 0
+        ):
+            raise ValueError("duration_ms must be a finite non-negative number")
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> AgentEvalRun:
@@ -712,6 +723,7 @@ class AgentEvalRun:
             "hidden_test_calls",
             "hidden_success",
             "hidden_error",
+            "duration_ms",
         }
         unknown = set(value) - allowed
         if unknown:
@@ -758,6 +770,7 @@ class AgentEvalRun:
                 if value.get("hidden_error") is None
                 else str(value["hidden_error"])
             ),
+            duration_ms=float(value.get("duration_ms", 0.0)),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -781,6 +794,7 @@ class AgentEvalRun:
             "hidden_test_calls": self.hidden_test_calls,
             "hidden_success": self.hidden_success,
             "hidden_error": self.hidden_error,
+            "duration_ms": self.duration_ms,
         }
 
 
@@ -802,6 +816,7 @@ class AgentEvalSummary:
     hidden_success_count: int
     hidden_success_rate: float | None
     mean_hidden_test_calls: float
+    mean_duration_ms: float = 0.0
 
     def __post_init__(self) -> None:
         if self.strategy not in _STRATEGIES:
@@ -823,6 +838,7 @@ class AgentEvalSummary:
             "mean_candidate_proposals",
             "mean_total_tokens",
             "mean_hidden_test_calls",
+            "mean_duration_ms",
         ):
             value = getattr(self, name)
             if (
@@ -870,6 +886,7 @@ class AgentEvalSummary:
             "hidden_success_count",
             "hidden_success_rate",
             "mean_hidden_test_calls",
+            "mean_duration_ms",
         }
 
         unknown = set(value) - allowed
@@ -900,6 +917,7 @@ class AgentEvalSummary:
                 else float(value["hidden_success_rate"])
             ),
             mean_hidden_test_calls=float(value.get("mean_hidden_test_calls", 0.0)),
+            mean_duration_ms=float(value.get("mean_duration_ms", 0.0)),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -918,6 +936,7 @@ class AgentEvalSummary:
             "hidden_success_count": self.hidden_success_count,
             "hidden_success_rate": self.hidden_success_rate,
             "mean_hidden_test_calls": self.mean_hidden_test_calls,
+            "mean_duration_ms": self.mean_duration_ms,
         }
 
 
@@ -941,6 +960,8 @@ class AgentEvalComparison:
     stddev_test_call_delta: float
     mean_token_delta: float
     stddev_token_delta: float
+    mean_duration_delta: float = 0.0
+    stddev_duration_delta: float = 0.0
 
     def __post_init__(self) -> None:
         if self.baseline_strategy not in _STRATEGIES:
@@ -977,6 +998,8 @@ class AgentEvalComparison:
             "stddev_test_call_delta",
             "mean_token_delta",
             "stddev_token_delta",
+            "mean_duration_delta",
+            "stddev_duration_delta",
         ):
             value = getattr(self, name)
             if not isinstance(value, (int, float)) or isinstance(value, bool):
@@ -1002,6 +1025,8 @@ class AgentEvalComparison:
             "stddev_test_call_delta": self.stddev_test_call_delta,
             "mean_token_delta": self.mean_token_delta,
             "stddev_token_delta": self.stddev_token_delta,
+            "mean_duration_delta": self.mean_duration_delta,
+            "stddev_duration_delta": self.stddev_duration_delta,
         }
 
 
@@ -1076,6 +1101,10 @@ def build_agent_eval_comparisons(
             candidate.total_tokens - baseline.total_tokens
             for baseline, candidate in pairs
         )
+        duration_deltas = tuple(
+            candidate.duration_ms - baseline.duration_ms
+            for baseline, candidate in pairs
+        )
         comparisons.append(
             AgentEvalComparison(
                 baseline_strategy=baseline_strategy,
@@ -1098,6 +1127,8 @@ def build_agent_eval_comparisons(
                 stddev_test_call_delta=pstdev(test_call_deltas),
                 mean_token_delta=fmean(token_deltas),
                 stddev_token_delta=pstdev(token_deltas),
+                mean_duration_delta=fmean(duration_deltas),
+                stddev_duration_delta=pstdev(duration_deltas),
             )
         )
     return tuple(comparisons)
@@ -1130,6 +1161,7 @@ def _summary(strategy: AgentStrategy, runs: Sequence[AgentEvalRun]) -> AgentEval
             None if not hidden_runs else hidden_successes / len(hidden_runs)
         ),
         mean_hidden_test_calls=mean("hidden_test_calls"),
+        mean_duration_ms=mean("duration_ms"),
     )
 
 
@@ -1501,7 +1533,7 @@ def _hidden_outcome(
         return 1, False, f"{type(exc).__name__}: {str(exc)[:800]}"
 
 
-def _run_strategy(
+def _run_strategy_once(
     fixture: AgentEvalFixture,
     strategy: AgentStrategy,
     config: AgentEvalConfig,
@@ -1709,6 +1741,21 @@ def _run_strategy(
         )
 
 
+def _run_strategy(
+    fixture: AgentEvalFixture,
+    strategy: AgentStrategy,
+    config: AgentEvalConfig,
+    repetition: int,
+    model_factory: AgentModelFactory | None = None,
+) -> AgentEvalRun:
+    started = monotonic()
+    result = _run_strategy_once(
+        fixture, strategy, config, repetition, model_factory=model_factory
+    )
+    duration_ms = max(0.0, (monotonic() - started) * 1000.0)
+    return replace(result, duration_ms=round(duration_ms, 3))
+
+
 def run_agent_evaluation(
     config: AgentEvalConfig | None = None,
     *,
@@ -1827,8 +1874,8 @@ def _hidden_label(value: bool | None) -> str:
 def render_agent_evaluation_console(report: AgentEvalReport) -> str:
     lines = [
         "strategy visible | visible 95% CI | hidden | mean model calls | "
-        "mean visible tests | mean tokens",
-        "--- | ---: | ---: | ---: | ---: | ---:",
+        "mean visible tests | mean tokens | mean duration ms",
+        "--- | ---: | ---: | ---: | ---: | ---: | ---:",
     ]
     lines.extend(
         f"{summary.strategy} {summary.success_count}/{summary.run_count} "
@@ -1837,7 +1884,7 @@ def render_agent_evaluation_console(report: AgentEvalReport) -> str:
         f"{summary.hidden_success_count}/{summary.hidden_run_count} "
         f"({_format_rate(summary.hidden_success_rate)}) | "
         f"{summary.mean_model_calls:.1f} | {summary.mean_test_calls:.1f} | "
-        f"{summary.mean_total_tokens:.0f}"
+        f"{summary.mean_total_tokens:.0f} | {summary.mean_duration_ms:.1f}"
         for summary in report.summaries
     )
     failures = sum(not run.success for run in report.runs)
@@ -1856,8 +1903,8 @@ def render_agent_evaluation_markdown(report: AgentEvalReport) -> str:
         "",
         "| Strategy | Visible | Visible 95% CI | Hidden | Mean model calls | "
         "Mean visible tests | "
-        "Mean reuses | Mean candidates | Mean tokens |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "Mean reuses | Mean candidates | Mean tokens | Mean duration ms |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     lines.extend(
         f"| `{summary.strategy}` | {summary.success_count}/{summary.run_count} "
@@ -1867,7 +1914,8 @@ def render_agent_evaluation_markdown(report: AgentEvalReport) -> str:
         f"({_format_rate(summary.hidden_success_rate)}) | "
         f"{summary.mean_model_calls:.1f} | "
         f"{summary.mean_test_calls:.1f} | {summary.mean_test_reuses:.1f} | "
-        f"{summary.mean_candidate_proposals:.1f} | {summary.mean_total_tokens:.0f} |"
+        f"{summary.mean_candidate_proposals:.1f} | {summary.mean_total_tokens:.0f} | "
+        f"{summary.mean_duration_ms:.1f} |"
         for summary in report.summaries
     )
     baseline = _comparison_baseline(report)
@@ -1882,8 +1930,9 @@ def render_agent_evaluation_markdown(report: AgentEvalReport) -> str:
                 "repetition; positive visible delta means more paired wins.",
                 "",
                 "| Strategy | Baseline | Paired | Wins | Losses | Ties | Visible Δ | "
-                "Hidden Δ | Mean tests Δ (stdev) | Mean tokens Δ (stdev) |",
-                "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+                "Hidden Δ | Mean tests Δ (stdev) | Mean tokens Δ (stdev) | "
+                "Mean duration Δ ms (stdev) |",
+                "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
             )
         )
         lines.extend(
@@ -1894,7 +1943,9 @@ def render_agent_evaluation_markdown(report: AgentEvalReport) -> str:
             f"{comparison.mean_test_call_delta:+.1f} "
             f"(stdev {comparison.stddev_test_call_delta:.1f}) | "
             f"{comparison.mean_token_delta:+.0f} "
-            f"(stdev {comparison.stddev_token_delta:.0f}) |"
+            f"(stdev {comparison.stddev_token_delta:.0f}) | "
+            f"{comparison.mean_duration_delta:+.1f} "
+            f"(stdev {comparison.stddev_duration_delta:.1f}) |"
             for comparison in comparisons
         )
     lines.extend(("", "## Fixtures", "", "| ID | Category | Task |", "|---|---|---|"))
@@ -1907,15 +1958,14 @@ def render_agent_evaluation_markdown(report: AgentEvalReport) -> str:
             "",
             "## Run ledger",
             "",
-            "| Fixture | Strategy | Status | Visible tests | Hidden | Best candidate | "
-            "Error |",
-            "|---|---|---|---:|---:|---|---|",
+            "| Fixture | Strategy | Status | Visible tests | Hidden | Duration ms | "
+            "Best candidate | Error |",
+            "|---|---|---|---:|---:|---:|---|---|",
         )
     )
     lines.extend(
         f"| `{run.fixture_id}` | `{run.strategy}` | {run.status} | {run.test_calls} | "
-        f"{_hidden_label(run.hidden_success)} "
-        "| "
+        f"{_hidden_label(run.hidden_success)} | {run.duration_ms:.1f} | "
         f"{run.best_candidate_id or 'none'} | {run.error or ''} |"
         for run in report.runs
     )
@@ -1940,6 +1990,8 @@ def _render_agent_eval_comparison_html(report: AgentEvalReport) -> str:
         f"(stdev {comparison.stddev_test_call_delta:.1f})</td>"
         f"<td>{comparison.mean_token_delta:+.0f} "
         f"(stdev {comparison.stddev_token_delta:.0f})</td>"
+        f"<td>{comparison.mean_duration_delta:+.1f} "
+        f"(stdev {comparison.stddev_duration_delta:.1f})</td>"
         "</tr>"
         for comparison in comparisons
     )
@@ -1950,6 +2002,7 @@ def _render_agent_eval_comparison_html(report: AgentEvalReport) -> str:
         "<table><thead><tr><th>strategy</th><th>baseline</th><th>paired</th>"
         "<th>wins/losses/ties</th><th>visible Δ</th><th>hidden Δ</th>"
         "<th>mean tests Δ (stdev)</th><th>mean tokens Δ (stdev)</th>"
+        "<th>mean duration Δ ms (stdev)</th>"
         f"</tr></thead><tbody>{rows}</tbody></table>"
     )
 
@@ -1977,6 +2030,7 @@ def render_agent_evaluation_html(report: AgentEvalReport) -> str:
             f"<td>{summary.mean_model_calls:.1f}</td>"
             f"<td>{summary.mean_test_calls:.1f}</td>"
             f"<td>{summary.mean_total_tokens:.0f}</td>"
+            f"<td>{summary.mean_duration_ms:.1f}</td>"
             "</tr>"
         )
         chart_rows.append(
@@ -2019,6 +2073,7 @@ def render_agent_evaluation_html(report: AgentEvalReport) -> str:
         "<table><thead><tr><th>strategy</th><th>visible</th><th>visible 95% CI</th>"
         "<th>hidden</th>"
         "<th>mean model calls</th><th>mean tests</th><th>mean tokens</th>"
+        "<th>mean duration ms</th>"
         f"</tr></thead><tbody>{''.join(summary_rows)}</tbody></table>"
         f"{_render_agent_eval_comparison_html(report)}"
         "<details><summary>durable evaluation JSON</summary><code>"

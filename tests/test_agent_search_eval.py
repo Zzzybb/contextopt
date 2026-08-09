@@ -62,6 +62,10 @@ class AgentEvaluationTests(unittest.TestCase):
             by_strategy["orchestrated"].mean_model_calls,
             by_strategy["best_of_n"].mean_model_calls,
         )
+        self.assertTrue(all(run.duration_ms >= 0 for run in report.runs))
+        self.assertTrue(
+            all(summary.mean_duration_ms >= 0 for summary in report.summaries)
+        )
         self.assertIn(
             "does not measure general model capability", report.claim_boundary
         )
@@ -76,6 +80,9 @@ class AgentEvaluationTests(unittest.TestCase):
         self.assertIsNone(by_strategy["best_of_n"].hidden_delta)
         self.assertEqual(by_strategy["best_of_n"].stddev_test_call_delta, 0.0)
         self.assertEqual(by_strategy["best_of_n"].stddev_token_delta, 0.0)
+        self.assertTrue(
+            all(comparison.stddev_duration_delta >= 0 for comparison in comparisons)
+        )
         low, high = wilson_interval(1, 1)
         self.assertGreaterEqual(low, 0.0)
         self.assertLessEqual(high, 1.0)
@@ -84,6 +91,7 @@ class AgentEvaluationTests(unittest.TestCase):
         self.assertIn("Visible 95% CI", markdown)
         self.assertIn("Paired comparisons", markdown)
         self.assertIn("Mean tokens Δ (stdev)", markdown)
+        self.assertIn("Mean duration Δ ms (stdev)", markdown)
 
     def test_hidden_tests_can_be_disabled_without_leaking_the_grader(self) -> None:
         report = run_agent_evaluation(
@@ -152,7 +160,14 @@ class AgentEvaluationTests(unittest.TestCase):
             resumed = run_agent_evaluation(
                 config, checkpoint_path=checkpoint_path, resume=True
             )
-            self.assertEqual(resumed.to_dict(), complete.to_dict())
+            complete_payload = complete.to_dict()
+            resumed_payload = resumed.to_dict()
+            for payload in (complete_payload, resumed_payload):
+                for run in payload["runs"]:
+                    run.pop("duration_ms", None)
+                for summary in payload["summaries"]:
+                    summary.pop("mean_duration_ms", None)
+            self.assertEqual(resumed_payload, complete_payload)
 
     def test_configuration_rejects_duplicate_or_unknown_strategy(self) -> None:
         with self.assertRaisesRegex(ValueError, "unique"):

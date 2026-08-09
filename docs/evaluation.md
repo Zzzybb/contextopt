@@ -295,16 +295,18 @@ The Markdown, console, and HTML renderers also show a descriptive Wilson 95% int
 each visible success rate. When at least two strategies are present, they add paired
 comparisons against `single_pass` (or the first configured strategy): wins, losses, ties,
 visible outcome delta, hidden delta when both runs actually executed the hidden grader, and
-mean test/token deltas with observed population standard deviations. These are derived from
-the raw fixture/repetition ledger, so they do not change the durable report schema and must
-not be read as a significance test with one repetition.
+mean test/token/duration deltas with observed population standard deviations. Each run also
+stores local `duration_ms`; this is useful for paired diagnostics but is not a provider latency
+SLA. These values are derived from the raw fixture/repetition ledger; the added fields are
+backward-compatible and older reports default duration to zero. They must not be read as a
+significance test with one repetition.
 
 By default this level tests policy wiring, budget accounting, strict model boundaries,
 executable visible/hidden oracle gates, and report consistency with deterministic scripted
 responses. `agent-eval --model ... --base-url ...` can replace the scripted factory with
 fresh OpenAI-compatible adapters per matrix cell; that path records provider usage but is
 still an exploratory fixed-fixture run, not a statistically powered benchmark. Neither
-mode measures general model capability, latency, provider reliability, or production safety.
+mode measures general model capability, provider latency, provider reliability, or production safety.
 When `--checkpoint PATH` is supplied, the harness atomically persists each completed matrix
 cell. Reusing the same configuration with `--resume --checkpoint PATH` skips durable cells
 and reruns only missing observations; a provider call interrupted before its cell is written

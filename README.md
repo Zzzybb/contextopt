@@ -201,7 +201,8 @@ recompute the complete chain because there is no secret or external trust anchor
   cache reuses, candidate proposals, and reported token usage without hiding failed runs.
   They also include descriptive Wilson 95% intervals and same-fixture/repetition paired
   deltas (wins/losses/ties plus mean and observed-variance test/token cost deltas) without
-  changing the raw ledger.
+  hiding the raw ledger. Each run also records local wall-clock `duration_ms` and paired
+  duration deltas; this is a diagnostic, not a provider latency SLA.
 - The evaluator defaults to deterministic scripted responses, but accepts an OpenAI-compatible
   model factory for exploratory runs; either mode keeps the independent hidden grader outside
   the candidate snapshot.
@@ -648,6 +649,9 @@ The first-valid speculative cancellation is documented in [the v0.9 cancellation
 and [Chinese version](docs/pr/0001-v0.9-speculative-cancellation.zh-CN.md).
 The manual real-provider path is documented in [the workflow guide](docs/evaluation-real-provider.md)
 and [Chinese version](docs/evaluation-real-provider.zh-CN.md), with its [PR note](docs/pr/0001-v0.9-real-provider-workflow.md).
+The local evaluation-duration accounting is documented in [the v0.9 duration note](docs/pr/0001-v0.9-evaluation-duration.md)
+and [Chinese version](docs/pr/0001-v0.9-evaluation-duration.zh-CN.md). The earlier v0.7
+orchestration addendum also has a [Chinese retrospective](docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers. The
   manual workflow is the reproducibility entry point; the checked-in scripted artifacts remain
