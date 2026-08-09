@@ -117,6 +117,139 @@ class _DynamicProviderServer:
         self._thread.join(timeout=5)
 
 
+class _OrchestratedProviderServer:
+    """Local provider fixture that exercises all three orchestration roles."""
+
+    def __init__(self, fixture_files: Mapping[str, str]) -> None:
+        self.fixture_files = dict(fixture_files)
+        self.requests: list[dict[str, Any]] = []
+        self._lock = threading.Lock()
+        state = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self) -> None:
+                length = int(self.headers.get("Content-Length", "0"))
+                payload = json.loads(self.rfile.read(length).decode("utf-8"))
+                messages = payload.get("messages", [])
+                system = (
+                    str(messages[0].get("content", ""))
+                    if messages and isinstance(messages[0], Mapping)
+                    else ""
+                )
+                if "planning role" in system:
+                    role = "planner"
+                    content = json.dumps(
+                        {
+                            "goal": "repair the complete fixture snapshot",
+                            "constraints": [
+                                "preserve the public function signature",
+                                "return a complete workspace snapshot",
+                            ],
+                            "hypotheses": [
+                                "apply the standard algorithm and explicit edge cases"
+                            ],
+                            "test_focus": ["run every bundled visible test"],
+                            "risks": ["do not weaken the test contract"],
+                        },
+                        ensure_ascii=False,
+                    )
+                elif "solver role" in system:
+                    role = "solver"
+                    content = json.dumps(
+                        {
+                            "candidates": [
+                                {
+                                    "id": "provider-smoke-good",
+                                    "parent_id": "root",
+                                    "hypothesis": (
+                                        "apply the complete known-good fixture snapshot"
+                                    ),
+                                    "files": state.fixture_files,
+                                    "evidence": ["visible tests are the oracle"],
+                                }
+                            ]
+                        },
+                        ensure_ascii=False,
+                    )
+                elif "reviewer role" in system:
+                    role = "reviewer"
+                    content = json.dumps(
+                        {
+                            "decision": "accept",
+                            "candidate_id": "round-0-provider-smoke-good",
+                            "confidence": 0.9,
+                            "blocking_issues": [],
+                            "required_checks": [],
+                            "summary": "the visible oracle supports this decision",
+                        },
+                        ensure_ascii=False,
+                    )
+                else:
+                    role = "unknown"
+                    content = json.dumps(
+                        {"error": "unexpected role system prompt"},
+                        ensure_ascii=False,
+                    )
+                with state._lock:
+                    state.requests.append(
+                        {
+                            "role": role,
+                            "path": self.path,
+                            "authorization": self.headers.get("Authorization"),
+                            "idempotency_key": self.headers.get("Idempotency-Key"),
+                            "payload": payload,
+                        }
+                    )
+                response = json.dumps(
+                    {
+                        "id": f"provider-smoke-{role}-response",
+                        "choices": [
+                            {
+                                "message": {"role": "assistant", "content": content},
+                                "finish_reason": "stop",
+                            }
+                        ],
+                        "usage": {
+                            "prompt_tokens": 12,
+                            "completion_tokens": 8,
+                        },
+                    }
+                ).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(response)))
+                self.end_headers()
+                self.wfile.write(response)
+
+            def log_message(self, _format: str, *args: object) -> None:
+                del args
+
+        self._server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self._server.daemon_threads = True
+        port = int(self._server.server_address[1])
+        self.base_url = f"http://127.0.0.1:{port}/v1"
+        self._thread = threading.Thread(
+            target=self._server.serve_forever,
+            kwargs={"poll_interval": 0.01},
+            daemon=True,
+        )
+
+    def __enter__(self) -> _OrchestratedProviderServer:
+        self._thread.start()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        del exc_type, exc_value, traceback
+        self._server.shutdown()
+        self._server.server_close()
+        self._thread.join(timeout=5)
+
+
 class AgentEvaluationFixtureTests(unittest.TestCase):
     def test_acm_and_math_fixtures_are_complete_snapshots(self) -> None:
         fixtures = build_algorithm_fixtures()
@@ -257,6 +390,66 @@ class AgentEvaluationTests(unittest.TestCase):
                 )
                 self.assertTrue(request["idempotency_key"].startswith("contextopt-"))
                 self.assertEqual(request["payload"]["model"], "provider-smoke-model")
+
+    def test_real_adapter_orchestrated_matrix_path_works_with_local_provider(
+        self,
+    ) -> None:
+        fixtures = build_algorithm_fixtures()
+        expected_roles = ("planner", "solver", "reviewer")
+        expected_models = (
+            "provider-smoke-planner",
+            "provider-smoke-solver",
+            "provider-smoke-reviewer",
+        )
+        for fixture in fixtures:
+            with (
+                self.subTest(fixture=fixture.fixture_id),
+                _OrchestratedProviderServer(fixture.good_files) as server,
+            ):
+                factory = build_openai_model_factory(
+                    base_url=server.base_url,
+                    api_key="provider-smoke-secret",
+                    model="provider-smoke-solver",
+                    planner_model=expected_models[0],
+                    solver_model=expected_models[1],
+                    reviewer_model=expected_models[2],
+                )
+                report = run_agent_evaluation(
+                    AgentEvalConfig(
+                        strategies=("orchestrated",),
+                        fixtures=(fixture.fixture_id,),
+                        repetitions=1,
+                        include_hidden_tests=True,
+                        model_adapter="openai-compatible",
+                    ),
+                    model_factory=factory,
+                )
+                self.assertEqual(report.runs[0].status, "accepted")
+                self.assertTrue(report.runs[0].success)
+                self.assertTrue(report.runs[0].hidden_success)
+                self.assertEqual(
+                    [request["role"] for request in server.requests],
+                    list(expected_roles),
+                )
+                self.assertEqual(
+                    [request["payload"]["model"] for request in server.requests],
+                    list(expected_models),
+                )
+                self.assertTrue(
+                    all(
+                        request["path"] == "/v1/chat/completions"
+                        for request in server.requests
+                    )
+                )
+                self.assertTrue(
+                    all(
+                        request["authorization"] == "Bearer provider-smoke-secret"
+                        for request in server.requests
+                    )
+                )
+                keys = [request["idempotency_key"] for request in server.requests]
+                self.assertEqual(len(keys), len(set(keys)))
+                self.assertTrue(all(key.startswith("contextopt-") for key in keys))
 
     def test_report_roundtrip_and_tamper_detection(self) -> None:
         payload = self.report.to_dict()

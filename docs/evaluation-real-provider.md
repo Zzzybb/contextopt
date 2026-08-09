@@ -40,7 +40,8 @@ statistically powered study, latency SLA, provider reliability test, or security
 The hidden grader source is excluded from model-visible snapshots, and the manifest records
 provider identity without writing the API key.
 
-CI exercises the same OpenAI-compatible adapter boundary with a local deterministic HTTP
-fixture in `tests/test_agent_search_eval.py`; that smoke validates request shape, authorization
-and idempotency headers, and oracle gating without claiming model quality or contacting a real
-provider.
+CI exercises the same OpenAI-compatible adapter boundary with local deterministic HTTP
+fixtures in `tests/test_agent_search_eval.py`. One fixture covers the single-pass request
+shape; the multi-agent fixture drives planner → solver → reviewer for all four ACM/math tasks
+and validates role-specific models, authorization, idempotency headers, and oracle gating.
+Neither smoke claims model quality or contacts a real provider.

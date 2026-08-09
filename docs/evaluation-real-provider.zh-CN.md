@@ -35,5 +35,6 @@ provider 稳定性测试或安全评测。hidden grader 源码不会进入模型
 provider 身份但不会写入 API key。
 
 CI 会通过 `tests/test_agent_search_eval.py` 中的本地确定性 HTTP fixture 走同一个
-OpenAI-compatible adapter 边界，校验请求格式、authorization、idempotency header 和
-oracle gate；这个 smoke 不访问真实 provider，也不代表模型质量。
+OpenAI-compatible adapter 边界。一个 fixture 覆盖 single-pass 请求格式；多智能体 fixture
+会对四个 ACM/数学任务完整驱动 planner → solver → reviewer，并校验角色模型、authorization、
+idempotency header 和 oracle gate。两个 smoke 都不访问真实 provider，也不代表模型质量。
