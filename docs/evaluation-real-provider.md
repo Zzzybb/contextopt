@@ -3,6 +3,9 @@
 The repository includes a manual GitHub Actions workflow at
 `.github/workflows/real-agent-eval.yml`. It is intentionally not scheduled and does not run on
 pull requests, so a provider call (and its cost) only happens after an explicit operator action.
+When this workflow is introduced through a pull request, GitHub exposes its **Actions → Run
+workflow** form after the change is merged into the repository's default branch; before that,
+use the equivalent local CLI command in the README.
 
 ## One-time setup
 

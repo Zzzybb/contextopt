@@ -2,6 +2,8 @@
 
 仓库新增手动 GitHub Actions 工作流 `.github/workflows/real-agent-eval.yml`。它不会定时运行，
 也不会在 pull request 上自动运行，因此只有操作者明确点击后才会产生 provider 调用和费用。
+如果该 workflow 是通过 pull request 引入的，GitHub 会在改动合并到仓库默认分支后才显示
+**Actions → Run workflow** 表单；合并前请使用 README 中等价的本地 CLI 命令。
 
 ## 一次性配置
 
