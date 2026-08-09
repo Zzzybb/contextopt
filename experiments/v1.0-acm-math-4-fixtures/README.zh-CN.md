@@ -28,6 +28,7 @@ python -m contextopt agent-eval --fixtures all --repetitions 3 \
 三次，之后才能与这份控制产物做对比。
 
 manifest 固定了本基线使用的源码 revision：
-`f868f930c7ad31380e839019473ae228acfb5490`。本次在 provider cancellation、候选执行 sandbox
-和 role-model identity 完成后重新生成了提交中的 report；config 记录默认的 `sandbox=host`、
-image identity 和空的 role override，其中仍只有 provider-free scripted control 数据。
+`f0bfc4333d16768614350d5ef75c3e55440a43c1`。本次在 provider cancellation、候选执行 sandbox、
+role-model identity 和精确配对结果诊断完成后重新生成了提交中的 report；config 记录默认的
+`sandbox=host`、image identity 和空的 role override，其中仍只有 provider-free scripted control
+数据。配对比较行还包含精确双侧 McNemar p 值，用作探索性的 discordant-pair 诊断。
