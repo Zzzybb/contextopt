@@ -190,7 +190,10 @@ class BranchExecutorTests(unittest.TestCase):
         self.assertFalse(result.is_success)
         self.assertIn("docker executable was not found", result.error or "")
 
-    @unittest.skipUnless(shutil.which("docker"), "Docker is not installed")
+    @unittest.skipUnless(
+        shutil.which("docker") and os.environ.get("CONTEXTOPT_RUN_DOCKER_SMOKE") == "1",
+        "Docker smoke is only enabled on the Docker CI job",
+    )
     def test_docker_sandbox_executes_candidate_on_enabled_runner(self) -> None:
         result = evaluate_candidate(
             _case().by_id["good"],

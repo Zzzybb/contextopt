@@ -49,6 +49,8 @@ jobs:
 
   docker-sandbox:
     runs-on: ubuntu-latest
+    env:
+      CONTEXTOPT_RUN_DOCKER_SMOKE: "1"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6

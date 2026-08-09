@@ -338,32 +338,37 @@ def _docker_command(
         raise OSError("docker executable was not found on PATH")
     container_name = f"contextopt-{uuid.uuid4().hex[:20]}"
     mount = f"type=bind,source={workspace.resolve()},destination=/workspace"
-    command = [
-        docker,
-        "run",
-        "--rm",
-        "--init",
-        "--name",
-        container_name,
-        "--network=none",
-        "--cap-drop=ALL",
-        "--security-opt=no-new-privileges",
-        "--read-only",
-        "--pids-limit",
-        "256",
-        "--memory",
-        "1g",
-        "--cpus",
-        "2",
-        "--tmpfs",
-        "/tmp:rw,noexec,nosuid,size=64m",
-        "--mount",
-        mount,
-        "--workdir",
-        "/workspace",
-        config.container_image,
-        *config.command,
-    ]
+    command = [docker, "run", "--rm", "--init"]
+    getuid = getattr(os, "getuid", None)
+    getgid = getattr(os, "getgid", None)
+    if os.name != "nt" and callable(getuid) and callable(getgid):
+        # TemporaryDirectory is intentionally private (0700). Match the host
+        # identity so a non-root image user can read/write the bind mount.
+        command.extend(["--user", f"{getuid()}:{getgid()}"])
+    command.extend(
+        [
+            "--name",
+            container_name,
+            "--network=none",
+            "--cap-drop=ALL",
+            "--security-opt=no-new-privileges",
+            "--read-only",
+            "--pids-limit",
+            "256",
+            "--memory",
+            "1g",
+            "--cpus",
+            "2",
+            "--tmpfs",
+            "/tmp:rw,noexec,nosuid,size=64m",
+            "--mount",
+            mount,
+            "--workdir",
+            "/workspace",
+            config.container_image,
+            *config.command,
+        ]
+    )
     return command, docker, container_name
 
 
