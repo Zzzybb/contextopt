@@ -6,6 +6,7 @@ import unittest
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 from contextopt.runtime.context import (
     ContextCompiler,
@@ -502,6 +503,55 @@ class RecoveryProjectionTests(unittest.TestCase):
             self.assertEqual(
                 replay_events_with_checkpoint(trace.events, checkpoint_path),
                 full,
+            )
+
+    def test_checkpoint_replace_failure_preserves_previous_cache(self) -> None:
+        config = _config()
+        trace = _Trace("checkpoint-crash-run")
+        _start(trace, config)
+        _request(trace, 1, 2)
+        _response(trace, 1, content="Done.", usage=TokenUsage(3, 2))
+        prefix = tuple(trace.events)
+        prefix_state = replay_events(prefix)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint_path = Path(temp_dir) / "projection.json"
+            write_projection_checkpoint(checkpoint_path, prefix_state)
+            _terminal(
+                trace,
+                "run.completed",
+                status="completed",
+                reason="model_stopped",
+                turns=1,
+                tool_calls=0,
+                usage=TokenUsage(3, 2),
+                final_text="Done.",
+            )
+            full_state = replay_events(trace.events)
+
+            with (
+                patch(
+                    "contextopt.runtime.recovery.os.replace",
+                    side_effect=OSError("simulated machine loss"),
+                ),
+                self.assertRaisesRegex(OSError, "simulated machine loss"),
+            ):
+                write_projection_checkpoint(checkpoint_path, full_state)
+
+            cached = load_projection_checkpoint(
+                checkpoint_path,
+                through_event=prefix[-1],
+            )
+            self.assertIsNotNone(cached)
+            assert cached is not None
+            self.assertEqual(cached.state, prefix_state)
+            self.assertEqual(
+                [
+                    path
+                    for path in checkpoint_path.parent.iterdir()
+                    if path.suffix == ".tmp"
+                ],
+                [],
             )
 
     def test_illegal_transitions_and_out_of_order_tools_are_rejected(self) -> None:
