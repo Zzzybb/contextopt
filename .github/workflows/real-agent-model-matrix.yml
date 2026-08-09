@@ -130,6 +130,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     env:
       CONTEXTOPT_GIT_REVISION: ${{ github.sha }}

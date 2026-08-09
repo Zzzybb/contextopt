@@ -30,6 +30,7 @@ class RealProviderWorkflowContractTests(unittest.TestCase):
             "if-no-files-found: warn",
             "concurrency:",
             "cancel-in-progress: false",
+            "max-parallel: 2",
         )
         for fragment in required_fragments:
             with self.subTest(fragment=fragment):
