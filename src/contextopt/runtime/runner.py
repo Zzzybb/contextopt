@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 from collections.abc import Coroutine
 from contextlib import suppress
 from pathlib import Path
@@ -42,6 +43,11 @@ from contextopt.runtime.tools import WorkspaceTools
 
 PendingToolResolution = Literal["retry", "mark_failed"]
 _T = TypeVar("_T")
+
+
+def _consume_task_exception(task: asyncio.Future[Any]) -> None:
+    if not task.cancelled():
+        task.exception()
 
 
 def _latest_assistant_text(state: RunProjection) -> str:
@@ -306,9 +312,16 @@ class AgentRunner:
         remaining_wall = state.config.limits.wall_timeout_seconds - elapsed
         if remaining_wall <= 0:
             raise TimeoutError
-        response = await asyncio.wait_for(
-            self.model.complete(request), timeout=remaining_wall
-        )
+        try:
+            response = await asyncio.wait_for(
+                self.model.complete(request), timeout=remaining_wall
+            )
+        except TimeoutError:
+            await self._request_model_cancellation(request)
+            raise
+        except asyncio.CancelledError:
+            await self._request_model_cancellation(request)
+            raise
         self._validate_response(response)
         state = self._append(
             state,
@@ -316,6 +329,26 @@ class AgentRunner:
             {"turn": request.turn, **response.to_dict()},
         )
         return self._append_budget(state)
+
+    async def _request_model_cancellation(self, request: ModelRequest) -> None:
+        """Best-effort adapter cancellation for a timed-out or interrupted call."""
+
+        callback = getattr(self.model, "request_cancellation", None)
+        if callback is None:
+            return
+        try:
+            result = callback(request)
+            if inspect.isawaitable(result):
+                task = asyncio.ensure_future(result)
+                try:
+                    await asyncio.shield(task)
+                except asyncio.CancelledError:
+                    task.add_done_callback(_consume_task_exception)
+
+        except Exception:
+            # Cancellation is advisory; the authoritative pending model event still
+            # drives recovery if an adapter cannot interrupt its request.
+            return
 
     @staticmethod
     def _validate_response(response: ModelResponse) -> None:

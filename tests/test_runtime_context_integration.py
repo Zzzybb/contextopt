@@ -31,6 +31,7 @@ class _TwoTurnModel:
         self.block_second_call = block_second_call
         self.cursor = 0
         self.requests: list[ModelRequest] = []
+        self.cancellation_requests: list[ModelRequest] = []
         self.second_call_started = asyncio.Event()
 
     @property
@@ -80,6 +81,10 @@ class _TwoTurnModel:
             usage=TokenUsage(input_tokens=9, output_tokens=4),
             response_id="context-turn-2",
         )
+
+    async def request_cancellation(self, request: ModelRequest) -> str:
+        self.cancellation_requests.append(request)
+        return "acknowledged"
 
 
 def _compiler(*, budget: int = 1_024) -> ContextCompiler:
@@ -171,6 +176,8 @@ class RuntimeContextIntegrationTests(unittest.IsolatedAsyncioTestCase):
             task.cancel()
             with self.assertRaises(asyncio.CancelledError):
                 await task
+            self.assertEqual(len(first_model.cancellation_requests), 1)
+            self.assertEqual(first_model.cancellation_requests[0].turn, 2)
 
             interrupted = read_events(event_path)
             pending_event = next(
