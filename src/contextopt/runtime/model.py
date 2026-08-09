@@ -275,6 +275,19 @@ class OpenAICompatibleModel:
     async def complete(self, request: ModelRequest) -> ModelResponse:
         return await asyncio.to_thread(self._complete_sync, request)
 
+    async def request_cancellation(self, request: ModelRequest) -> str:
+        """Return the adapter's remote-abort status for a speculative request.
+
+        The generic OpenAI-compatible Chat Completions protocol has no standard abort
+        endpoint, so this adapter deliberately reports ``unsupported``.
+        Provider-specific adapters may override the hook and return
+        ``acknowledged`` after calling their cancellation API. The orchestration ledger
+        still records local task cancellation.
+        """
+
+        _ = request
+        return "unsupported"
+
     def request_idempotency_key(self, request: ModelRequest) -> str:
         """Return the stable key used for provider retries and run recovery."""
 

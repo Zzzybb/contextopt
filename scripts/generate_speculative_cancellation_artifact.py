@@ -89,6 +89,7 @@ class FirstValidSolver:
         self._name = "artifact-first-valid-solver:v1"
         self._never = asyncio.Event()
         self.cancelled = 0
+        self.cancellation_requests = 0
 
     @property
     def name(self) -> str:
@@ -101,6 +102,11 @@ class FirstValidSolver:
     def resume_from_turn(self, completed_turns: int) -> None:
         if completed_turns < 0:
             raise ValueError("completed_turns must be non-negative")
+
+    async def request_cancellation(self, request: ModelRequest) -> str:
+        _ = request
+        self.cancellation_requests += 1
+        return "acknowledged"
 
     async def complete(self, request: ModelRequest) -> ModelResponse:
         if "You are lane 2 of 2" in request.messages[-1].content:
@@ -178,6 +184,9 @@ def main() -> None:
         "run_id": "v0.9-speculative-cancellation-artifact",
         "winner_lane": 0,
         "cancelled_lane_count": solver.cancelled,
+        "provider_cancel_status": "acknowledged"
+        if solver.cancellation_requests
+        else "unsupported",
         "claim_boundary": (
             "The winner is the first protocol-parseable candidate. Visible tests and reviewer "
             "approval remain authoritative; provider cancellation is best-effort."

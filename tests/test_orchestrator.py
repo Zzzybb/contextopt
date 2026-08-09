@@ -145,6 +145,7 @@ class FirstValidSpeculativeModel:
         self._never = asyncio.Event()
         self.requests: list[ModelRequest] = []
         self.cancelled = 0
+        self.cancellation_requests: list[ModelRequest] = []
 
     @property
     def name(self) -> str:
@@ -157,6 +158,10 @@ class FirstValidSpeculativeModel:
     def resume_from_turn(self, completed_turns: int) -> None:
         if completed_turns < 0:
             raise ValueError("completed_turns must be non-negative")
+
+    async def request_cancellation(self, request: ModelRequest) -> str:
+        self.cancellation_requests.append(request)
+        return "acknowledged"
 
     async def complete(self, request: ModelRequest) -> ModelResponse:
         self.requests.append(request)
@@ -491,6 +496,13 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
             1,
         )
         self.assertEqual(solver.cancelled, 1)
+        self.assertEqual(len(solver.cancellation_requests), 1)
+        cancelled = next(
+            event
+            for event in report.events
+            if event.type == "solver.speculative.cancelled"
+        )
+        self.assertEqual(cancelled.data["provider_cancel_status"], "acknowledged")
         self.assertEqual(checkpoint_report.to_dict(), report.to_dict())
 
     async def test_speculative_resume_reuses_durable_lane_response(self) -> None:

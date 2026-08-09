@@ -9,6 +9,7 @@ budgets and a durable checkpoint.
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import os
 import tempfile
@@ -2389,6 +2390,7 @@ class OrchestrationRunner:
         stop_on_valid = state.config.speculative_solver_stop_on_valid and width > 1
         winner_lane: int | None = None
         cancelled_lanes: set[int] = set()
+        requests_by_lane = {lane: request for lane, request, _receipt in prepared}
 
         def _parse_valid_response(response: ModelResponse) -> BranchCase | None:
             try:
@@ -2425,6 +2427,7 @@ class OrchestrationRunner:
             lane: int,
             *,
             cancellation_mode: str,
+            provider_cancel_status: str,
         ) -> OrchestrationReport:
             return _event(
                 current,
@@ -2436,8 +2439,28 @@ class OrchestrationRunner:
                     "reason": "first_valid_lane",
                     "cancellation_mode": cancellation_mode,
                     "provider_cancellation": "best_effort",
+                    "provider_cancel_status": provider_cancel_status,
                 },
             )
+
+        async def _request_provider_cancellation(request: ModelRequest) -> str:
+            """Invoke an optional adapter abort hook without widening ModelClient."""
+
+            callback = getattr(self.solver, "request_cancellation", None)
+            if callback is None:
+                return "unsupported"
+            try:
+                result = callback(request)
+                if inspect.isawaitable(result):
+                    result = await result
+                if result is True:
+                    return "acknowledged"
+                if result is False or result is None:
+                    return "unsupported"
+                status = str(result).strip()
+                return status[:80] if status else "unsupported"
+            except Exception as exc:  # cancellation is advisory, never a new failure
+                return f"failed:{type(exc).__name__}"[:80]
 
         # A durable response from a previous process may already be a valid
         # candidate.  Reuse it as the winner and avoid starting missing lanes.
@@ -2472,7 +2495,10 @@ class OrchestrationRunner:
                     continue
                 cancelled_lanes.add(lane)
                 working = _cancelled_event(
-                    working, lane, cancellation_mode="not_started"
+                    working,
+                    lane,
+                    cancellation_mode="not_started",
+                    provider_cancel_status="not_attempted",
                 )
             if checkpoint is not None:
                 write_orchestration_checkpoint(working, checkpoint)
@@ -2541,7 +2567,12 @@ class OrchestrationRunner:
                 for lane, task in task_by_lane.items():
                     if lane in processed_lanes:
                         continue
-                    if not task.done():
+                    if task.done():
+                        provider_cancel_status = "not_observed"
+                    else:
+                        provider_cancel_status = await _request_provider_cancellation(
+                            requests_by_lane[lane]
+                        )
                         task.cancel()
                     cancelled_lanes.add(lane)
                 await asyncio.gather(*tasks, return_exceptions=True)
@@ -2557,6 +2588,7 @@ class OrchestrationRunner:
                         working,
                         lane,
                         cancellation_mode="task_cancel_requested",
+                        provider_cancel_status=provider_cancel_status,
                     )
                     if checkpoint is not None:
                         write_orchestration_checkpoint(working, checkpoint)

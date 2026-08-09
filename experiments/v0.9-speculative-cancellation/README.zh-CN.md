@@ -12,5 +12,6 @@ python scripts/generate_speculative_cancellation_artifact.py
 ```
 
 报告仍按配置 width 计费：`model_calls=4`、`solver_calls=2`，即使有一个 lane 被取消。
-`speculative_winners=1` 和 `cancelled_solver_lanes=1` 描述本地调度效果。这不代表模型质量、
+`speculative_winners=1` 和 `cancelled_solver_lanes=1` 描述本地调度效果；fixture adapter
+返回 `provider_cancel_status=acknowledged`，用于证明可选 hook 已接通。这不代表模型质量、
 远端 provider 的 abort 延迟或 exactly-once 取消；这里的 `valid` 只表示候选协议解析成功。

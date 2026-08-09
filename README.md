@@ -183,7 +183,9 @@ recompute the complete chain because there is no secret or external trust anchor
   the visible-test oracle still decides correctness. `solver.speculative.winner` and
   `solver.speculative.cancelled` events expose the latency/cost trade-off. Cancellation is
   explicitly best-effort because a provider may finish an HTTP request after its local task
-  is cancelled.
+  is cancelled. Provider-specific adapters can optionally implement
+  `request_cancellation(request)`; the default serial OpenAI-compatible adapter records
+  `unsupported` because the generic Chat Completions protocol has no standard abort endpoint.
 - The orchestrate CLI command plus console/Markdown/HTML reports make role calls and the
   oracle gate measurable instead of treating a multi-agent transcript as evidence.
 

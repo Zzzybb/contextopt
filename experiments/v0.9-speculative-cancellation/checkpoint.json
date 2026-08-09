@@ -577,6 +577,7 @@
       "data": {
         "cancellation_mode": "task_cancel_requested",
         "lane": 1,
+        "provider_cancel_status": "acknowledged",
         "provider_cancellation": "best_effort",
         "reason": "first_valid_lane",
         "turn": 1,
@@ -584,7 +585,7 @@
       },
       "prev_sha256": "ee45f2ac8fca197a3cc9aba674cbe282b84e573c3db68de9deda08f00a240002",
       "seq": 6,
-      "sha256": "13a473cd4a6a8e2074c77e12e1f8fda6e5679510c5d152c4c748b7c9be499271",
+      "sha256": "de6e009a9eded453dc3bce1b3a5dded632c5e983003c6467d4840d3b0293d050",
       "type": "solver.speculative.cancelled"
     },
     {
@@ -604,9 +605,9 @@
           "total_tokens": 0
         }
       },
-      "prev_sha256": "13a473cd4a6a8e2074c77e12e1f8fda6e5679510c5d152c4c748b7c9be499271",
+      "prev_sha256": "de6e009a9eded453dc3bce1b3a5dded632c5e983003c6467d4840d3b0293d050",
       "seq": 7,
-      "sha256": "057efe7fce6f9e58919212448d71ccd92661525a0677198adc571936f9d4d872",
+      "sha256": "3cc6765f6019b4a821fc04aa459e4b839ae887c06864385db87af9acae39d2f3",
       "type": "solver.speculative.received"
     },
     {
@@ -737,9 +738,9 @@
         ],
         "winner_lane": 0
       },
-      "prev_sha256": "057efe7fce6f9e58919212448d71ccd92661525a0677198adc571936f9d4d872",
+      "prev_sha256": "3cc6765f6019b4a821fc04aa459e4b839ae887c06864385db87af9acae39d2f3",
       "seq": 8,
-      "sha256": "4f84e45627b8b36ebc99ad47c1f5f2cc0e2bb9b26a044a27a561d17265ada5a1",
+      "sha256": "226d30b7b0aaac3bf32d25372f7fdc7d301279a9efee6c8a368c8d34abb189d7",
       "type": "solver.received"
     },
     {
@@ -750,9 +751,9 @@
         "scheduler_policy": "fixed",
         "workspace_fingerprint": "cb0a34250358619854a0891e569d878173cd3652143529391b8bb9e92d8829ff"
       },
-      "prev_sha256": "4f84e45627b8b36ebc99ad47c1f5f2cc0e2bb9b26a044a27a561d17265ada5a1",
+      "prev_sha256": "226d30b7b0aaac3bf32d25372f7fdc7d301279a9efee6c8a368c8d34abb189d7",
       "seq": 9,
-      "sha256": "99e27ce1fb53cd0cd67820e47dd0d6b71d6aa8ad795ce3e3c29d2a5019389922",
+      "sha256": "6c9fae7957a79153a89006d6fed1d45dfabd9abe95afae48a37e02e3847c3e60",
       "type": "candidate.requested"
     },
     {
@@ -765,15 +766,15 @@
         "test_calls": 1,
         "workspace_fingerprint": "cb0a34250358619854a0891e569d878173cd3652143529391b8bb9e92d8829ff"
       },
-      "prev_sha256": "99e27ce1fb53cd0cd67820e47dd0d6b71d6aa8ad795ce3e3c29d2a5019389922",
+      "prev_sha256": "6c9fae7957a79153a89006d6fed1d45dfabd9abe95afae48a37e02e3847c3e60",
       "seq": 10,
-      "sha256": "9a5593b7fe7b6d3135cd14bb21ffc41be2073d064e1859b149cb99f9b22bde06",
+      "sha256": "42b1f871f475c8992c756279e9812c03e65c2ab1de1476c80c41452a28c59aec",
       "type": "candidate.completed"
     },
     {
       "data": {
         "actual_test_calls": 1,
-        "case_fingerprint": "51c2c8afc66f00fbf4f6044f198c939fe914f7f4f376535885d91f155c7e9d08",
+        "case_fingerprint": "0daaf40ab25d4805122c1e5929bff43d621cda618c11ecac5c31e7cc22d85d24",
         "max_in_flight": 1,
         "metrics": {
           "duplicates": 0,
@@ -788,16 +789,16 @@
         "status": "accepted",
         "test_reuses": 0
       },
-      "prev_sha256": "9a5593b7fe7b6d3135cd14bb21ffc41be2073d064e1859b149cb99f9b22bde06",
+      "prev_sha256": "42b1f871f475c8992c756279e9812c03e65c2ab1de1476c80c41452a28c59aec",
       "seq": 11,
-      "sha256": "70b4b5941e6ea44be27b338fc1978e269cbf498f5a0260a588dadec677bd5a6a",
+      "sha256": "2d7ad52e79cbacf69eb4288c3b43055d8058b3fec3b720b455c28b2d3b42a811",
       "type": "evaluation.completed"
     },
     {
       "data": {
         "best_node_id": "round-0-spec-0-good",
         "branch_status": "accepted",
-        "compiled_messages_sha256": "0d25149651470dbe595fd98673b9c0df82b752a0d46cc18c8a023e787db956e4",
+        "compiled_messages_sha256": "b0aed6d907bebe3d1e80138adcf82ce0841246373dd5b4f57f75e6d32d826ac5",
         "context_config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
         "context_receipt": {
           "blocks": [
@@ -873,7 +874,7 @@
             "system",
             "user"
           ],
-          "messages_sha256": "0d25149651470dbe595fd98673b9c0df82b752a0d46cc18c8a023e787db956e4",
+          "messages_sha256": "b0aed6d907bebe3d1e80138adcf82ce0841246373dd5b4f57f75e6d32d826ac5",
           "policy": "submodular",
           "schema_version": 1,
           "selected_block_ids": [
@@ -888,14 +889,14 @@
         "turn": 1,
         "workspace_generation": 0
       },
-      "prev_sha256": "70b4b5941e6ea44be27b338fc1978e269cbf498f5a0260a588dadec677bd5a6a",
+      "prev_sha256": "2d7ad52e79cbacf69eb4288c3b43055d8058b3fec3b720b455c28b2d3b42a811",
       "seq": 12,
-      "sha256": "4b63a1ddc4c868f4ed77acadcd4e8e198afcc6af6fc74d2c6691762ef7473f85",
+      "sha256": "f0f94d88f7f1dcd2cd02ae434356721d4220d42f370c6671368744812886d2bc",
       "type": "reviewer.requested"
     },
     {
       "data": {
-        "compiled_messages_sha256": "0d25149651470dbe595fd98673b9c0df82b752a0d46cc18c8a023e787db956e4",
+        "compiled_messages_sha256": "b0aed6d907bebe3d1e80138adcf82ce0841246373dd5b4f57f75e6d32d826ac5",
         "context_config_fingerprint": "3e0d15c730e8763f15c6286387bc35def9d4abf8905a30b9584dfae60338a112",
         "context_receipt": {
           "blocks": [
@@ -971,7 +972,7 @@
             "system",
             "user"
           ],
-          "messages_sha256": "0d25149651470dbe595fd98673b9c0df82b752a0d46cc18c8a023e787db956e4",
+          "messages_sha256": "b0aed6d907bebe3d1e80138adcf82ce0841246373dd5b4f57f75e6d32d826ac5",
           "policy": "submodular",
           "schema_version": 1,
           "selected_block_ids": [
@@ -1005,9 +1006,9 @@
         },
         "workspace_generation": 0
       },
-      "prev_sha256": "4b63a1ddc4c868f4ed77acadcd4e8e198afcc6af6fc74d2c6691762ef7473f85",
+      "prev_sha256": "f0f94d88f7f1dcd2cd02ae434356721d4220d42f370c6671368744812886d2bc",
       "seq": 13,
-      "sha256": "6fbedef7c7444687ffc2cfaad07bbf59d2e8fdeffab6cc583c74ef7fee3a0605",
+      "sha256": "f345674bb6ca44689f4d4a9030fe6348971277feff294b786097fc174f0fdd1f",
       "type": "reviewer.received"
     }
   ],
@@ -1076,7 +1077,7 @@
   "observations": {
     "cb0a34250358619854a0891e569d878173cd3652143529391b8bb9e92d8829ff": {
       "behavior_fingerprint": "cc644608a6f52cf5a4c6b64d6280bc83a71b577c874395e9220701ff3cf5f4a1",
-      "duration_ms": 139.77200002409518,
+      "duration_ms": 153.1502997968346,
       "error": null,
       "failed_tests": [],
       "is_success": true,
@@ -1169,7 +1170,7 @@
               "workspace_fingerprint": "cb0a34250358619854a0891e569d878173cd3652143529391b8bb9e92d8829ff"
             }
           ],
-          "fingerprint": "51c2c8afc66f00fbf4f6044f198c939fe914f7f4f376535885d91f155c7e9d08",
+          "fingerprint": "0daaf40ab25d4805122c1e5929bff43d621cda618c11ecac5c31e7cc22d85d24",
           "root_files": {
             "solver.py": "def solve(values):\n    return list(values)\n",
             "test_solver.py": "import unittest\nfrom solver import solve\n\n\nclass SolverTests(unittest.TestCase):\n    def test_orders_values(self):\n        self.assertEqual(solve([3, 1, 2]), [1, 2, 3])\n\n\nif __name__ == '__main__':\n    unittest.main()\n"
@@ -1178,7 +1179,7 @@
           "tests": {
             "round-0-spec-0-good": {
               "behavior_fingerprint": "cc644608a6f52cf5a4c6b64d6280bc83a71b577c874395e9220701ff3cf5f4a1",
-              "duration_ms": 139.77200002409518,
+              "duration_ms": 153.1502997968346,
               "error": null,
               "failed_tests": [],
               "is_success": true,
@@ -1194,7 +1195,7 @@
             }
           }
         },
-        "case_fingerprint": "51c2c8afc66f00fbf4f6044f198c939fe914f7f4f376535885d91f155c7e9d08",
+        "case_fingerprint": "0daaf40ab25d4805122c1e5929bff43d621cda618c11ecac5c31e7cc22d85d24",
         "config": {
           "beam_width": 1,
           "exploration_constant": 1.0,
@@ -1207,7 +1208,7 @@
         "events": [
           {
             "data": {
-              "case_fingerprint": "51c2c8afc66f00fbf4f6044f198c939fe914f7f4f376535885d91f155c7e9d08",
+              "case_fingerprint": "0daaf40ab25d4805122c1e5929bff43d621cda618c11ecac5c31e7cc22d85d24",
               "config": {
                 "beam_width": 1,
                 "exploration_constant": 1.0,
@@ -1221,7 +1222,7 @@
             },
             "prev_sha256": null,
             "seq": 0,
-            "sha256": "dcfa2b2191f268eb7db1dd9362ced7d30af1aaf7ad262e3117f15b09910aa7cd",
+            "sha256": "e095055b056bbfb55fe9ee37a1960ab0c74e2a17e88d4e03317dd9460b16edbf",
             "type": "search.started"
           },
           {
@@ -1233,9 +1234,9 @@
               "patch_fingerprint": "43809909eece5c169255722beea15bf51192d2090ef22e1ccf478cfcd63ad3c6",
               "workspace_fingerprint": "cb0a34250358619854a0891e569d878173cd3652143529391b8bb9e92d8829ff"
             },
-            "prev_sha256": "dcfa2b2191f268eb7db1dd9362ced7d30af1aaf7ad262e3117f15b09910aa7cd",
+            "prev_sha256": "e095055b056bbfb55fe9ee37a1960ab0c74e2a17e88d4e03317dd9460b16edbf",
             "seq": 1,
-            "sha256": "fe3e35b3307a383e5fc5e46982c308588ce7481a08819f309cd3cd498e20765c",
+            "sha256": "41c19a14dc13ceb6b37207874d8c3695acb61e5cb001260d6a7c6a246b30f744",
             "type": "candidate.proposed"
           },
           {
@@ -1245,7 +1246,7 @@
               "test_fingerprint": "cc644608a6f52cf5a4c6b64d6280bc83a71b577c874395e9220701ff3cf5f4a1",
               "test_result": {
                 "behavior_fingerprint": "cc644608a6f52cf5a4c6b64d6280bc83a71b577c874395e9220701ff3cf5f4a1",
-                "duration_ms": 139.77200002409518,
+                "duration_ms": 153.1502997968346,
                 "error": null,
                 "failed_tests": [],
                 "is_success": true,
@@ -1260,9 +1261,9 @@
                 "total_tests": 1
               }
             },
-            "prev_sha256": "fe3e35b3307a383e5fc5e46982c308588ce7481a08819f309cd3cd498e20765c",
+            "prev_sha256": "41c19a14dc13ceb6b37207874d8c3695acb61e5cb001260d6a7c6a246b30f744",
             "seq": 2,
-            "sha256": "afebcae6e34eea7e5c51829cfb72cace6bd51982ba18b01ab3ea58b30a0c9689",
+            "sha256": "2f5ff8216e023a339ae85d3df240884c03d077205e0aedd28c45fe81df01d91d",
             "type": "candidate.evaluated"
           },
           {
@@ -1277,9 +1278,9 @@
               "status": "accepted",
               "test_calls": 1
             },
-            "prev_sha256": "afebcae6e34eea7e5c51829cfb72cace6bd51982ba18b01ab3ea58b30a0c9689",
+            "prev_sha256": "2f5ff8216e023a339ae85d3df240884c03d077205e0aedd28c45fe81df01d91d",
             "seq": 3,
-            "sha256": "cfe10cd15b6860fd393364bb30d4018b8400487b5d004e65430a9fad78ec18cd",
+            "sha256": "f6e8b492570544da7d93773c0cca3028ab9a1e2b52eea3e999645f1b6ba1f673",
             "type": "search.completed"
           }
         ],
@@ -1322,7 +1323,7 @@
             "status": "accepted",
             "test_result": {
               "behavior_fingerprint": "cc644608a6f52cf5a4c6b64d6280bc83a71b577c874395e9220701ff3cf5f4a1",
-              "duration_ms": 139.77200002409518,
+              "duration_ms": 153.1502997968346,
               "error": null,
               "failed_tests": [],
               "is_success": true,
@@ -1541,7 +1542,7 @@
             "system",
             "user"
           ],
-          "messages_sha256": "0d25149651470dbe595fd98673b9c0df82b752a0d46cc18c8a023e787db956e4",
+          "messages_sha256": "b0aed6d907bebe3d1e80138adcf82ce0841246373dd5b4f57f75e6d32d826ac5",
           "policy": "submodular",
           "schema_version": 1,
           "selected_block_ids": [

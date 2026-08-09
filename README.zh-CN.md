@@ -28,7 +28,10 @@ planner 和 reviewer 仍然顺序调用，仍不声称 exactly-once。还可以�
 第一个通过候选协议解析的 lane 会被记录为 winner，其余未完成 lane 会收到取消请求，
 并通过 `solver.speculative.winner` / `solver.speculative.cancelled` 事件留下可审计证据。
 这里的 valid 只表示协议可解析，不代表测试通过；取消是 best-effort，不能假设 provider
-一定已经停止远端 HTTP 请求。
+一定已经停止远端 HTTP 请求。provider-specific adapter 可以实现可选的
+`request_cancellation(request)` hook，事件会记录 `acknowledged`、`unsupported` 或
+`failed:*`；默认的串行 OpenAI-compatible adapter 因通用 Chat Completions 没有标准 abort
+endpoint，会明确记录 `unsupported`。
 OS sandbox、跨运行语义记忆和统计严谨的真实模型评测仍在后续计划中。
 
 另外新增了 `recovery-eval` 长程恢复矩阵：在 `model.requested`、`model.responded`、

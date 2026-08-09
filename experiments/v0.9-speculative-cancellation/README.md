@@ -14,5 +14,6 @@ python scripts/generate_speculative_cancellation_artifact.py
 
 The report charges `model_calls=4` and `solver_calls=2` for the configured width even though one
 lane is cancelled. `speculative_winners=1` and `cancelled_solver_lanes=1` describe the local
-scheduler effect. This does not measure model quality, remote provider abort latency, or exactly
-once cancellation; `valid` means only that the candidate protocol parsed successfully.
+scheduler effect, and the fixture adapter returns `provider_cancel_status=acknowledged` to prove
+the optional hook is wired. This does not measure model quality, remote provider abort latency, or
+exactly-once cancellation; `valid` means only that the candidate protocol parsed successfully.

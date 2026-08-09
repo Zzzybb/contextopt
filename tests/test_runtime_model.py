@@ -260,6 +260,16 @@ class OpenAICompatibleModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(first), 75)
         self.assertEqual(len(second), 75)
 
+    async def test_default_adapter_reports_unsupported_cancellation(self) -> None:
+        model = OpenAICompatibleModel(
+            base_url="https://example.test/v1",
+            api_key="key",
+            model="unit-model",
+        )
+        self.assertEqual(
+            await model.request_cancellation(_model_request()), "unsupported"
+        )
+
 
 class ScriptedModelTests(unittest.IsolatedAsyncioTestCase):
     async def test_resume_cursor_skips_durable_responses(self) -> None:
