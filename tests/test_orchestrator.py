@@ -1128,6 +1128,7 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
             solver_script = root / "solver.json"
             reviewer_script = root / "reviewer.json"
             output = root / "report.json"
+            knowledge_report = root / "knowledge.json"
             memory_path = root / "memory.jsonl"
             memory_store = SemanticMemoryStore(memory_path)
             memory_store.put(
@@ -1191,6 +1192,9 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
                     "project:solver",
                     "--context-memory",
                     "versioned-v1+semantic",
+                    "--auto-index-knowledge",
+                    "--knowledge-index-report",
+                    str(knowledge_report),
                     "--memory-feedback",
                 ]
             )
@@ -1198,7 +1202,13 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
             report_payload = json.loads(output.read_text(encoding="utf-8"))
             self.assertEqual(report_payload["status"], "accepted")
             self.assertEqual(report_payload["metrics"]["memory_feedback_events"], 1)
+            knowledge_payload = json.loads(knowledge_report.read_text(encoding="utf-8"))
+            self.assertEqual(knowledge_payload["files_indexed"], 2)
+            self.assertGreater(knowledge_payload["chunks_created"], 0)
             with SemanticMemoryStore(memory_path) as reopened:
+                self.assertTrue(
+                    reopened.search("solver sorted values", scope="project:solver")
+                )
                 self.assertEqual(
                     reopened.search(
                         "make solve return ascending values", scope="project:solver"

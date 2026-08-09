@@ -437,6 +437,11 @@ python -m contextopt orchestrate \
   --test-command "python -m unittest discover -s ." --allow-command
 ```
 
+Add `--auto-index-knowledge` to project the supplied root-file snapshot into the same store before
+the planner call. Use `--knowledge-index-report PATH` or `--knowledge-index-markdown PATH` for
+auditable snapshot accounting; the flag is only valid for a new orchestration and never mutates
+the store during `resume`.
+
 Every role's request receipt records the same store-derived candidate snapshot boundary, while
 the role histories remain isolated. The replay path never silently substitutes a new candidate
 set for a pending request.

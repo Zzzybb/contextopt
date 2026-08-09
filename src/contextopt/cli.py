@@ -67,10 +67,12 @@ from contextopt.runtime import (
     RunPermissions,
     ScriptedModel,
     WorkspaceTools,
+    index_documents,
     index_workspace,
     read_events,
     render_knowledge_index_console,
     render_knowledge_index_markdown,
+    render_knowledge_snapshot_markdown,
     render_trace,
     render_trace_html,
 )
@@ -719,6 +721,10 @@ def _build_role_model(args: argparse.Namespace, role: str) -> ModelClient:
 
 def _orchestrate(args: argparse.Namespace) -> int:
     if args.resume:
+        if args.auto_index_knowledge:
+            raise ValueError(
+                "--auto-index-knowledge is only supported for a new orchestration"
+            )
         root_files = None
         execution_config = None
     else:
@@ -800,6 +806,8 @@ def _orchestrate(args: argparse.Namespace) -> int:
     try:
         if args.memory_store is not None:
             memory_store = SemanticMemoryStore(args.memory_store)
+        if not args.resume and args.auto_index_knowledge:
+            _auto_index_orchestration_snapshot(args, root_files, memory_store)
         if args.resume:
             checkpoint_state = read_orchestration_checkpoint(args.checkpoint)
             checkpoint_memory_policy = (
@@ -895,6 +903,34 @@ def _auto_index_knowledge(
         json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n",
     )
     _write(args.knowledge_index_markdown, render_knowledge_index_markdown(report))
+
+
+def _auto_index_orchestration_snapshot(
+    args: argparse.Namespace,
+    root_files: dict[str, str] | None,
+    memory_store: SemanticMemoryStore | None,
+) -> None:
+    if not args.auto_index_knowledge:
+        return
+    if root_files is None:
+        raise ValueError("root files are required with --auto-index-knowledge")
+    if memory_store is None:
+        raise ValueError("--memory-store is required with --auto-index-knowledge")
+    if not args.memory_scope:
+        raise ValueError("--memory-scope is required with --auto-index-knowledge")
+    report = index_documents(
+        memory_store,
+        root_files,
+        scope=args.memory_scope,
+    )
+    _write(
+        args.knowledge_index_report,
+        json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n",
+    )
+    _write(
+        args.knowledge_index_markdown,
+        render_knowledge_snapshot_markdown(report),
+    )
 
 
 def _run_agent(args: argparse.Namespace) -> int:
@@ -1612,6 +1648,19 @@ def build_parser() -> argparse.ArgumentParser:
     orchestrate.add_argument(
         "--memory-scope",
         help="optional scope used for automatic semantic-memory candidates",
+    )
+    orchestrate.add_argument(
+        "--auto-index-knowledge",
+        action="store_true",
+        help="index the supplied root-file snapshot before the first role request",
+    )
+    orchestrate.add_argument(
+        "--knowledge-index-report",
+        help="write the orchestration snapshot JSON report",
+    )
+    orchestrate.add_argument(
+        "--knowledge-index-markdown",
+        help="write the orchestration snapshot Markdown report",
     )
     orchestrate.add_argument("--planner-max-items", type=int, default=6)
     orchestrate.add_argument("--planner-max-item-chars", type=int, default=600)

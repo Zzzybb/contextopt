@@ -219,6 +219,10 @@ python -m contextopt orchestrate \
   --test-command "python -m unittest discover -s ." --allow-command
 ~~~
 
+给这条命令增加 `--auto-index-knowledge`，即可在 planner 请求前把 `--root-files` 快照投影到
+同一个 store；`--knowledge-index-report PATH` 或 `--knowledge-index-markdown PATH` 可输出可
+审计的快照记账。该 flag 只对新建编排有效，`resume` 不会静默修改 store。
+
 三个角色各自保存候选上下文 receipt；挂起的 role request 恢复时使用原快照，而不是使用
 变化后的 live store 重新检索。
 

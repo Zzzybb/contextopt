@@ -61,6 +61,32 @@ contextopt run "Fix the parser" \
 正常的 source-aware 失效逻辑处理。`resume` 不会自动重新索引，因为修改 pending request
 所依赖的 durable store 必须是显式配置决定。
 
+## 在多智能体编排中使用
+
+`orchestrate` 接收的是 `--root-files` JSON 完整快照，而不是文件系统路径。可以在 planner
+第一次请求前刷新同一份投影：
+
+~~~text
+contextopt orchestrate \
+  --task "Fix the parser" \
+  --root-files root-files.json \
+  --checkpoint .contextopt/orchestration.json \
+  --memory-store .contextopt/memory.jsonl \
+  --memory-scope project:parser \
+  --context-memory versioned-v1+semantic \
+  --auto-index-knowledge \
+  --knowledge-index-report .contextopt/orchestration-knowledge.json \
+  --planner-script planner.json --solver-script solver.json --reviewer-script reviewer.json \
+  --test-command "python -m unittest discover -s ." --allow-command
+~~~
+
+root-file 分块带有独立的 `knowledge-snapshot-v1` tag。因此同一个 scope 内，快照刷新和文件系统
+索引是 source-isolated 的：修改 root 快照只会使 snapshot 分块失效，workspace 索引只会使
+自己的分块失效。三个角色的 receipt 仍会记录 semantic context 策略实际选中的 lexical
+候选。该 flag 只支持新建编排；`resume` 会保留 pending request 的 store 快照。
+知识分块是 evidence 而不是 learned experience，因此编排结束时的 `--memory-feedback` 不会
+更新它们的 retrieval signal。
+
 ## 可复现边界
 
 JSON 报告记录规范化配置、文件数量、创建/复用/失效分块数量、跳过原因、active chunk id 和

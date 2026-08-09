@@ -66,6 +66,33 @@ later writes still use normal source-aware invalidation. `resume` deliberately d
 automatically because changing the durable store is an explicit configuration decision for a
 pending request.
 
+## Use it in multi-agent orchestration
+
+`orchestrate` receives a complete `--root-files` JSON snapshot rather than a filesystem path. The
+same projection can be refreshed before the planner request:
+
+```text
+contextopt orchestrate \
+  --task "Fix the parser" \
+  --root-files root-files.json \
+  --checkpoint .contextopt/orchestration.json \
+  --memory-store .contextopt/memory.jsonl \
+  --memory-scope project:parser \
+  --context-memory versioned-v1+semantic \
+  --auto-index-knowledge \
+  --knowledge-index-report .contextopt/orchestration-knowledge.json \
+  --planner-script planner.json --solver-script solver.json --reviewer-script reviewer.json \
+  --test-command "python -m unittest discover -s ." --allow-command
+```
+
+Root-file chunks use a dedicated `knowledge-snapshot-v1` tag. This keeps snapshot refreshes
+source-isolated from filesystem indexing in the same scope: changing a root snapshot invalidates
+only snapshot chunks, while a workspace index pass invalidates only its own chunks. The role
+receipts still record whichever lexical candidates the semantic context policy selected. The
+flag is for a new orchestration only; `resume` preserves its pending-request store snapshot.
+Knowledge chunks are evidence rather than learned experience, so orchestration terminal
+`--memory-feedback` deliberately does not update their retrieval signal.
+
 ## Reproducibility boundary
 
 The JSON report records the normalized config, file counts, created/reused/invalidated chunk

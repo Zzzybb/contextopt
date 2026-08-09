@@ -29,6 +29,7 @@ from contextopt.runtime.context import (
 )
 from contextopt.runtime.errors import ModelError, RuntimeContractError
 from contextopt.runtime.identity import stable_hash
+from contextopt.runtime.knowledge import KNOWLEDGE_CHUNK_TAG
 from contextopt.runtime.protocol import (
     AgentMessage,
     ModelClient,
@@ -1992,6 +1993,11 @@ class OrchestrationRunner:
         }
         updated = state
         for memory_id in _selected_durable_memory_ids(state):
+            entry = self.memory_store.get(memory_id)
+            if entry is not None and KNOWLEDGE_CHUNK_TAG in entry.tags:
+                # Source projections are evidence, not experience.  Do not train
+                # their retrieval score with terminal outcome feedback.
+                continue
             feedback_identity = stable_hash(
                 {"run_id": state.run_id, "memory_id": memory_id}
             )

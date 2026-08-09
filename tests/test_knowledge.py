@@ -15,7 +15,10 @@ from contextopt.runtime.context import (
 )
 from contextopt.runtime.knowledge import (
     KNOWLEDGE_CHUNK_TAG,
+    KNOWLEDGE_SNAPSHOT_TAG,
     KnowledgeIndexConfig,
+    KnowledgeSnapshotReport,
+    index_documents,
     index_workspace,
 )
 from contextopt.runtime.protocol import AgentMessage
@@ -23,6 +26,87 @@ from contextopt.runtime.semantic_memory import SemanticMemoryStore
 
 
 class KnowledgeIndexTests(unittest.TestCase):
+    def test_orchestration_snapshot_index_is_repeatable_and_source_isolated(
+        self,
+    ) -> None:
+        documents = {
+            "solver.py": "def solve(values):\n    return sorted(values)\n",
+            "tests/test_solver.py": "assert solve([2, 1]) == [1, 2]\n",
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            store_path = Path(directory) / "memory.jsonl"
+            with SemanticMemoryStore(store_path) as store:
+                first = index_documents(
+                    store,
+                    documents,
+                    scope="project:orchestration-snapshot",
+                    chunk_lines=4,
+                )
+                self.assertEqual(
+                    KnowledgeSnapshotReport.from_dict(first.to_dict()).to_dict(),
+                    first.to_dict(),
+                )
+                self.assertEqual(first.files_indexed, 2)
+                self.assertGreater(first.chunks_created, 0)
+                self.assertEqual(first.chunks_reused, 0)
+                self.assertTrue(
+                    all(
+                        KNOWLEDGE_SNAPSHOT_TAG in entry.tags
+                        for entry in store.active_entries(
+                            scope="project:orchestration-snapshot"
+                        )
+                    )
+                )
+                second = index_documents(
+                    store,
+                    documents,
+                    scope="project:orchestration-snapshot",
+                    chunk_lines=4,
+                )
+                self.assertEqual(second.chunks_created, 0)
+                self.assertGreater(second.chunks_reused, 0)
+                self.assertEqual(second.chunks_invalidated, 0)
+
+                changed = dict(documents)
+                changed["solver.py"] = "def solve(values):\n    return list(values)\n"
+                third = index_documents(
+                    store,
+                    changed,
+                    scope="project:orchestration-snapshot",
+                    chunk_lines=4,
+                )
+                self.assertGreater(third.chunks_created, 0)
+                self.assertGreater(third.chunks_invalidated, 0)
+                self.assertTrue(
+                    store.search(
+                        "solver list values",
+                        scope="project:orchestration-snapshot",
+                    )
+                )
+
+                workspace = Path(directory) / "workspace"
+                workspace.mkdir()
+                (workspace / "solver.py").write_text(
+                    "def solve(values):\n    return sorted(values)\n",
+                    encoding="utf-8",
+                )
+                workspace_report = index_workspace(
+                    store,
+                    KnowledgeIndexConfig(
+                        workspace=workspace,
+                        scope="project:orchestration-snapshot",
+                    ),
+                )
+                self.assertGreater(workspace_report.chunks_created, 0)
+                active = store.active_entries(scope="project:orchestration-snapshot")
+                self.assertTrue(
+                    any(
+                        KNOWLEDGE_CHUNK_TAG in entry.tags
+                        and KNOWLEDGE_SNAPSHOT_TAG not in entry.tags
+                        for entry in active
+                    )
+                )
+
     def test_index_is_deterministic_reusable_and_source_aware(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "workspace"

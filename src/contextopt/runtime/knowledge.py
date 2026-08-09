@@ -10,7 +10,7 @@ removed or changed chunks are invalidated before the next context compilation.
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -20,6 +20,7 @@ from contextopt.runtime.semantic_memory import SemanticMemoryEntry, SemanticMemo
 
 KNOWLEDGE_INDEX_SCHEMA_VERSION = "1"
 KNOWLEDGE_CHUNK_TAG = "knowledge-chunk-v1"
+KNOWLEDGE_SNAPSHOT_TAG = "knowledge-snapshot-v1"
 _DEFAULT_EXTENSIONS = (
     ".c",
     ".cc",
@@ -311,6 +312,148 @@ class KnowledgeIndexReport:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class KnowledgeSnapshotReport:
+    """Auditable result for indexing an in-memory orchestration snapshot."""
+
+    scope: str
+    source_run_id: str
+    chunk_lines: int
+    max_chunk_bytes: int
+    max_file_bytes: int
+    max_files: int
+    files_considered: int
+    files_indexed: int
+    chunks_created: int
+    chunks_reused: int
+    chunks_invalidated: int
+    active_chunk_ids: tuple[str, ...]
+    skipped_files: tuple[tuple[str, str], ...]
+    snapshot_sha256: str
+    schema_version: str = KNOWLEDGE_INDEX_SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        if self.schema_version != KNOWLEDGE_INDEX_SCHEMA_VERSION:
+            raise ValueError(
+                f"unsupported knowledge snapshot schema: {self.schema_version}"
+            )
+        object.__setattr__(self, "scope", _non_empty(self.scope, "scope"))
+        object.__setattr__(
+            self, "source_run_id", _non_empty(self.source_run_id, "source_run_id")
+        )
+        for name in (
+            "chunk_lines",
+            "max_chunk_bytes",
+            "max_file_bytes",
+            "max_files",
+        ):
+            _positive_int(getattr(self, name), name)
+        if self.max_chunk_bytes > _MAX_CHUNK_BYTES:
+            raise ValueError(f"max_chunk_bytes cannot exceed {_MAX_CHUNK_BYTES}")
+        for name in (
+            "files_considered",
+            "files_indexed",
+            "chunks_created",
+            "chunks_reused",
+            "chunks_invalidated",
+        ):
+            _positive_or_zero(getattr(self, name), name)
+        if self.files_indexed > self.files_considered:
+            raise ValueError("files_indexed cannot exceed files_considered")
+        if not isinstance(self.snapshot_sha256, str) or len(self.snapshot_sha256) != 64:
+            raise ValueError("snapshot_sha256 must be a SHA-256 hex digest")
+        if any(
+            not isinstance(path, str)
+            or not path
+            or not isinstance(reason, str)
+            or not reason
+            for path, reason in self.skipped_files
+        ):
+            raise ValueError("skipped_files must contain path/reason pairs")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "scope": self.scope,
+            "source_run_id": self.source_run_id,
+            "chunk_lines": self.chunk_lines,
+            "max_chunk_bytes": self.max_chunk_bytes,
+            "max_file_bytes": self.max_file_bytes,
+            "max_files": self.max_files,
+            "files_considered": self.files_considered,
+            "files_indexed": self.files_indexed,
+            "chunks_created": self.chunks_created,
+            "chunks_reused": self.chunks_reused,
+            "chunks_invalidated": self.chunks_invalidated,
+            "active_chunk_ids": list(self.active_chunk_ids),
+            "skipped_files": [
+                {"path": path, "reason": reason} for path, reason in self.skipped_files
+            ],
+            "snapshot_sha256": self.snapshot_sha256,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> KnowledgeSnapshotReport:
+        required = {
+            "schema_version",
+            "scope",
+            "source_run_id",
+            "chunk_lines",
+            "max_chunk_bytes",
+            "max_file_bytes",
+            "max_files",
+            "files_considered",
+            "files_indexed",
+            "chunks_created",
+            "chunks_reused",
+            "chunks_invalidated",
+            "active_chunk_ids",
+            "skipped_files",
+            "snapshot_sha256",
+        }
+        if set(data) != required:
+            raise ValueError("knowledge snapshot report fields do not match the schema")
+        active_ids = data["active_chunk_ids"]
+        raw_skipped = data["skipped_files"]
+        if not isinstance(active_ids, list) or not isinstance(raw_skipped, list):
+            raise ValueError(
+                "knowledge snapshot active_chunk_ids and skipped_files must be arrays"
+            )
+        skipped: list[tuple[str, str]] = []
+        for item in raw_skipped:
+            if not isinstance(item, dict) or set(item) != {"path", "reason"}:
+                raise ValueError("knowledge snapshot skipped file has invalid fields")
+            skipped.append(
+                (
+                    _non_empty(item["path"], "skipped path"),
+                    _non_empty(item["reason"], "skip reason"),
+                )
+            )
+        return cls(
+            schema_version=_non_empty(data["schema_version"], "schema_version"),
+            scope=_non_empty(data["scope"], "scope"),
+            source_run_id=_non_empty(data["source_run_id"], "source_run_id"),
+            chunk_lines=_positive_int(data["chunk_lines"], "chunk_lines"),
+            max_chunk_bytes=_positive_int(data["max_chunk_bytes"], "max_chunk_bytes"),
+            max_file_bytes=_positive_int(data["max_file_bytes"], "max_file_bytes"),
+            max_files=_positive_int(data["max_files"], "max_files"),
+            files_considered=_positive_or_zero(
+                data["files_considered"], "files_considered"
+            ),
+            files_indexed=_positive_or_zero(data["files_indexed"], "files_indexed"),
+            chunks_created=_positive_or_zero(data["chunks_created"], "chunks_created"),
+            chunks_reused=_positive_or_zero(data["chunks_reused"], "chunks_reused"),
+            chunks_invalidated=_positive_or_zero(
+                data["chunks_invalidated"], "chunks_invalidated"
+            ),
+            active_chunk_ids=tuple(
+                _non_empty(item, "active chunk id") for item in active_ids
+            ),
+            skipped_files=tuple(skipped),
+            snapshot_sha256=_non_empty(data["snapshot_sha256"], "snapshot_sha256"),
+        )
+
+
 def _positive_or_zero(value: Any, label: str) -> int:
     if not isinstance(value, int) or isinstance(value, bool) or value < 0:
         raise ValueError(f"{label} must be a non-negative integer")
@@ -404,6 +547,154 @@ def _is_knowledge_chunk(entry: SemanticMemoryEntry, scope: str) -> bool:
     return entry.scope == scope and KNOWLEDGE_CHUNK_TAG in entry.tags
 
 
+def _is_snapshot_chunk(entry: SemanticMemoryEntry, scope: str) -> bool:
+    return _is_knowledge_chunk(entry, scope) and KNOWLEDGE_SNAPSHOT_TAG in entry.tags
+
+
+def _normal_document_path(raw: Any) -> str:
+    value = _non_empty(raw, "document path")
+    if "\\" in value or value.startswith("/"):
+        raise ValueError("document path must be a relative POSIX path")
+    path = PurePosixPath(value)
+    if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
+        raise ValueError("document path must not contain traversal or empty components")
+    return path.as_posix()
+
+
+def index_documents(
+    store: SemanticMemoryStore,
+    documents: Mapping[str, str],
+    *,
+    scope: str,
+    chunk_lines: int = 80,
+    max_chunk_bytes: int = 8 * 1024,
+    max_file_bytes: int = 256 * 1024,
+    max_files: int = 500,
+    source_run_id: str = "knowledge-snapshot-v1",
+) -> KnowledgeSnapshotReport:
+    """Index a bounded in-memory root snapshot for multi-agent orchestration.
+
+    Orchestration receives complete root files rather than a filesystem workspace.  This
+    adapter keeps those snapshots on the same append-only ledger as workspace indexing,
+    while a dedicated tag prevents one source type from invalidating the other.
+    """
+
+    if not isinstance(documents, Mapping):
+        raise ValueError("documents must be an object mapping paths to text")
+    scope = _non_empty(scope, "scope")
+    source_run_id = _non_empty(source_run_id, "source_run_id")
+    chunk_lines = _positive_int(chunk_lines, "chunk_lines")
+    max_chunk_bytes = _positive_int(max_chunk_bytes, "max_chunk_bytes")
+    if max_chunk_bytes > _MAX_CHUNK_BYTES:
+        raise ValueError(f"max_chunk_bytes cannot exceed {_MAX_CHUNK_BYTES}")
+    max_file_bytes = _positive_int(max_file_bytes, "max_file_bytes")
+    max_files = _positive_int(max_files, "max_files")
+
+    normalized: dict[str, str] = {}
+    for raw_path, raw_text in documents.items():
+        path = _normal_document_path(raw_path)
+        if not isinstance(raw_text, str):
+            raise ValueError(f"documents[{path!r}] must be a string")
+        if path in normalized:
+            raise ValueError(f"documents contains duplicate path {path!r}")
+        normalized[path] = raw_text
+
+    files_considered = len(normalized)
+    skipped: list[tuple[str, str]] = []
+    file_digests: list[dict[str, Any]] = []
+    chunks: list[tuple[str, str]] = []
+    files_indexed = 0
+    for index, (relative, text) in enumerate(sorted(normalized.items())):
+        if index >= max_files:
+            skipped.append((relative, "max_files exceeded"))
+            continue
+        raw = text.encode("utf-8")
+        if len(raw) > max_file_bytes:
+            skipped.append((relative, "max_file_bytes exceeded"))
+            continue
+        file_digests.append(
+            {
+                "path": relative,
+                "bytes": len(raw),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+            }
+        )
+        chunks.extend(
+            (relative, chunk)
+            for chunk in _chunk_text(
+                relative,
+                text,
+                chunk_lines=chunk_lines,
+                max_chunk_bytes=max_chunk_bytes,
+            )
+        )
+        files_indexed += 1
+
+    previous = tuple(
+        entry
+        for entry in store.active_entries(scope=scope)
+        if _is_snapshot_chunk(entry, scope)
+    )
+    active_ids: list[str] = []
+    created = 0
+    reused = 0
+    for relative, chunk in chunks:
+        result = store.put(
+            chunk,
+            scope=scope,
+            kind="fact",
+            tags=(
+                KNOWLEDGE_CHUNK_TAG,
+                KNOWLEDGE_SNAPSHOT_TAG,
+                f"ext:{Path(relative).suffix.casefold()[1:] or 'none'}",
+            ),
+            confidence=1.0,
+            source_run_id=source_run_id,
+            source_refs=(relative,),
+        )
+        active_ids.append(result.entry.memory_id)
+        if result.created:
+            created += 1
+        else:
+            reused += 1
+
+    active_id_set = set(active_ids)
+    invalidated = 0
+    for entry in previous:
+        if entry.memory_id not in active_id_set:
+            store.invalidate(entry.memory_id, "knowledge snapshot refreshed")
+            invalidated += 1
+
+    snapshot_sha256 = stable_hash(
+        {
+            "schema_version": KNOWLEDGE_INDEX_SCHEMA_VERSION,
+            "source": "orchestration-root-files",
+            "scope": scope,
+            "chunk_lines": chunk_lines,
+            "max_chunk_bytes": max_chunk_bytes,
+            "max_file_bytes": max_file_bytes,
+            "max_files": max_files,
+            "files": file_digests,
+        }
+    )
+    return KnowledgeSnapshotReport(
+        scope=scope,
+        source_run_id=source_run_id,
+        chunk_lines=chunk_lines,
+        max_chunk_bytes=max_chunk_bytes,
+        max_file_bytes=max_file_bytes,
+        max_files=max_files,
+        files_considered=files_considered,
+        files_indexed=files_indexed,
+        chunks_created=created,
+        chunks_reused=reused,
+        chunks_invalidated=invalidated,
+        active_chunk_ids=tuple(sorted(active_id_set)),
+        skipped_files=tuple(skipped[:_MAX_REPORT_SKIPS]),
+        snapshot_sha256=snapshot_sha256,
+    )
+
+
 def index_workspace(
     store: SemanticMemoryStore,
     config: KnowledgeIndexConfig,
@@ -450,6 +741,7 @@ def index_workspace(
         entry
         for entry in store.active_entries(scope=config.scope)
         if _is_knowledge_chunk(entry, config.scope)
+        and KNOWLEDGE_SNAPSHOT_TAG not in entry.tags
     )
     active_ids: list[str] = []
     created = 0
@@ -545,12 +837,63 @@ def render_knowledge_index_markdown(report: KnowledgeIndexReport) -> str:
     return "\n".join(lines) + "\n"
 
 
+def render_knowledge_snapshot_console(report: KnowledgeSnapshotReport) -> str:
+    lines = [
+        "knowledge-snapshot files | chunks created | reused | invalidated | snapshot",
+        "--- | ---: | ---: | ---: | ---",
+        f"{report.files_indexed}/{report.files_considered} | "
+        f"{report.chunks_created} | {report.chunks_reused} | "
+        f"{report.chunks_invalidated} | {report.snapshot_sha256[:16]}",
+    ]
+    if report.skipped_files:
+        lines.append(
+            f"skipped={len(report.skipped_files)} (showing at most {_MAX_REPORT_SKIPS})"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def render_knowledge_snapshot_markdown(report: KnowledgeSnapshotReport) -> str:
+    lines = [
+        "# ContextOpt orchestration knowledge snapshot",
+        "",
+        "The report covers the bounded root-files snapshot supplied to a multi-agent "
+        "run.",
+        "",
+        "| Metric | Value |",
+        "|---|---:|",
+        f"| Scope | `{report.scope}` |",
+        f"| Files indexed | {report.files_indexed}/{report.files_considered} |",
+        f"| Chunks created | {report.chunks_created} |",
+        f"| Chunks reused | {report.chunks_reused} |",
+        f"| Chunks invalidated | {report.chunks_invalidated} |",
+        f"| Active chunks | {len(report.active_chunk_ids)} |",
+        f"| Snapshot | `{report.snapshot_sha256}` |",
+        "",
+        "## Claim boundary",
+        "",
+        "The snapshot makes root-file snippets available to durable semantic context; "
+        "it does not prove that a role selected a snippet or that the generated patch "
+        "is correct.",
+    ]
+    if report.skipped_files:
+        lines.extend(["", "## Skipped files", "", "| Path | Reason |", "|---|---|"])
+        lines.extend(
+            f"| `{path}` | {reason} |" for path, reason in report.skipped_files
+        )
+    return "\n".join(lines) + "\n"
+
+
 __all__ = [
     "KNOWLEDGE_CHUNK_TAG",
     "KNOWLEDGE_INDEX_SCHEMA_VERSION",
+    "KNOWLEDGE_SNAPSHOT_TAG",
     "KnowledgeIndexConfig",
     "KnowledgeIndexReport",
+    "KnowledgeSnapshotReport",
+    "index_documents",
     "index_workspace",
     "render_knowledge_index_console",
     "render_knowledge_index_markdown",
+    "render_knowledge_snapshot_console",
+    "render_knowledge_snapshot_markdown",
 ]
