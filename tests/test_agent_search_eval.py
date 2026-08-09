@@ -340,6 +340,9 @@ class AgentEvaluationTests(unittest.TestCase):
         config = AgentEvalConfig(
             fixtures=("two-sum",),
             strategies=("single_pass",),
+            planner_model="planner-v1",
+            solver_model="solver-v1",
+            reviewer_model="reviewer-v1",
             sandbox="docker",
             container_image="python:3.12-slim@sha256:example",
         )

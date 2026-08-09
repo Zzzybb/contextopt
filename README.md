@@ -886,6 +886,10 @@ The opt-in provider-specific cancellation endpoint is documented in [the v1.0 no
 and [Chinese version](docs/pr/0001-v1.0-provider-cancellation-hook.zh-CN.md).
 The candidate process lifecycle and credential-scrubbing boundary are documented in [the v1.0 note](docs/pr/0001-v1.0-candidate-process-boundary.md)
 and [Chinese version](docs/pr/0001-v1.0-candidate-process-boundary.zh-CN.md).
+The paired matrix can persist independent planner/solver/reviewer model identities in its
+checkpoint and manifest; the real-provider workflow exposes the same role overrides.
+The role-identity persistence change is documented in [the v1.0 note](docs/pr/0001-v1.0-role-model-overrides.md)
+and [Chinese version](docs/pr/0001-v1.0-role-model-overrides.zh-CN.md).
 The cross-platform CI type-check fix is documented in [the v1.0 note](docs/pr/0001-v1.0-ci-cross-platform-typecheck.md)
 and [Chinese version](docs/pr/0001-v1.0-ci-cross-platform-typecheck.zh-CN.md).
 The real-provider workflow's secret boundary is documented in [the v0.9 note](docs/pr/0001-v0.9-real-provider-secret-scope.md)

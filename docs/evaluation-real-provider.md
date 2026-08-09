@@ -11,7 +11,9 @@ use the equivalent local CLI command in the README.
 
 1. Add a repository or environment secret named `CONTEXTOPT_API_KEY`.
 2. Open **Actions → real-agent-eval → Run workflow**.
-3. Enter the OpenAI-compatible `model` and `base_url`; optionally enter a provider-specific
+3. Enter the OpenAI-compatible `model` and `base_url`; optionally override the planner,
+   solver, and reviewer models independently when the provider exposes multiple compatible
+   deployments. Keep these role model IDs fixed across all repetitions and resumes. Optionally enter a provider-specific
    `cancellation_url` if the provider exposes the documented abort contract. For controlled
    candidate execution, choose `sandbox=docker` and pin `container_image` to a digest. Keep the default `all` fixtures,
    `single_pass,best_of_n,orchestrated` strategies, and `3` repetitions for the first run.
@@ -24,6 +26,8 @@ For a local run, preserve the provider boundary as auditable cassettes:
 ```text
 python -m contextopt agent-eval --fixtures all --repetitions 3 \
   --model <model-name> --base-url <endpoint> \
+  --planner-model <planner-model> --solver-model <solver-model> \
+  --reviewer-model <reviewer-model> \
   --cancellation-url <provider-cancel-endpoint> \
   --sandbox docker --container-image <image@sha256:digest> \
   --record-transcript-dir .contextopt/provider-matrix \

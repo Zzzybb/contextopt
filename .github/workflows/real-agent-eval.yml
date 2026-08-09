@@ -12,6 +12,21 @@ on:
         required: true
         default: "https://api.openai.com/v1"
         type: string
+      planner_model:
+        description: "Optional model override for the planner role"
+        required: false
+        default: ""
+        type: string
+      solver_model:
+        description: "Optional model override for the solver role"
+        required: false
+        default: ""
+        type: string
+      reviewer_model:
+        description: "Optional model override for the reviewer role"
+        required: false
+        default: ""
+        type: string
       cancellation_url:
         description: "Optional provider-specific POST endpoint for remote cancellation"
         required: false
@@ -81,6 +96,9 @@ jobs:
         env:
           EVAL_MODEL: ${{ inputs.model }}
           EVAL_BASE_URL: ${{ inputs.base_url }}
+          EVAL_PLANNER_MODEL: ${{ inputs.planner_model }}
+          EVAL_SOLVER_MODEL: ${{ inputs.solver_model }}
+          EVAL_REVIEWER_MODEL: ${{ inputs.reviewer_model }}
           EVAL_CANCELLATION_URL: ${{ inputs.cancellation_url }}
           EVAL_SANDBOX: ${{ inputs.sandbox }}
           EVAL_CONTAINER_IMAGE: ${{ inputs.container_image }}
@@ -107,6 +125,15 @@ jobs:
           )
           if [[ -n "$EVAL_CANCELLATION_URL" ]]; then
             args+=(--cancellation-url "$EVAL_CANCELLATION_URL")
+          fi
+          if [[ -n "$EVAL_PLANNER_MODEL" ]]; then
+            args+=(--planner-model "$EVAL_PLANNER_MODEL")
+          fi
+          if [[ -n "$EVAL_SOLVER_MODEL" ]]; then
+            args+=(--solver-model "$EVAL_SOLVER_MODEL")
+          fi
+          if [[ -n "$EVAL_REVIEWER_MODEL" ]]; then
+            args+=(--reviewer-model "$EVAL_REVIEWER_MODEL")
           fi
           python "${args[@]}"
       - name: Upload evaluation ledger

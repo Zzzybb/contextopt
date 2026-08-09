@@ -9,7 +9,9 @@
 
 1. 在仓库或 environment 中添加名为 `CONTEXTOPT_API_KEY` 的 secret。
 2. 打开 **Actions → real-agent-eval → Run workflow**。
-3. 填写 OpenAI-compatible 的 `model` 与 `base_url`；如果 provider 暴露了文档化的取消协议，
+3. 填写 OpenAI-compatible 的 `model` 与 `base_url`；如果有多个兼容部署，也可以分别覆盖
+   planner、solver、reviewer 的 model。所有 repetition 和 resume 都必须固定这些 role model ID。
+   如果 provider 暴露了文档化的取消协议，
    可以额外填写 provider-specific 的 `cancellation_url`。如果要控制候选执行环境，选择
    `sandbox=docker` 并把 `container_image` 固定到 digest。第一次建议保留 `all` fixture、
    `single_pass,best_of_n,orchestrated` 策略和 `3` 次 repetition。
@@ -21,6 +23,8 @@
 ```text
 python -m contextopt agent-eval --fixtures all --repetitions 3 \
   --model <model-name> --base-url <endpoint> \
+  --planner-model <planner-model> --solver-model <solver-model> \
+  --reviewer-model <reviewer-model> \
   --cancellation-url <provider-cancel-endpoint> \
   --sandbox docker --container-image <image@sha256:digest> \
   --record-transcript-dir .contextopt/provider-matrix \

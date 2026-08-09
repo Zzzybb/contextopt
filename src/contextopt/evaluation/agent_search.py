@@ -98,6 +98,12 @@ def _non_empty(value: Any, label: str) -> str:
     return value
 
 
+def _optional_non_empty(value: Any, label: str) -> str | None:
+    if value is None:
+        return None
+    return _non_empty(value, label)
+
+
 def _mapping(value: Any, label: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         raise ValueError(f"{label} must be an object")
@@ -636,6 +642,9 @@ class AgentEvalConfig:
     exploration_constant: float = 1.0
     include_hidden_tests: bool = True
     model_adapter: str = "scripted"
+    planner_model: str | None = None
+    solver_model: str | None = None
+    reviewer_model: str | None = None
     sandbox: ExecutionSandbox = "host"
     container_image: str = "python:3.12-slim"
 
@@ -686,6 +695,8 @@ class AgentEvalConfig:
             "custom",
         }:
             raise ValueError(f"unsupported agent model adapter: {self.model_adapter!r}")
+        for name in ("planner_model", "solver_model", "reviewer_model"):
+            _optional_non_empty(getattr(self, name), name)
         if not isinstance(self.sandbox, str) or self.sandbox not in {
             "host",
             "docker",
@@ -708,6 +719,9 @@ class AgentEvalConfig:
             "exploration_constant",
             "include_hidden_tests",
             "model_adapter",
+            "planner_model",
+            "solver_model",
+            "reviewer_model",
             "sandbox",
             "container_image",
         }
@@ -745,6 +759,13 @@ class AgentEvalConfig:
             model_adapter=_non_empty(
                 value.get("model_adapter", "scripted"), "model_adapter"
             ),
+            planner_model=_optional_non_empty(
+                value.get("planner_model"), "planner_model"
+            ),
+            solver_model=_optional_non_empty(value.get("solver_model"), "solver_model"),
+            reviewer_model=_optional_non_empty(
+                value.get("reviewer_model"), "reviewer_model"
+            ),
             sandbox=cast(ExecutionSandbox, value.get("sandbox", "host")),
             container_image=_non_empty(
                 value.get("container_image", "python:3.12-slim"),
@@ -765,6 +786,9 @@ class AgentEvalConfig:
             "exploration_constant": self.exploration_constant,
             "include_hidden_tests": self.include_hidden_tests,
             "model_adapter": self.model_adapter,
+            "planner_model": self.planner_model,
+            "solver_model": self.solver_model,
+            "reviewer_model": self.reviewer_model,
             "sandbox": self.sandbox,
             "container_image": self.container_image,
         }

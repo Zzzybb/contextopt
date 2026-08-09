@@ -308,6 +308,9 @@ def _agent_eval(args: argparse.Namespace) -> int:
         exploration_constant=args.exploration_constant,
         include_hidden_tests=not args.no_hidden_tests,
         model_adapter=model_adapter,
+        planner_model=args.planner_model,
+        solver_model=args.solver_model,
+        reviewer_model=args.reviewer_model,
         sandbox=args.sandbox,
         container_image=args.container_image,
     )
@@ -1280,9 +1283,18 @@ def build_parser() -> argparse.ArgumentParser:
             "ScriptedModel mode"
         ),
     )
-    agent_eval.add_argument("--planner-model")
-    agent_eval.add_argument("--solver-model")
-    agent_eval.add_argument("--reviewer-model")
+    agent_eval.add_argument(
+        "--planner-model",
+        help="optional OpenAI-compatible model override for the planner role",
+    )
+    agent_eval.add_argument(
+        "--solver-model",
+        help="optional OpenAI-compatible model override for the solver role",
+    )
+    agent_eval.add_argument(
+        "--reviewer-model",
+        help="optional OpenAI-compatible model override for the reviewer role",
+    )
     agent_eval.add_argument("--base-url")
     agent_eval.add_argument(
         "--cancellation-url",
