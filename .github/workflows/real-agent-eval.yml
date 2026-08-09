@@ -64,6 +64,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: real-agent-eval-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   evaluate:
     runs-on: ubuntu-latest

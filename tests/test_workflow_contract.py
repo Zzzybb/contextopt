@@ -28,6 +28,8 @@ class RealProviderWorkflowContractTests(unittest.TestCase):
             "agent-eval-compare",
             "if: always()",
             "if-no-files-found: warn",
+            "concurrency:",
+            "cancel-in-progress: false",
         )
         for fragment in required_fragments:
             with self.subTest(fragment=fragment):
@@ -39,6 +41,8 @@ class RealProviderWorkflowContractTests(unittest.TestCase):
         for fragment in ("if: always()", "if-no-files-found: warn"):
             with self.subTest(workflow="single-model", fragment=fragment):
                 self.assertIn(fragment, single_model_workflow)
+        self.assertIn("concurrency:", single_model_workflow)
+        self.assertIn("cancel-in-progress: false", single_model_workflow)
 
     def test_model_matrix_workflow_preserves_per_model_and_final_artifacts(
         self,

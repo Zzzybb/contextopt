@@ -65,6 +65,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: real-agent-model-matrix-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   prepare:
     runs-on: ubuntu-latest
