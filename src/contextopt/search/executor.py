@@ -104,7 +104,9 @@ def _new_process_group_kwargs() -> dict[str, Any]:
     """Start a candidate command in a group that can be terminated on timeout."""
 
     if os.name == "nt":
-        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+        # The constant is only exported by the Windows stdlib implementation;
+        # keep the fallback explicit so the same module type-checks on POSIX.
+        return {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x200)}
     return {"start_new_session": True}
 
 
@@ -114,7 +116,10 @@ def _attach_windows_job(process: subprocess.Popen[bytes]) -> tuple[Any, Any] | N
     if os.name != "nt":
         return None
 
-    kernel32: Any = ctypes.WinDLL("kernel32", use_last_error=True)
+    win_dll = getattr(ctypes, "WinDLL", None)
+    if win_dll is None:
+        return None
+    kernel32: Any = win_dll("kernel32", use_last_error=True)
 
     class BasicLimitInformation(ctypes.Structure):
         _fields_ = [
@@ -207,21 +212,24 @@ def _terminate_process_tree(process: subprocess.Popen[bytes]) -> None:
         if process.poll() is None:
             process.kill()
     else:
-        killpg = os.killpg  # type: ignore[attr-defined]
-        getpgid = os.getpgid  # type: ignore[attr-defined]
-        sigterm = signal.SIGTERM
-        sigkill = signal.SIGKILL  # type: ignore[attr-defined]
-        try:
-            killpg(getpgid(process.pid), sigterm)
-        except (OSError, ProcessLookupError):
+        killpg = getattr(os, "killpg", None)
+        getpgid = getattr(os, "getpgid", None)
+        if killpg is None or getpgid is None:
             process.terminate()
-        try:
-            process.wait(timeout=1)
-        except subprocess.TimeoutExpired:
+        else:
+            sigterm = signal.SIGTERM
+            sigkill = getattr(signal, "SIGKILL", sigterm)
             try:
-                killpg(getpgid(process.pid), sigkill)
+                killpg(getpgid(process.pid), sigterm)
             except (OSError, ProcessLookupError):
-                process.kill()
+                process.terminate()
+            try:
+                process.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                try:
+                    killpg(getpgid(process.pid), sigkill)
+                except (OSError, ProcessLookupError):
+                    process.kill()
 
     try:
         process.wait(timeout=5)

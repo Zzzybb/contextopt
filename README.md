@@ -886,6 +886,8 @@ The opt-in provider-specific cancellation endpoint is documented in [the v1.0 no
 and [Chinese version](docs/pr/0001-v1.0-provider-cancellation-hook.zh-CN.md).
 The candidate process lifecycle and credential-scrubbing boundary are documented in [the v1.0 note](docs/pr/0001-v1.0-candidate-process-boundary.md)
 and [Chinese version](docs/pr/0001-v1.0-candidate-process-boundary.zh-CN.md).
+The cross-platform CI type-check fix is documented in [the v1.0 note](docs/pr/0001-v1.0-ci-cross-platform-typecheck.md)
+and [Chinese version](docs/pr/0001-v1.0-ci-cross-platform-typecheck.zh-CN.md).
 The real-provider workflow's secret boundary is documented in [the v0.9 note](docs/pr/0001-v0.9-real-provider-secret-scope.md)
 and [Chinese version](docs/pr/0001-v0.9-real-provider-secret-scope.zh-CN.md).
 The durable cross-run semantic-memory follow-up is documented in [the English PR note](docs/pr/0001-v0.9-semantic-memory.md)

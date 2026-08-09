@@ -413,6 +413,8 @@ python -m contextopt agent-eval \
   和 [英文版](docs/pr/0001-v1.0-provider-cancellation-hook.md)
 - v1.0 候选进程生命周期与凭据清理：[docs/pr/0001-v1.0-candidate-process-boundary.zh-CN.md](docs/pr/0001-v1.0-candidate-process-boundary.zh-CN.md)
   和 [英文版](docs/pr/0001-v1.0-candidate-process-boundary.md)
+- v1.0 跨平台 CI 类型检查修复：[docs/pr/0001-v1.0-ci-cross-platform-typecheck.zh-CN.md](docs/pr/0001-v1.0-ci-cross-platform-typecheck.zh-CN.md)
+  和 [英文版](docs/pr/0001-v1.0-ci-cross-platform-typecheck.md)
 - v1.0 Docker 候选执行隔离：[docs/pr/0001-v1.0-docker-sandbox.zh-CN.md](docs/pr/0001-v1.0-docker-sandbox.zh-CN.md)
   和 [英文版](docs/pr/0001-v1.0-docker-sandbox.md)
 - v0.9 真实 provider secret 作用域：[docs/pr/0001-v0.9-real-provider-secret-scope.zh-CN.md](docs/pr/0001-v0.9-real-provider-secret-scope.zh-CN.md)
