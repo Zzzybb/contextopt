@@ -1,0 +1,43 @@
+{
+  "name": "scripted:semantic-memory-reader-v1",
+  "steps": [
+    {
+      "response": {
+        "content": "I will check the durable memory before editing.",
+        "tool_calls": [
+          {
+            "id": "search-procedure",
+            "name": "memory_search",
+            "arguments": {
+              "query": "latest sha256 replace_text",
+              "scope": "project:semantic-memory-demo",
+              "limit": 3
+            }
+          }
+        ],
+        "usage": {
+          "input_tokens": 14,
+          "output_tokens": 6
+        }
+      }
+    },
+    {
+      "expect": {
+        "turn": 2,
+        "last_tool": "memory_search",
+        "tool_call_id": "search-procedure",
+        "observation_contains": [
+          "latest sha256",
+          "project:semantic-memory-demo"
+        ]
+      },
+      "response": {
+        "content": "The prior run recorded the compare-and-swap procedure.",
+        "usage": {
+          "input_tokens": 22,
+          "output_tokens": 9
+        }
+      }
+    }
+  ]
+}

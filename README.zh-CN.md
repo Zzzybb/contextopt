@@ -112,6 +112,10 @@ contextopt run "修复 parser" \
 账本，因此能在 trace 中检查查询内容、命中项、revision 和 memory id。当前实现不依赖
 embedding service，也不宣称 memory 本身已经提升真实模型成功率。
 
+完整的“两次全新运行”离线演示在
+[`examples/semantic_memory_demo`](examples/semantic_memory_demo/README.md)：第一次运行保存
+procedure，第二次运行打开同一个 store 查询，reader trace 会显示命中词、memory id 和 revision。
+
 ## 离线验证
 
 项目需要 Python 3.11 或更高版本，没有运行时依赖：

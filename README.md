@@ -340,6 +340,11 @@ is deterministic lexical matching, not embeddings or a learned summarizer. Searc
 evidence for the next model turn, not proof about mutable files. A resumed run must be given the
 same memory-store path so its tool configuration fingerprint remains compatible.
 
+The complete two-run offline demonstration is in
+[`examples/semantic_memory_demo`](examples/semantic_memory_demo/README.md): one fresh Agent
+writes a procedure, a second fresh Agent searches the same store, and the reader trace shows the
+retrieval evidence.
+
 The script drives this real sequence:
 
 ```text
@@ -624,6 +629,7 @@ src/contextopt/
 
 tests/                    # standard-library unit and integration tests
 examples/runtime_demo/    # offline scripted coding-loop demonstration
+examples/semantic_memory_demo/ # two-run durable memory demonstration
 examples/auth_context.json
 experiments/              # checked-in optimizer configurations and raw results
 docs/                     # architecture, runtime, and evaluation contract

@@ -239,6 +239,11 @@ the result is an advisory hint—not proof that a mutable workspace still satisf
 claim. A non-terminal `resume` must receive the same `--memory-store` path because the store
 identity is part of the tool configuration fingerprint.
 
+For a fresh-process cross-run demonstration, use
+[`examples/semantic_memory_demo`](../examples/semantic_memory_demo/README.md). Its writer and
+reader scripts make the boundary visible without an API key: the first run saves a procedure,
+the second run searches the same store, and both traces remain independently auditable.
+
 ### Per-turn receipt and recovery contract
 
 Every new `model.requested` event includes a `context` receipt. It contains:
