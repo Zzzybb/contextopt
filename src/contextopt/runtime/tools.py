@@ -22,6 +22,7 @@ from contextopt.runtime.protocol import (
     ToolDefinition,
     ToolOutcome,
 )
+from contextopt.runtime.semantic_memory import SemanticMemoryStore
 from contextopt.runtime.tool_state import (
     ReplayPolicy,
     ToolExecutionPlan,
@@ -82,6 +83,13 @@ def _optional_int(
     if not isinstance(value, int) or isinstance(value, bool) or value < minimum:
         raise ValueError(f"{name} must be an integer >= {minimum}")
     return value
+
+
+def _string_list(arguments: Mapping[str, Any], name: str) -> tuple[str, ...]:
+    value = arguments.get(name, [])
+    if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+        raise ValueError(f"{name} must be an array of strings")
+    return tuple(value)
 
 
 def _truncate_text(text: str, limit_bytes: int) -> tuple[str, dict[str, Any]]:
@@ -193,11 +201,13 @@ class WorkspaceTools:
         permissions: RunPermissions | None = None,
         limits: RunLimits | None = None,
         test_commands: Mapping[str, tuple[str, ...]] | None = None,
+        memory_store: SemanticMemoryStore | None = None,
     ) -> None:
         self._resolver = _WorkspaceResolver(Path(workspace))
         self.permissions = permissions or RunPermissions()
         self.limits = limits or RunLimits()
         self._test_commands = self._normalize_commands(test_commands or {})
+        self._memory_store = memory_store
         self._handlers: dict[
             str, Callable[[ToolCall, Mapping[str, Any]], ToolOutcome]
         ] = {
@@ -207,6 +217,11 @@ class WorkspaceTools:
             "create_file": self._create_file,
             "replace_text": self._replace_text,
         }
+        if self._memory_store is not None:
+            self._handlers["memory_search"] = self._memory_search
+            if self.permissions.allow_write:
+                self._handlers["memory_save"] = self._memory_save
+                self._handlers["memory_invalidate"] = self._memory_invalidate
         if self._test_commands:
             self._handlers["run_tests"] = self._run_tests
         self._definitions = self._build_definitions()
@@ -235,8 +250,25 @@ class WorkspaceTools:
                     scope: list(argv)
                     for scope, argv in sorted(self._test_commands.items())
                 },
+                "memory_store": (
+                    None
+                    if self._memory_store is None
+                    else {
+                        "path": str(self._memory_store.path),
+                        "configuration_fingerprint": (
+                            self._memory_store.configuration_fingerprint
+                        ),
+                        "save_enabled": self.permissions.allow_write,
+                    }
+                ),
             }
         )
+
+    def close(self) -> None:
+        """Release the optional semantic-memory file lease."""
+
+        if self._memory_store is not None:
+            self._memory_store.close()
 
     async def execute(self, call: ToolCall) -> ToolOutcome:
         handler = self._handlers.get(call.name)
@@ -757,6 +789,96 @@ class WorkspaceTools:
                     },
                 )
             )
+        if self._memory_store is not None:
+            definitions.append(
+                ToolDefinition(
+                    name="memory_search",
+                    description=(
+                        "Search durable cross-run memory for relevant facts, "
+                        "decisions, "
+                        "procedures, and failures. Results include matched terms and "
+                        "provenance; they are hints, not workspace truth."
+                    ),
+                    input_schema={
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string"},
+                            "scope": {"type": "string"},
+                            "tags": {"type": "array", "items": {"type": "string"}},
+                            "limit": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 100,
+                            },
+                        },
+                        "required": ["query"],
+                        "additionalProperties": False,
+                    },
+                )
+            )
+            if self.permissions.allow_write:
+                definitions.append(
+                    ToolDefinition(
+                        name="memory_save",
+                        description=(
+                            "Save a compact, provenance-tagged cross-run memory. "
+                            "Saving is idempotent for the same scope, kind, tags, "
+                            "and text."
+                        ),
+                        input_schema={
+                            "type": "object",
+                            "properties": {
+                                "text": {"type": "string"},
+                                "scope": {"type": "string", "default": "global"},
+                                "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                        "fact",
+                                        "decision",
+                                        "procedure",
+                                        "failure",
+                                    ],
+                                },
+                                "tags": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                                "confidence": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1,
+                                },
+                                "source_run_id": {"type": "string"},
+                                "source_refs": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                                "supersedes": {"type": "string"},
+                            },
+                            "required": ["text"],
+                            "additionalProperties": False,
+                        },
+                    )
+                )
+                definitions.append(
+                    ToolDefinition(
+                        name="memory_invalidate",
+                        description=(
+                            "Invalidate one durable cross-run memory entry with an "
+                            "explicit "
+                            "reason; the append-only history remains auditable."
+                        ),
+                        input_schema={
+                            "type": "object",
+                            "properties": {
+                                "memory_id": {"type": "string"},
+                                "reason": {"type": "string"},
+                            },
+                            "required": ["memory_id", "reason"],
+                            "additionalProperties": False,
+                        },
+                    )
+                )
         return tuple(definitions)
 
     @staticmethod
@@ -1010,6 +1132,128 @@ class WorkspaceTools:
             new_digest,
             expected_occurrences,
             len(encoded),
+        )
+
+    def _memory_search(
+        self, call: ToolCall, arguments: Mapping[str, Any]
+    ) -> ToolOutcome:
+        if self._memory_store is None:
+            return _error(
+                call, "memory_unavailable", "semantic memory is not configured"
+            )
+        query = _require_string(arguments, "query")
+        scope_value = arguments.get("scope")
+        scope = None if scope_value is None else _require_string(arguments, "scope")
+        limit = _optional_int(arguments, "limit", 5)
+        matches = self._memory_store.search(
+            query,
+            scope=scope,
+            tags=_string_list(arguments, "tags"),
+            limit=limit,
+        )
+        payload = {
+            "revision": self._memory_store.revision,
+            "query": query,
+            "results": [match.to_dict() for match in matches],
+        }
+        content, capture = _truncate_text(
+            json.dumps(payload, ensure_ascii=False, sort_keys=True),
+            self.limits.max_tool_output_bytes,
+        )
+        return ToolOutcome(
+            call_id=call.id,
+            tool_name=call.name,
+            ok=True,
+            content=content,
+            metadata={
+                "revision": self._memory_store.revision,
+                "matches": len(matches),
+                "memory_ids": [match.entry.memory_id for match in matches],
+                "capture": capture,
+            },
+            truncated=bool(capture["truncated"]),
+        )
+
+    def _memory_save(self, call: ToolCall, arguments: Mapping[str, Any]) -> ToolOutcome:
+        if self._memory_store is None:
+            return _error(
+                call, "memory_unavailable", "semantic memory is not configured"
+            )
+        if not self.permissions.allow_write:
+            return _error(call, "write_denied", "memory write permission is disabled")
+        text = _require_string(arguments, "text")
+        scope_value = arguments.get("scope", "global")
+        if not isinstance(scope_value, str):
+            raise ValueError("scope must be a string")
+        kind_value = arguments.get("kind", "fact")
+        if not isinstance(kind_value, str):
+            raise ValueError("kind must be a string")
+        source_run_id = arguments.get("source_run_id")
+        if source_run_id is not None and not isinstance(source_run_id, str):
+            raise ValueError("source_run_id must be a string")
+        supersedes = arguments.get("supersedes")
+        if supersedes is not None and not isinstance(supersedes, str):
+            raise ValueError("supersedes must be a string")
+        result = self._memory_store.put(
+            text,
+            scope=scope_value,
+            kind=kind_value,  # type: ignore[arg-type]
+            tags=_string_list(arguments, "tags"),
+            confidence=arguments.get("confidence", 0.7),
+            source_run_id=source_run_id,
+            source_refs=_string_list(arguments, "source_refs"),
+            supersedes=supersedes,
+        )
+        payload = {
+            "memory_id": result.entry.memory_id,
+            "created": result.created,
+            "revision": result.revision,
+            "entry": result.entry.to_dict(),
+        }
+        return ToolOutcome(
+            call_id=call.id,
+            tool_name=call.name,
+            ok=True,
+            content=json.dumps(payload, ensure_ascii=False, sort_keys=True),
+            metadata={
+                "memory_id": result.entry.memory_id,
+                "created": result.created,
+                "revision": result.revision,
+                "content_sha256": result.entry.content_sha256,
+            },
+        )
+
+    def _memory_invalidate(
+        self, call: ToolCall, arguments: Mapping[str, Any]
+    ) -> ToolOutcome:
+        if self._memory_store is None:
+            return _error(
+                call, "memory_unavailable", "semantic memory is not configured"
+            )
+        if not self.permissions.allow_write:
+            return _error(call, "write_denied", "memory write permission is disabled")
+        memory_id = _require_string(arguments, "memory_id")
+        reason = _require_string(arguments, "reason")
+        entry = self._memory_store.invalidate(memory_id, reason)
+        return ToolOutcome(
+            call_id=call.id,
+            tool_name=call.name,
+            ok=True,
+            content=json.dumps(
+                {
+                    "memory_id": entry.memory_id,
+                    "status": entry.status,
+                    "revision": self._memory_store.revision,
+                    "entry": entry.to_dict(),
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
+            metadata={
+                "memory_id": entry.memory_id,
+                "status": entry.status,
+                "revision": self._memory_store.revision,
+            },
         )
 
     def _run_tests(self, call: ToolCall, arguments: Mapping[str, Any]) -> ToolOutcome:

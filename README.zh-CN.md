@@ -10,6 +10,8 @@
 - 代码搜索：生成完整候选工作区，执行可见测试，去重、beam search 和基于观测质量的 MCTS；
 - 多角色编排：planner 形成假设，solver 生成候选，reviewer 审计证据；
 - 安全边界：测试和 apply/rollback 都是显式操作，不能因为模型说成功就写盘。
+- 跨运行记忆：可选的 append-only `SemanticMemoryStore`，由显式工具读写并保留 provenance、
+  幂等 identity 和失效/替代状态。
 
 当前状态是 v0.9。已经实现单 Agent 运行时、上下文选择、分支搜索、可恢复的
 proposal/test session、顺序的 planner / solver / reviewer 编排，以及带独立隐藏测试的
@@ -35,7 +37,8 @@ planner 和 reviewer 仍然顺序调用，仍不声称 exactly-once。还可以�
 `unsupported` 或 `failed:*`。默认的串行 OpenAI-compatible adapter 可以关闭本地活动 HTTP response，
 因此在本地传输确实被打断时记录 `acknowledged`；但通用 Chat Completions 没有标准 abort
 endpoint，不能据此证明 provider 已停止服务端生成。
-OS sandbox、跨运行语义记忆和统计严谨的真实模型评测仍在后续计划中。
+当前 v0.9 已经提供显式、可审计的跨运行语义记忆 notebook；它仍然不是 embedding
+检索、自动总结或学习型置信度校准。OS sandbox 和统计严谨的真实模型评测仍在后续计划中。
 
 另外新增了 `recovery-eval` 长程恢复矩阵：在 `model.requested`、`model.responded`、
 `tool.started`、`tool.completed` 等 durable 边界注入 process-like stop，再用全新的
@@ -49,6 +52,14 @@ OpenAI-compatible adapter 默认通过 `Idempotency-Key` 发送它，但是否�
 另有一个不依赖 provider 的首个有效候选取消演示，产物在
 [`experiments/v0.9-speculative-cancellation`](experiments/v0.9-speculative-cancellation/README.zh-CN.md)，
 展示 winner/cancelled lane ledger 和按配置 width 计费的预算口径，但不冒充远端 abort 评测。
+
+现在还可以为多个运行挂载同一个 `SemanticMemoryStore`。它是 append-only、带 hash-chain
+和 lease 的 JSONL notebook，保存 `fact`、`decision`、`procedure`、`failure` 四类短记忆，
+并记录 scope、tags、confidence、source run/reference。Agent 必须显式调用
+`memory_search`；只有打开 `--allow-write` 时才有 `memory_save` 和 `memory_invalidate`。
+检索是可复现的 lexical 匹配，写入按内容 identity 幂等，`memory_save` 可以显式 supersede
+旧记忆，`memory_invalidate` 可以写入失效原因。它是下一轮的
+提示和 provenance，不是当前 workspace 文件状态的证明，也不会自动塞进每一轮 prompt。
 
 ## 为什么适合面试 Agent 开发岗
 
@@ -67,6 +78,9 @@ OpenAI-compatible adapter 默认通过 `Idempotency-Key` 发送它，但是否�
 8. MCTS 调度：使用真实 oracle 质量而不是模型自报置信度选择后续候选，记录 UCT、访问次数和
    reward；
 9. 评测边界：reviewer 不能绕过可见测试，脚本 conformance 与模型能力明确分开。
+10. 跨运行记忆：显式的 `memory_search` / `memory_save` / `memory_invalidate`、scope 继承、内容幂等、
+    provenance、supersession/invalidation 和 lease，让“记住上一轮经验”变成可恢复、可审计
+    的运行时协议，而不是 prompt 里凭空塞一段摘要。
 
 编排也可以使用 `merge_policy=disjoint`：对相同根快照下的独立 solver 候选做有界三方合并，
 合并候选仍必须经过可见测试；同一路径的不同修改只记录 conflict，不会猜测如何拼接。
@@ -80,6 +94,23 @@ OpenAI-compatible adapter 默认通过 `Idempotency-Key` 发送它，但是否�
 ~~~text
 python -m contextopt trace events.jsonl --html trace.html
 ~~~
+
+如果希望让后续运行读取同一份记忆，可以把 store 路径加入 `run`（resume 时也要传同一条
+路径）：
+
+~~~text
+contextopt run "修复 parser" \
+  --workspace <temporary-workspace-copy> \
+  --script examples/runtime_demo/script.json \
+  --memory-store .contextopt/memory.jsonl \
+  --allow-write --allow-command \
+  --test-command "python -m unittest discover -s tests -v" \
+  --event-log <temporary-events.jsonl>
+~~~
+
+不加 `--allow-write` 时仍可搜索但不能保存或失效；记忆结果会进入普通 tool observation 和事件
+账本，因此能在 trace 中检查查询内容、命中项、revision 和 memory id。当前实现不依赖
+embedding service，也不宣称 memory 本身已经提升真实模型成功率。
 
 ## 离线验证
 
@@ -238,6 +269,8 @@ python -m contextopt agent-eval \
   和 [英文版](docs/pr/0001-v0.9-http-transport-cancellation.md)
 - v0.9 真实 provider secret 作用域：[docs/pr/0001-v0.9-real-provider-secret-scope.zh-CN.md](docs/pr/0001-v0.9-real-provider-secret-scope.zh-CN.md)
   和 [英文版](docs/pr/0001-v0.9-real-provider-secret-scope.md)
+- v0.9 跨运行语义记忆：[docs/pr/0001-v0.9-semantic-memory.zh-CN.md](docs/pr/0001-v0.9-semantic-memory.zh-CN.md)
+  和 [英文版](docs/pr/0001-v0.9-semantic-memory.md)
 - v0.7 编排补充的中文回顾：[docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md](docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、

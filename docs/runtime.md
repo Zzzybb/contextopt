@@ -3,9 +3,9 @@
 The v0.3 runtime is a bounded, auditable and recoverable single-agent loop inside the
 `contextopt` package. It reconstructs execution state from durable events, compiles a
 bounded context for every model call, and can resume a non-terminal run against the same
-validated model, tool, and context configuration. Its observed-memory projection is
-derived from the current transcript; it is not learned cross-run memory or a multi-agent
-system.
+validated model, tool, and context configuration. Its `versioned-v1` observed-memory
+projection is derived from the current transcript; it is not cross-run memory. An explicit
+`SemanticMemoryStore` can be attached as a separate advisory layer through memory tools.
 
 ## Current execution contract
 
@@ -40,6 +40,12 @@ The runtime currently exposes:
 - `replace_text`: atomic exact-text replacement guarded by the SHA-256 returned by
   `read_file`;
 - `run_tests`: invoke one trusted command registered by the caller, selected by scope.
+- `memory_search`: query an attached append-only semantic-memory notebook with deterministic
+  lexical matching and provenance;
+- `memory_save`: append an idempotent memory entry (optionally superseding an older one) when
+  the caller enabled `--allow-write`;
+- `memory_invalidate`: mark one entry invalid with an explicit reason when the caller enabled
+  `--allow-write`.
 
 `run_tests` returning exit code 1 is a successful tool execution with a failing code test.
 The observation includes the exit code and captured output so the model can react. A path
@@ -201,6 +207,37 @@ learned or carried across runs.
 
 Set `--context-memory none` to disable these validity signals while retaining context
 routing and receipts.
+
+### Optional cross-run semantic memory
+
+The observed-memory projection above is rebuilt per run and tracks facts about the current
+tool transcript. For experience that should survive a later run, pass an explicit JSONL store:
+
+```text
+contextopt run "Fix the parser" \
+  --workspace <temporary-workspace-copy> \
+  --script examples/runtime_demo/script.json \
+  --memory-store .contextopt/memory.jsonl \
+  --allow-write --allow-command \
+  --test-command "python -m unittest discover -s tests -v" \
+  --event-log <temporary-events.jsonl>
+```
+
+`memory_search` is available whenever the store is attached. `memory_save` and
+`memory_invalidate` are exposed only with `--allow-write`; save accepts a short `fact`,
+`decision`, `procedure`, or `failure` plus scope, tags, confidence, source references, and an
+optional `supersedes` id. Invalidate takes an id and a reason. The store is append-only,
+hash-chained, and protected by the same single-host lease as runtime traces. Content-derived
+identity makes a repeated save safe after an interrupted tool boundary; explicit supersession
+and invalidation preserve the history rather than silently editing it. `global` entries are
+visible to a requested project scope, and search results include matched terms, revision, and
+memory ids for auditability.
+
+This layer is deliberately lexical and provider-free. It has no embedding index, automatic
+consolidation, or learned confidence calibration. The model must ask for memory explicitly, and
+the result is an advisory hint—not proof that a mutable workspace still satisfies the remembered
+claim. A non-terminal `resume` must receive the same `--memory-store` path because the store
+identity is part of the tool configuration fingerprint.
 
 ### Per-turn receipt and recovery contract
 

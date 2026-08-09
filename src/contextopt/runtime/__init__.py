@@ -46,12 +46,22 @@ from contextopt.runtime.recovery import (
     replay_events_with_checkpoint,
 )
 from contextopt.runtime.runner import AgentRunner, PendingToolResolution
+from contextopt.runtime.semantic_memory import (
+    SEMANTIC_MEMORY_SCHEMA_VERSION,
+    MemoryKind,
+    MemoryStatus,
+    MemoryWriteResult,
+    SemanticMemoryEntry,
+    SemanticMemoryMatch,
+    SemanticMemoryStore,
+)
 from contextopt.runtime.tool_state import ToolExecutionPlan, ToolReconciliation
 from contextopt.runtime.tools import WorkspaceTools
 
 __all__ = [
     "CONTEXT_COMPILER_VERSION",
     "MIN_TOOL_OUTPUT_TOKENS",
+    "SEMANTIC_MEMORY_SCHEMA_VERSION",
     "AgentMessage",
     "AgentRunResult",
     "AgentRunner",
@@ -65,7 +75,10 @@ __all__ = [
     "EventLog",
     "EventScan",
     "EvidenceRecord",
+    "MemoryKind",
     "MemorySnapshot",
+    "MemoryStatus",
+    "MemoryWriteResult",
     "ModelClient",
     "ModelRequest",
     "ModelResponse",
@@ -77,6 +90,9 @@ __all__ = [
     "RunPermissions",
     "RunProjection",
     "ScriptedModel",
+    "SemanticMemoryEntry",
+    "SemanticMemoryMatch",
+    "SemanticMemoryStore",
     "TokenUsage",
     "ToolCall",
     "ToolDefinition",

@@ -17,7 +17,16 @@ RecoveryAction = Literal["completed", "retry", "paused", "divergence"]
 PLAN_SCHEMA_VERSION = "1"
 _REPLAY_POLICIES = frozenset({"safe", "reconcile", "never"})
 _RECOVERY_ACTIONS = frozenset({"completed", "retry", "paused", "divergence"})
-_SAFE_REPLAY_TOOLS = frozenset({"list_files", "search_text", "read_file"})
+_SAFE_REPLAY_TOOLS = frozenset(
+    {
+        "list_files",
+        "search_text",
+        "read_file",
+        "memory_search",
+        "memory_save",
+        "memory_invalidate",
+    }
+)
 _RECONCILED_WRITE_TOOLS = frozenset({"create_file", "replace_text"})
 _NEVER_REPLAY_TOOLS = frozenset({"run_tests"})
 

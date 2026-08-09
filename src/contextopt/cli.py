@@ -54,6 +54,7 @@ from contextopt.runtime import (
 )
 from contextopt.runtime.context import ContextCompiler, ContextCompilerConfig
 from contextopt.runtime.recovery import replay_events_with_checkpoint
+from contextopt.runtime.semantic_memory import SemanticMemoryStore
 from contextopt.search import (
     BranchCase,
     BranchSearch,
@@ -701,20 +702,29 @@ def _run_agent(args: argparse.Namespace) -> int:
     commands = (
         {"visible": _split_command(args.test_command)} if args.test_command else {}
     )
-    tools = WorkspaceTools(
-        workspace,
-        permissions=permissions,
-        limits=limits,
-        test_commands=commands,
-    )
-    model = _build_model(args)
     event_path = (
         Path(args.event_log)
         if args.event_log
         else workspace / ".contextopt" / "runs" / run_id / "events.jsonl"
     )
-    event_log = EventLog(event_path, run_id)
+    memory_store: SemanticMemoryStore | None = None
+    tools: WorkspaceTools | None = None
+    event_log: EventLog | None = None
     try:
+        memory_store = (
+            None
+            if args.memory_store is None
+            else SemanticMemoryStore(args.memory_store)
+        )
+        tools = WorkspaceTools(
+            workspace,
+            permissions=permissions,
+            limits=limits,
+            test_commands=commands,
+            memory_store=memory_store,
+        )
+        model = _build_model(args)
+        event_log = EventLog(event_path, run_id)
         runner = AgentRunner(
             model=model,
             tools=tools,
@@ -724,7 +734,12 @@ def _run_agent(args: argparse.Namespace) -> int:
         )
         result = asyncio.run(runner.run(args.task))
     finally:
-        event_log.close()
+        if event_log is not None:
+            event_log.close()
+        if tools is not None:
+            tools.close()
+        elif memory_store is not None:
+            memory_store.close()
     print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
     return _result_exit_code(result.status)
 
@@ -756,14 +771,6 @@ def _resume_agent(args: argparse.Namespace) -> int:
     commands = (
         {"visible": _split_command(args.test_command)} if args.test_command else {}
     )
-    tools = WorkspaceTools(
-        workspace,
-        permissions=state.config.permissions,
-        limits=state.config.limits,
-        test_commands=commands,
-    )
-    model = _build_model(args)
-    event_log = EventLog(event_path, state.run_id, repair_truncated=True)
     context_compiler = (
         None
         if state.config.context_config is None
@@ -771,7 +778,24 @@ def _resume_agent(args: argparse.Namespace) -> int:
             ContextCompilerConfig.from_dict(state.config.context_config)
         )
     )
+    memory_store: SemanticMemoryStore | None = None
+    tools: WorkspaceTools | None = None
+    event_log: EventLog | None = None
     try:
+        memory_store = (
+            None
+            if args.memory_store is None
+            else SemanticMemoryStore(args.memory_store)
+        )
+        tools = WorkspaceTools(
+            workspace,
+            permissions=state.config.permissions,
+            limits=state.config.limits,
+            test_commands=commands,
+            memory_store=memory_store,
+        )
+        model = _build_model(args)
+        event_log = EventLog(event_path, state.run_id, repair_truncated=True)
         runner = AgentRunner(
             model=model,
             tools=tools,
@@ -784,7 +808,12 @@ def _resume_agent(args: argparse.Namespace) -> int:
             runner.resume(pending_tool_resolution=args.pending_tool_resolution)
         )
     finally:
-        event_log.close()
+        if event_log is not None:
+            event_log.close()
+        if tools is not None:
+            tools.close()
+        elif memory_store is not None:
+            memory_store.close()
     print(json.dumps(run_result.to_dict(), indent=2, sort_keys=True))
     return _result_exit_code(run_result.status)
 
@@ -1333,6 +1362,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument("--run-id")
     run.add_argument("--event-log")
+    run.add_argument(
+        "--memory-store",
+        help=(
+            "append-only JSONL store exposed through memory_search; memory_save also "
+            "requires --allow-write"
+        ),
+    )
     run.add_argument("--max-turns", type=int, default=20)
     run.add_argument("--max-tool-calls", type=int, default=50)
     run.add_argument("--max-total-tokens", type=int, default=100_000)
@@ -1378,6 +1414,10 @@ def build_parser() -> argparse.ArgumentParser:
     resume.add_argument("event_log")
     resume.add_argument("--workspace", default=".")
     _add_model_arguments(resume)
+    resume.add_argument(
+        "--memory-store",
+        help="the same semantic-memory JSONL store configured for the original run",
+    )
     resume.add_argument(
         "--test-command",
         help="the same trusted visible-test command used by the original run",

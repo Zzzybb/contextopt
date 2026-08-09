@@ -317,6 +317,23 @@ revision from `CONTEXTOPT_GIT_REVISION` or `GITHUB_SHA`; the API key value is ne
 In particular, a `best_of_n` or orchestrated success here must not be reported as evidence
 that a real model would discover the same candidate.
 
+## Level 2i: durable semantic-memory plumbing — implemented
+
+The optional `SemanticMemoryStore` is evaluated as a runtime protocol, not as a coding-
+quality benchmark. The unit suite verifies that a memory log can be reopened and replayed,
+that identical content is idempotent, that scope/tag filters and lexical matches are
+deterministic, and that explicit supersession/invalidation change the active view without
+rewriting the append-only history. Tool tests additionally verify that `memory_save` is hidden
+without `--allow-write`, that `memory_search` returns revision and matched-term evidence,
+that save/supersede/invalidate remain explicit and replay-safe, and that the store identity
+participates in the runtime tool configuration fingerprint.
+
+These checks measure persistence, provenance, permission boundaries, and retry safety. They do
+not measure semantic recall, embedding quality, summarization quality, or whether a model uses a
+remembered item to produce a better patch. The current implementation intentionally uses a
+provider-free lexical scorer; any learned retrieval or memory-consolidation claim belongs to a
+future experiment with held-out tasks and an explicit ablation.
+
 ## Level 3: controlled real-model coding tasks — harness ready, runs pending
 
 Use the same model snapshot, system prompt, tools, repository commit, maximum turns, token
