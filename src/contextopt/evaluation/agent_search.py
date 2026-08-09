@@ -1649,6 +1649,7 @@ def build_openai_model_factory(
     timeout_seconds: float = 90.0,
     max_retries: int = 2,
     temperature: float | None = 0.0,
+    cancellation_url: str | None = None,
     record_transcript_dir: str | Path | None = None,
     replay_transcript_dir: str | Path | None = None,
 ) -> AgentModelFactory:
@@ -1733,6 +1734,7 @@ def build_openai_model_factory(
             timeout_seconds=timeout_seconds,
             max_retries=max_retries,
             temperature=temperature,
+            cancellation_url=cancellation_url,
         )
         if record_root is None:
             return model_client

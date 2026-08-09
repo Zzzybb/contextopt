@@ -11,7 +11,8 @@ use the equivalent local CLI command in the README.
 
 1. Add a repository or environment secret named `CONTEXTOPT_API_KEY`.
 2. Open **Actions → real-agent-eval → Run workflow**.
-3. Enter the OpenAI-compatible `model` and `base_url`. Keep the default `all` fixtures,
+3. Enter the OpenAI-compatible `model` and `base_url`; optionally enter a provider-specific
+   `cancellation_url` if the provider exposes the documented abort contract. Keep the default `all` fixtures,
    `single_pass,best_of_n,orchestrated` strategies, and `3` repetitions for the first run.
    The workflow rejects fewer than three repetitions so the artifact follows the Level 3
    exploratory comparison rule.
@@ -22,6 +23,7 @@ For a local run, preserve the provider boundary as auditable cassettes:
 ```text
 python -m contextopt agent-eval --fixtures all --repetitions 3 \
   --model <model-name> --base-url <endpoint> \
+  --cancellation-url <provider-cancel-endpoint> \
   --record-transcript-dir .contextopt/provider-matrix \
   --output agent-eval-real.json --manifest agent-eval-real.manifest.json
 python -m contextopt agent-eval --fixtures all --repetitions 3 \
@@ -33,6 +35,12 @@ The directory contains one strict JSONL cassette for every fixture, strategy,
 repetition, and role. Replay checks the complete normalized request hash and fails closed
 on a missing or changed request; it is an offline reproduction of the recorded run, not a
 new provider measurement. Use a fresh recording directory for each matrix.
+
+`--cancellation-url` is optional. If supplied, it must be a provider-specific `POST` endpoint
+that accepts `{"request_idempotency_key": "...", "model": "..."}` and returns 2xx after applying
+the provider's cancellation contract. The adapter records 404/405 as `unsupported` and other
+transport/HTTP failures as `failed:*`. Chat Completions does not standardize this endpoint, so
+the flag is an integration hook, not proof of remote generation termination or billing savings.
 
 At the current revision, `all` expands to `two-sum`, `extended-gcd`, `merge-intervals`, and
 `modular-inverse`. The deterministic three-repetition control baseline is checked in under

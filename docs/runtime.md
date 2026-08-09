@@ -816,16 +816,19 @@ an asyncio task cannot interrupt every provider's remote HTTP work. Adapters may
 `request_cancellation(request)`; its `acknowledged`, `not_observed`, `unsupported`, or `failed:*` result is
 persisted as `provider_cancel_status` in the cancellation event. The built-in serial
 OpenAI-compatible adapter can close an active local `urllib` response and reports
-`acknowledged` for that transport interruption. Chat Completions still has no standard remote
-abort endpoint, so this does not prove that server-side generation stopped. Solver/model budgets
-still charge the configured width, so latency savings and remote cost must be measured separately.
+`acknowledged` for that transport interruption. Operators may pass `--cancellation-url` to
+configure a provider-specific POST endpoint; the adapter sends `request_idempotency_key` and
+`model`, records 2xx as `acknowledged`, and maps 404/405 to `unsupported`. This is an explicit
+integration contract rather than a Chat Completions standard, so even a 2xx response does not
+prove that server-side generation stopped. Solver/model budgets still charge the configured
+width, so latency savings and remote cost must be measured separately.
 
 Remaining milestones are:
 
-1. Exercise the new cancellation/winner policy against provider adapters that expose a real
-   remote abort primitive; the built-in serial OpenAI-compatible adapter now offers durable
-   idempotency plus best-effort local HTTP transport cancellation, but cannot prove server-side
-   generation stopped.
+1. Exercise the new cancellation/winner policy against a real provider adapter and its documented
+   remote abort contract; the built-in serial OpenAI-compatible adapter now offers durable
+   idempotency, best-effort local HTTP transport cancellation, and an opt-in provider-specific
+   `--cancellation-url`, but cannot prove server-side generation stopped without provider evidence.
 2. Run the strategy harness against multiple real model versions and independent hidden
    tests, preserving paired budgets and full ledgers.
 3. Add container/VM isolation and a controlled real-model coding benchmark with fixed

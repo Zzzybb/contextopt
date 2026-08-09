@@ -9,7 +9,8 @@
 
 1. 在仓库或 environment 中添加名为 `CONTEXTOPT_API_KEY` 的 secret。
 2. 打开 **Actions → real-agent-eval → Run workflow**。
-3. 填写 OpenAI-compatible 的 `model` 与 `base_url`。第一次建议保留 `all` fixture、
+3. 填写 OpenAI-compatible 的 `model` 与 `base_url`；如果 provider 暴露了文档化的取消协议，
+   可以额外填写 provider-specific 的 `cancellation_url`。第一次建议保留 `all` fixture、
    `single_pass,best_of_n,orchestrated` 策略和 `3` 次 repetition。
    工作流会拒绝少于 3 次的 repetition，以满足 Level 3 探索性对比规则。
 4. 工作流完成后下载上传的 artifact bundle。
@@ -19,6 +20,7 @@
 ```text
 python -m contextopt agent-eval --fixtures all --repetitions 3 \
   --model <model-name> --base-url <endpoint> \
+  --cancellation-url <provider-cancel-endpoint> \
   --record-transcript-dir .contextopt/provider-matrix \
   --output agent-eval-real.json --manifest agent-eval-real.manifest.json
 python -m contextopt agent-eval --fixtures all --repetitions 3 \
@@ -29,6 +31,12 @@ python -m contextopt agent-eval --fixtures all --repetitions 3 \
 目录会为每个 fixture、strategy、repetition 和 role 保存一条严格 JSONL cassette。
 重放会校验完整的规范化请求 hash；缺失或变化的请求会 fail closed。它是离线复现已
 记录运行的方式，不是新的 provider 测量；每次矩阵录制都应使用新的目录。
+
+`--cancellation-url` 是可选项。传入时，它必须是 provider-specific 的 `POST` endpoint，接受
+`{"request_idempotency_key": "...", "model": "..."}`，并在 provider 自己的取消协议生效后返回
+2xx。adapter 会把 404/405 记录为 `unsupported`，其他传输或 HTTP 错误记录为 `failed:*`。
+Chat Completions 没有统一的该 endpoint，因此这只是集成 hook，不能证明远端生成已经停止，
+也不能单独证明节省了计费。
 
 当前 revision 中，`all` 会展开为 `two-sum`、`extended-gcd`、`merge-intervals`、
 `modular-inverse`。确定性的三次重复控制基线位于

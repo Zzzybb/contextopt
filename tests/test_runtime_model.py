@@ -111,6 +111,17 @@ class _BlockingResponse:
         self.closed.set()
 
 
+class _StatusResponse:
+    def __init__(self, status: int) -> None:
+        self.status = status
+
+    def getcode(self) -> int:
+        return self.status
+
+    def close(self) -> None:
+        return None
+
+
 class _CancelDuringBackoffEvent(threading.Event):
     def wait(self, timeout: float | None = None) -> bool:
         del timeout
@@ -328,6 +339,85 @@ class OpenAICompatibleModelTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(ModelError) as raised:
                 await task
         self.assertEqual(raised.exception.code, "cancelled")
+
+    async def test_cancellation_notifies_provider_specific_abort_endpoint(self) -> None:
+        response = _BlockingResponse()
+        model = OpenAICompatibleModel(
+            base_url="https://example.test/v1",
+            api_key="cancel-secret",
+            model="unit-model",
+            cancellation_url="https://example.test/v1/cancel",
+        )
+        request = _model_request()
+        captured: list[urllib.request.Request] = []
+
+        def urlopen(
+            http_request: urllib.request.Request, *, timeout: float
+        ) -> _BlockingResponse | _StatusResponse:
+            del timeout
+            if http_request.full_url.endswith("/cancel"):
+                captured.append(http_request)
+                return _StatusResponse(202)
+            return response
+
+        with patch(
+            "contextopt.runtime.model.urllib.request.urlopen", side_effect=urlopen
+        ):
+            task = asyncio.create_task(model.complete(request))
+            self.assertTrue(await asyncio.to_thread(response.started.wait, 2))
+            self.assertEqual(await model.request_cancellation(request), "acknowledged")
+            with self.assertRaises(ModelError) as raised:
+                await task
+
+        self.assertEqual(len(captured), 1)
+        abort_request = captured[0]
+        request_key = model.request_idempotency_key(request)
+        self.assertEqual(
+            abort_request.get_header("Authorization"), "Bearer cancel-secret"
+        )
+        self.assertEqual(abort_request.get_header("Idempotency-key"), request_key)
+        self.assertEqual(
+            json.loads(abort_request.data.decode("utf-8")),
+            {"model": "unit-model", "request_idempotency_key": request_key},
+        )
+        self.assertEqual(
+            model.configuration["cancellation_url"], "https://example.test/v1/cancel"
+        )
+        self.assertEqual(raised.exception.code, "cancelled")
+
+    async def test_cancellation_endpoint_404_is_reported_as_unsupported(self) -> None:
+        response = _BlockingResponse()
+        model = OpenAICompatibleModel(
+            base_url="https://example.test/v1",
+            api_key="key",
+            model="unit-model",
+            cancellation_url="https://example.test/v1/cancel",
+        )
+        request = _model_request()
+        error = urllib.error.HTTPError(
+            "https://example.test/v1/cancel",
+            404,
+            "missing",
+            hdrs=None,
+            fp=io.BytesIO(b"missing"),
+        )
+
+        def urlopen(
+            http_request: urllib.request.Request, *, timeout: float
+        ) -> _BlockingResponse:
+            del timeout
+            if http_request.full_url.endswith("/cancel"):
+                raise error
+            return response
+
+        with patch(
+            "contextopt.runtime.model.urllib.request.urlopen", side_effect=urlopen
+        ):
+            task = asyncio.create_task(model.complete(request))
+            self.assertTrue(await asyncio.to_thread(response.started.wait, 2))
+            self.assertEqual(await model.request_cancellation(request), "unsupported")
+            with self.assertRaises(ModelError):
+                await task
 
     async def test_cancellation_reports_not_observed_without_active_request(
         self,

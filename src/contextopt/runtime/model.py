@@ -223,6 +223,7 @@ class OpenAICompatibleModel:
         max_retries: int = 2,
         temperature: float | None = 0.0,
         idempotency_header: str | None = "Idempotency-Key",
+        cancellation_url: str | None = None,
     ) -> None:
         if not base_url.startswith(("http://", "https://")):
             raise ValueError("base_url must use http or https")
@@ -236,6 +237,11 @@ class OpenAICompatibleModel:
             raise ValueError("max_retries must be non-negative")
         if idempotency_header is not None and not idempotency_header.strip():
             raise ValueError("idempotency_header must be non-empty when provided")
+        if cancellation_url is not None:
+            if not cancellation_url.startswith(("http://", "https://")):
+                raise ValueError("cancellation_url must use http or https")
+            if not cancellation_url.rstrip("/"):
+                raise ValueError("cancellation_url must not be empty")
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
@@ -243,6 +249,9 @@ class OpenAICompatibleModel:
         self.max_retries = max_retries
         self.temperature = temperature
         self.idempotency_header = idempotency_header
+        self.cancellation_url = (
+            None if cancellation_url is None else cancellation_url.rstrip("/")
+        )
         self._cancellation_lock = threading.Lock()
         self._cancellation_events: dict[str, threading.Event] = {}
         self._active_responses: dict[str, Any] = {}
@@ -263,6 +272,7 @@ class OpenAICompatibleModel:
             "max_retries": self.max_retries,
             "temperature": self.temperature,
             "idempotency_header": self.idempotency_header,
+            "cancellation_url": self.cancellation_url,
         }
 
     @property
@@ -309,12 +319,15 @@ class OpenAICompatibleModel:
             cleanup(worker)
 
     async def request_cancellation(self, request: ModelRequest) -> str:
-        """Interrupt the local HTTP transport for an active request when possible.
+        """Interrupt an active request and optionally notify a provider abort hook.
 
-        Chat Completions has no standard remote-abort endpoint. The adapter can still
-        close an active local ``urllib`` response, which unblocks the worker thread and
-        prevents further retries. ``acknowledged`` therefore means local transport
-        interruption, not proof that the provider stopped server-side generation.
+        Chat Completions has no standard remote-abort endpoint. Without
+        ``cancellation_url``, the adapter closes an active local ``urllib`` response,
+        which unblocks the worker thread and prevents further retries. When the
+        operator configures a provider-specific endpoint, this method additionally
+        sends a small idempotent abort request containing the request key and model.
+        ``acknowledged`` then means that endpoint returned a 2xx response; it still
+        depends on the provider's own contract to prove server-side generation stopped.
         """
 
         request_key = self.request_idempotency_key(request)
@@ -324,12 +337,60 @@ class OpenAICompatibleModel:
         if cancellation is None:
             return "not_observed"
         cancellation.set()
+        local_status = "acknowledged"
         if response is not None:
             try:
                 response.close()
             except OSError as exc:
-                return f"failed:{type(exc).__name__}"
-        return "acknowledged"
+                local_status = f"failed:{type(exc).__name__}"
+        if self.cancellation_url is None:
+            return local_status
+        remote_status = await asyncio.to_thread(
+            self._request_remote_cancellation, request_key
+        )
+        return remote_status
+
+    def _request_remote_cancellation(self, request_key: str) -> str:
+        """Call the explicitly configured provider-specific cancellation endpoint."""
+
+        assert self.cancellation_url is not None
+        payload = json.dumps(
+            {
+                "request_idempotency_key": request_key,
+                "model": self.model,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "User-Agent": "contextopt-runtime/0.2",
+        }
+        if self.idempotency_header is not None:
+            headers[self.idempotency_header] = request_key
+        request = urllib.request.Request(
+            self.cancellation_url,
+            data=payload,
+            headers=headers,
+            method="POST",
+        )
+        try:
+            response = urllib.request.urlopen(
+                request, timeout=min(self.timeout_seconds, 5.0)
+            )
+            try:
+                status = response.getcode()
+            finally:
+                response.close()
+            return "acknowledged" if 200 <= status < 300 else f"failed:http_{status}"
+        except urllib.error.HTTPError as exc:
+            if exc.code in {404, 405}:
+                return "unsupported"
+            return f"failed:http_{exc.code}"
+        except (urllib.error.URLError, TimeoutError, OSError):
+            return "failed:network_error"
 
     def request_idempotency_key(self, request: ModelRequest) -> str:
         """Return the stable key used for provider retries and run recovery."""

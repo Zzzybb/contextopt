@@ -479,7 +479,9 @@ snapshots before the oracle. The orchestration layer additionally supports
 valid snapshots, and records lane-level hashes/usage/failures. The optional
 `speculative_solver_stop_on_valid` policy records the first protocol-valid winner and requests
 best-effort cancellation for unfinished lanes; the built-in adapter can close a local HTTP
-transport but this does not convert into a remote provider abort. Planner and reviewer calls remain sequential; exactly-once
+transport and, when configured with `--cancellation-url`, notify an explicit provider-specific
+abort endpoint. A 2xx endpoint response is still provider-owned evidence rather than a generic
+Chat Completions guarantee. Planner and reviewer calls remain sequential; exactly-once
 semantics remain outside this milestone:
 
 - single-path Agent;
@@ -492,8 +494,8 @@ lines: `solver_calls`/`model_calls` charge the configured width, while
 `cancelled_solver_lanes` and `max_provider_in_flight` show the observed local scheduling
 effect. A `solver.speculative.winner` only means the response passed the candidate protocol;
 visible tests and reviewer approval remain the correctness gate. Provider cost/latency claims
-require an adapter that reports actual remote cancellation, which the default serial HTTP
-adapter does not claim.
+require an adapter/provider contract that reports actual remote cancellation; local transport
+closure or an unverified endpoint response is not enough.
 
 When enabled, merge evidence records every considered pair, merged candidate id, and conflicting
 path hashes. A conflict never produces a partial candidate, and merged snapshots still consume

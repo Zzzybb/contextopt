@@ -199,8 +199,11 @@ recompute the complete chain because there is no secret or external trust anchor
   explicitly best-effort because a provider may finish an HTTP request after its local task
   is cancelled. Provider-specific adapters can optionally implement
   `request_cancellation(request)`; the default serial OpenAI-compatible adapter can close an
-  active local HTTP response and records `acknowledged` for that transport interruption. It
-  still cannot prove that a generic Chat Completions provider stopped server-side generation.
+  active local HTTP response and records `acknowledged` for that transport interruption. When
+  an operator supplies `--cancellation-url`, it also POSTs the request idempotency key and model
+  to that explicit provider-specific endpoint; a 2xx response is recorded as `acknowledged`,
+  while 404/405 is `unsupported`. The endpoint contract remains provider-owned, so even a 2xx
+  response does not by itself prove that a generic Chat Completions provider stopped generation.
 - The orchestrate CLI command plus console/Markdown/HTML reports make role calls and the
   oracle gate measurable instead of treating a multi-agent transcript as evidence.
 
@@ -864,6 +867,8 @@ The package-version alignment is documented in [the v0.9 note](docs/pr/0001-v0.9
 and [Chinese version](docs/pr/0001-v0.9-version-alignment.zh-CN.md).
 The built-in HTTP transport cancellation is documented in [the v0.9 note](docs/pr/0001-v0.9-http-transport-cancellation.md)
 and [Chinese version](docs/pr/0001-v0.9-http-transport-cancellation.zh-CN.md).
+The opt-in provider-specific cancellation endpoint is documented in [the v1.0 note](docs/pr/0001-v1.0-provider-cancellation-hook.md)
+and [Chinese version](docs/pr/0001-v1.0-provider-cancellation-hook.zh-CN.md).
 The real-provider workflow's secret boundary is documented in [the v0.9 note](docs/pr/0001-v0.9-real-provider-secret-scope.md)
 and [Chinese version](docs/pr/0001-v0.9-real-provider-secret-scope.zh-CN.md).
 The durable cross-run semantic-memory follow-up is documented in [the English PR note](docs/pr/0001-v0.9-semantic-memory.md)

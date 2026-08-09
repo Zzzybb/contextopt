@@ -12,6 +12,11 @@ on:
         required: true
         default: "https://api.openai.com/v1"
         type: string
+      cancellation_url:
+        description: "Optional provider-specific POST endpoint for remote cancellation"
+        required: false
+        default: ""
+        type: string
       repetitions:
         description: "Paired repetitions (3 is the default minimum)"
         required: true
@@ -63,23 +68,30 @@ jobs:
         env:
           EVAL_MODEL: ${{ inputs.model }}
           EVAL_BASE_URL: ${{ inputs.base_url }}
+          EVAL_CANCELLATION_URL: ${{ inputs.cancellation_url }}
           EVAL_FIXTURES: ${{ inputs.fixtures }}
           EVAL_STRATEGIES: ${{ inputs.strategies }}
           EVAL_REPETITIONS: ${{ inputs.repetitions }}
           CONTEXTOPT_API_KEY: ${{ secrets.CONTEXTOPT_API_KEY }}
-        run: >-
-          python -m contextopt agent-eval
-          --model "$EVAL_MODEL"
-          --base-url "$EVAL_BASE_URL"
-          --api-key-env CONTEXTOPT_API_KEY
-          --fixtures "$EVAL_FIXTURES"
-          --strategies "$EVAL_STRATEGIES"
-          --repetitions "$EVAL_REPETITIONS"
-          --output artifacts/agent-eval-real.json
-          --markdown artifacts/agent-eval-real.md
-          --html artifacts/agent-eval-real.html
-          --checkpoint artifacts/agent-eval-real.checkpoint.json
-          --manifest artifacts/agent-eval-real.manifest.json
+        run: |
+          args=(
+            -m contextopt agent-eval
+            --model "$EVAL_MODEL"
+            --base-url "$EVAL_BASE_URL"
+            --api-key-env CONTEXTOPT_API_KEY
+            --fixtures "$EVAL_FIXTURES"
+            --strategies "$EVAL_STRATEGIES"
+            --repetitions "$EVAL_REPETITIONS"
+            --output artifacts/agent-eval-real.json
+            --markdown artifacts/agent-eval-real.md
+            --html artifacts/agent-eval-real.html
+            --checkpoint artifacts/agent-eval-real.checkpoint.json
+            --manifest artifacts/agent-eval-real.manifest.json
+          )
+          if [[ -n "$EVAL_CANCELLATION_URL" ]]; then
+            args+=(--cancellation-url "$EVAL_CANCELLATION_URL")
+          fi
+          python "${args[@]}"
       - name: Upload evaluation ledger
         uses: actions/upload-artifact@v4
         with:

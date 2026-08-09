@@ -153,6 +153,7 @@ def _agent_eval_manifest(
             "solver_model": args.solver_model,
             "reviewer_model": args.reviewer_model,
             "base_url": _safe_endpoint(args.base_url),
+            "cancellation_url": _safe_endpoint(args.cancellation_url),
         },
         "runtime": {
             "temperature": args.temperature,
@@ -256,9 +257,9 @@ def _agent_eval(args: argparse.Namespace) -> int:
     if args.record_transcript_dir and not args.model:
         raise ValueError("--model is required when recording agent-eval transcripts")
     if args.replay_transcript_dir:
-        if args.model or args.base_url:
+        if args.model or args.base_url or args.cancellation_url:
             raise ValueError(
-                "--model and --base-url cannot be combined with replay transcripts"
+                "provider connection options cannot be combined with replay transcripts"
             )
         model_factory = build_openai_model_factory(
             base_url=None,
@@ -267,6 +268,7 @@ def _agent_eval(args: argparse.Namespace) -> int:
             planner_model=args.planner_model,
             solver_model=args.solver_model,
             reviewer_model=args.reviewer_model,
+            cancellation_url=args.cancellation_url,
             replay_transcript_dir=args.replay_transcript_dir,
         )
         model_adapter = "replay"
@@ -288,6 +290,7 @@ def _agent_eval(args: argparse.Namespace) -> int:
             timeout_seconds=args.model_timeout,
             max_retries=args.model_retries,
             temperature=args.temperature,
+            cancellation_url=args.cancellation_url,
             record_transcript_dir=args.record_transcript_dir,
         )
         model_adapter = "openai-compatible"
@@ -678,6 +681,7 @@ def _build_model(args: argparse.Namespace) -> ModelClient:
             timeout_seconds=args.model_timeout,
             max_retries=args.model_retries,
             temperature=args.temperature,
+            cancellation_url=args.cancellation_url,
         )
     if args.record_transcript:
         return RecordingModel(model, args.record_transcript)
@@ -713,6 +717,7 @@ def _build_role_model(args: argparse.Namespace, role: str) -> ModelClient:
             timeout_seconds=args.model_timeout,
             max_retries=args.model_retries,
             temperature=args.temperature,
+            cancellation_url=args.cancellation_url,
         )
     if record_dir:
         return RecordingModel(model, Path(record_dir) / f"{role}.jsonl")
@@ -1151,6 +1156,13 @@ def _add_model_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--model", help="OpenAI-compatible model name")
     parser.add_argument("--base-url", help="OpenAI-compatible API base URL")
     parser.add_argument(
+        "--cancellation-url",
+        help=(
+            "optional provider-specific POST endpoint for remote request cancellation; "
+            "the JSON body contains request_idempotency_key and model"
+        ),
+    )
+    parser.add_argument(
         "--api-key-env",
         default="CONTEXTOPT_API_KEY",
         help="environment variable containing the API key",
@@ -1262,6 +1274,10 @@ def build_parser() -> argparse.ArgumentParser:
     agent_eval.add_argument("--solver-model")
     agent_eval.add_argument("--reviewer-model")
     agent_eval.add_argument("--base-url")
+    agent_eval.add_argument(
+        "--cancellation-url",
+        help="optional provider-specific POST endpoint for remote request cancellation",
+    )
     agent_eval.add_argument("--api-key-env", default="CONTEXTOPT_API_KEY")
     agent_eval.add_argument("--model-timeout", type=float, default=90.0)
     agent_eval.add_argument("--model-retries", type=int, default=2)
@@ -1540,6 +1556,10 @@ def build_parser() -> argparse.ArgumentParser:
     orchestrate.add_argument("--solver-model")
     orchestrate.add_argument("--reviewer-model")
     orchestrate.add_argument("--base-url")
+    orchestrate.add_argument(
+        "--cancellation-url",
+        help="optional provider-specific POST endpoint for remote request cancellation",
+    )
     orchestrate.add_argument("--api-key-env", default="CONTEXTOPT_API_KEY")
     orchestrate.add_argument("--model-timeout", type=float, default=90.0)
     orchestrate.add_argument("--model-retries", type=int, default=2)

@@ -39,8 +39,10 @@ planner 和 reviewer 仍然顺序调用，仍不声称 exactly-once。还可以�
 一定已经停止远端 HTTP 请求。provider-specific adapter 可以实现可选的
 `request_cancellation(request)` hook，事件会记录 `acknowledged`、`not_observed`、
 `unsupported` 或 `failed:*`。默认的串行 OpenAI-compatible adapter 可以关闭本地活动 HTTP response，
-因此在本地传输确实被打断时记录 `acknowledged`；但通用 Chat Completions 没有标准 abort
-endpoint，不能据此证明 provider 已停止服务端生成。
+因此在本地传输确实被打断时记录 `acknowledged`。如果操作者传入 `--cancellation-url`，adapter
+还会把 request idempotency key 和 model POST 到这个显式的 provider-specific endpoint；2xx
+会记录为 `acknowledged`，404/405 会记录为 `unsupported`。endpoint 的语义仍由 provider
+自己定义，即使返回 2xx，也不能单独证明通用 Chat Completions provider 已停止服务端生成。
 当前 v0.9 已经提供显式、可审计的跨运行语义记忆 notebook，以及一个可选的、受预算约束的
 自动候选上下文模式；它仍然不是 embedding 检索、自动总结或学习型置信度校准。OS sandbox
 和统计严谨的真实模型评测仍在后续计划中。
@@ -398,6 +400,8 @@ python -m contextopt agent-eval \
   和 [英文版](docs/pr/0001-v0.9-version-alignment.md)
 - v0.9 本地 HTTP 传输取消：[docs/pr/0001-v0.9-http-transport-cancellation.zh-CN.md](docs/pr/0001-v0.9-http-transport-cancellation.zh-CN.md)
   和 [英文版](docs/pr/0001-v0.9-http-transport-cancellation.md)
+- v1.0 provider-specific 远端取消 hook：[docs/pr/0001-v1.0-provider-cancellation-hook.zh-CN.md](docs/pr/0001-v1.0-provider-cancellation-hook.zh-CN.md)
+  和 [英文版](docs/pr/0001-v1.0-provider-cancellation-hook.md)
 - v0.9 真实 provider secret 作用域：[docs/pr/0001-v0.9-real-provider-secret-scope.zh-CN.md](docs/pr/0001-v0.9-real-provider-secret-scope.zh-CN.md)
   和 [英文版](docs/pr/0001-v0.9-real-provider-secret-scope.md)
 - v0.9 跨运行语义记忆：[docs/pr/0001-v0.9-semantic-memory.zh-CN.md](docs/pr/0001-v0.9-semantic-memory.zh-CN.md)
