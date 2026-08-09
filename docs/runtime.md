@@ -629,17 +629,19 @@ one `solver.speculative.cancelled` event per such lane. The selected snapshot st
 the same visible-test oracle and reviewer gate. A cancellation event means local cancellation
 was requested; it deliberately records `provider_cancellation=best_effort` because cancelling
 an asyncio task cannot interrupt every provider's remote HTTP work. Adapters may optionally expose
-`request_cancellation(request)`; its `acknowledged`, `unsupported`, or `failed:*` result is
+`request_cancellation(request)`; its `acknowledged`, `not_observed`, `unsupported`, or `failed:*` result is
 persisted as `provider_cancel_status` in the cancellation event. The built-in serial
-OpenAI-compatible adapter returns `unsupported` because Chat Completions has no standard abort
-endpoint. Solver/model budgets still charge the configured width, so latency savings and remote
-cost must be measured separately.
+OpenAI-compatible adapter can close an active local `urllib` response and reports
+`acknowledged` for that transport interruption. Chat Completions still has no standard remote
+abort endpoint, so this does not prove that server-side generation stopped. Solver/model budgets
+still charge the configured width, so latency savings and remote cost must be measured separately.
 
 Remaining milestones are:
 
 1. Exercise the new cancellation/winner policy against provider adapters that expose a real
-   abort primitive; the built-in serial OpenAI-compatible adapter currently offers the durable
-   idempotency hook but only best-effort local task cancellation.
+   remote abort primitive; the built-in serial OpenAI-compatible adapter now offers durable
+   idempotency plus best-effort local HTTP transport cancellation, but cannot prove server-side
+   generation stopped.
 2. Run the strategy harness against multiple real model versions and independent hidden
    tests, preserving paired budgets and full ledgers.
 3. Add container/VM isolation and a controlled real-model coding benchmark with fixed

@@ -31,9 +31,10 @@ planner 和 reviewer 仍然顺序调用，仍不声称 exactly-once。还可以�
 并通过 `solver.speculative.winner` / `solver.speculative.cancelled` 事件留下可审计证据。
 这里的 valid 只表示协议可解析，不代表测试通过；取消是 best-effort，不能假设 provider
 一定已经停止远端 HTTP 请求。provider-specific adapter 可以实现可选的
-`request_cancellation(request)` hook，事件会记录 `acknowledged`、`unsupported` 或
-`failed:*`；默认的串行 OpenAI-compatible adapter 因通用 Chat Completions 没有标准 abort
-endpoint，会明确记录 `unsupported`。
+`request_cancellation(request)` hook，事件会记录 `acknowledged`、`not_observed`、
+`unsupported` 或 `failed:*`。默认的串行 OpenAI-compatible adapter 可以关闭本地活动 HTTP response，
+因此在本地传输确实被打断时记录 `acknowledged`；但通用 Chat Completions 没有标准 abort
+endpoint，不能据此证明 provider 已停止服务端生成。
 OS sandbox、跨运行语义记忆和统计严谨的真实模型评测仍在后续计划中。
 
 另外新增了 `recovery-eval` 长程恢复矩阵：在 `model.requested`、`model.responded`、
@@ -233,6 +234,8 @@ python -m contextopt agent-eval \
   和 [英文版](docs/pr/0001-v0.9-evaluation-duration.md)
 - v0.9 包版本对齐：[docs/pr/0001-v0.9-version-alignment.zh-CN.md](docs/pr/0001-v0.9-version-alignment.zh-CN.md)
   和 [英文版](docs/pr/0001-v0.9-version-alignment.md)
+- v0.9 本地 HTTP 传输取消：[docs/pr/0001-v0.9-http-transport-cancellation.zh-CN.md](docs/pr/0001-v0.9-http-transport-cancellation.zh-CN.md)
+  和 [英文版](docs/pr/0001-v0.9-http-transport-cancellation.md)
 - v0.7 编排补充的中文回顾：[docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md](docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、

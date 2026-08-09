@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -243,6 +244,9 @@ class OpenAICompatibleModel:
         self.max_retries = max_retries
         self.temperature = temperature
         self.idempotency_header = idempotency_header
+        self._cancellation_lock = threading.Lock()
+        self._cancellation_events: dict[str, threading.Event] = {}
+        self._active_responses: dict[str, Any] = {}
 
     @property
     def name(self) -> str:
@@ -273,20 +277,44 @@ class OpenAICompatibleModel:
             raise ValueError("completed_turns must be non-negative")
 
     async def complete(self, request: ModelRequest) -> ModelResponse:
-        return await asyncio.to_thread(self._complete_sync, request)
+        request_key = self.request_idempotency_key(request)
+        cancellation = threading.Event()
+        with self._cancellation_lock:
+            self._cancellation_events[request_key] = cancellation
+        try:
+            return await asyncio.to_thread(
+                self._complete_sync, request, request_key, cancellation
+            )
+        finally:
+            with self._cancellation_lock:
+                if self._cancellation_events.get(request_key) is cancellation:
+                    self._cancellation_events.pop(request_key, None)
+                response = self._active_responses.pop(request_key, None)
+            if response is not None:
+                response.close()
 
     async def request_cancellation(self, request: ModelRequest) -> str:
-        """Return the adapter's remote-abort status for a speculative request.
+        """Interrupt the local HTTP transport for an active request when possible.
 
-        The generic OpenAI-compatible Chat Completions protocol has no standard abort
-        endpoint, so this adapter deliberately reports ``unsupported``.
-        Provider-specific adapters may override the hook and return
-        ``acknowledged`` after calling their cancellation API. The orchestration ledger
-        still records local task cancellation.
+        Chat Completions has no standard remote-abort endpoint. The adapter can still
+        close an active local ``urllib`` response, which unblocks the worker thread and
+        prevents further retries. ``acknowledged`` therefore means local transport
+        interruption, not proof that the provider stopped server-side generation.
         """
 
-        _ = request
-        return "unsupported"
+        request_key = self.request_idempotency_key(request)
+        with self._cancellation_lock:
+            cancellation = self._cancellation_events.get(request_key)
+            response = self._active_responses.get(request_key)
+        if cancellation is None:
+            return "not_observed"
+        cancellation.set()
+        if response is not None:
+            try:
+                response.close()
+            except OSError as exc:
+                return f"failed:{type(exc).__name__}"
+        return "acknowledged"
 
     def request_idempotency_key(self, request: ModelRequest) -> str:
         """Return the stable key used for provider retries and run recovery."""
@@ -297,7 +325,12 @@ class OpenAICompatibleModel:
             request_sha256=self._request_sha256(request),
         )
 
-    def _complete_sync(self, request: ModelRequest) -> ModelResponse:
+    def _complete_sync(
+        self,
+        request: ModelRequest,
+        request_key: str,
+        cancellation: threading.Event,
+    ) -> ModelResponse:
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": [
@@ -326,10 +359,16 @@ class OpenAICompatibleModel:
             "User-Agent": "contextopt-runtime/0.2",
         }
         if self.idempotency_header is not None:
-            headers[self.idempotency_header] = self.request_idempotency_key(request)
+            headers[self.idempotency_header] = request_key
         endpoint = self.base_url + "/chat/completions"
         last_error: ModelError | None = None
         for attempt in range(self.max_retries + 1):
+            if cancellation.is_set():
+                raise ModelError(
+                    "model request cancelled",
+                    code="cancelled",
+                    retryable=False,
+                )
             http_request = urllib.request.Request(
                 endpoint,
                 data=encoded,
@@ -337,12 +376,31 @@ class OpenAICompatibleModel:
                 method="POST",
             )
             try:
-                with urllib.request.urlopen(
+                response = urllib.request.urlopen(
                     http_request, timeout=self.timeout_seconds
-                ) as response:
+                )
+                with self._cancellation_lock:
+                    self._active_responses[request_key] = response
+                if cancellation.is_set():
+                    response.close()
+                    raise OSError("model request cancelled")
+                try:
                     raw = response.read()
+                finally:
+                    with self._cancellation_lock:
+                        if self._active_responses.get(request_key) is response:
+                            self._active_responses.pop(request_key, None)
+                    response.close()
+                if cancellation.is_set():
+                    raise OSError("model request cancelled")
                 return self._parse_payload(raw)
             except urllib.error.HTTPError as exc:
+                if cancellation.is_set():
+                    raise ModelError(
+                        "model request cancelled",
+                        code="cancelled",
+                        retryable=False,
+                    ) from exc
                 body = exc.read(2_000).decode("utf-8", errors="replace")
                 retryable = exc.code in {408, 409, 429} or exc.code >= 500
                 last_error = ModelError(
@@ -351,6 +409,12 @@ class OpenAICompatibleModel:
                     retryable=retryable,
                 )
             except (urllib.error.URLError, TimeoutError, OSError) as exc:
+                if cancellation.is_set():
+                    raise ModelError(
+                        "model request cancelled",
+                        code="cancelled",
+                        retryable=False,
+                    ) from exc
                 last_error = ModelError(
                     f"model endpoint request failed: {exc}",
                     code="network_error",

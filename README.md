@@ -186,8 +186,9 @@ recompute the complete chain because there is no secret or external trust anchor
   `solver.speculative.cancelled` events expose the latency/cost trade-off. Cancellation is
   explicitly best-effort because a provider may finish an HTTP request after its local task
   is cancelled. Provider-specific adapters can optionally implement
-  `request_cancellation(request)`; the default serial OpenAI-compatible adapter records
-  `unsupported` because the generic Chat Completions protocol has no standard abort endpoint.
+  `request_cancellation(request)`; the default serial OpenAI-compatible adapter can close an
+  active local HTTP response and records `acknowledged` for that transport interruption. It
+  still cannot prove that a generic Chat Completions provider stopped server-side generation.
 - The orchestrate CLI command plus console/Markdown/HTML reports make role calls and the
   oracle gate measurable instead of treating a multi-agent transcript as evidence.
 
@@ -656,6 +657,8 @@ and [Chinese version](docs/pr/0001-v0.9-evaluation-duration.zh-CN.md). The earli
 orchestration addendum also has a [Chinese retrospective](docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md).
 The package-version alignment is documented in [the v0.9 note](docs/pr/0001-v0.9-version-alignment.md)
 and [Chinese version](docs/pr/0001-v0.9-version-alignment.zh-CN.md).
+The built-in HTTP transport cancellation is documented in [the v0.9 note](docs/pr/0001-v0.9-http-transport-cancellation.md)
+and [Chinese version](docs/pr/0001-v0.9-http-transport-cancellation.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers. The
   manual workflow is the reproducibility entry point; the checked-in scripted artifacts remain

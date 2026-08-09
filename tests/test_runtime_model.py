@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import threading
 import unittest
@@ -91,6 +92,21 @@ class _LocalModelServer:
         self._server.shutdown()
         self._server.server_close()
         self._thread.join(timeout=5)
+
+
+class _BlockingResponse:
+    def __init__(self) -> None:
+        self.started = threading.Event()
+        self.closed = threading.Event()
+
+    def read(self) -> bytes:
+        self.started.set()
+        if not self.closed.wait(timeout=5):
+            raise TimeoutError("test response was not cancelled")
+        raise OSError("test response closed")
+
+    def close(self) -> None:
+        self.closed.set()
 
 
 def _model_request(*, turn: int = 1) -> ModelRequest:
@@ -260,14 +276,35 @@ class OpenAICompatibleModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(first), 75)
         self.assertEqual(len(second), 75)
 
-    async def test_default_adapter_reports_unsupported_cancellation(self) -> None:
+    async def test_cancellation_interrupts_active_local_http_transport(self) -> None:
+        response = _BlockingResponse()
+        model = OpenAICompatibleModel(
+            base_url="https://example.test/v1",
+            api_key="key",
+            model="unit-model",
+        )
+        request = _model_request()
+        with patch(
+            "contextopt.runtime.model.urllib.request.urlopen",
+            return_value=response,
+        ):
+            task = asyncio.create_task(model.complete(request))
+            self.assertTrue(await asyncio.to_thread(response.started.wait, 2))
+            self.assertEqual(await model.request_cancellation(request), "acknowledged")
+            with self.assertRaises(ModelError) as raised:
+                await task
+        self.assertEqual(raised.exception.code, "cancelled")
+
+    async def test_cancellation_reports_not_observed_without_active_request(
+        self,
+    ) -> None:
         model = OpenAICompatibleModel(
             base_url="https://example.test/v1",
             api_key="key",
             model="unit-model",
         )
         self.assertEqual(
-            await model.request_cancellation(_model_request()), "unsupported"
+            await model.request_cancellation(_model_request()), "not_observed"
         )
 
 
