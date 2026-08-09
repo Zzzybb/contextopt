@@ -26,3 +26,5 @@ python -m contextopt agent-eval --fixtures all --repetitions 3 \
 
 第一次真实 provider 运行必须保持相同 fixture ID、策略集合、预算、prompt，并至少重复
 三次，之后才能与这份控制产物做对比。
+
+manifest 固定了本基线使用的源码 revision：`4794ddbe6dc856939631b4f6cb1ead37c75d4c6b`。

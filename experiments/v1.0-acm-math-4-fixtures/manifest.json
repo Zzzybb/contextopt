@@ -31,7 +31,7 @@
     "reviewer_model": null,
     "solver_model": null
   },
-  "repository_revision": null,
+  "repository_revision": "4794ddbe6dc856939631b4f6cb1ead37c75d4c6b",
   "runtime": {
     "api_key_env": "CONTEXTOPT_API_KEY",
     "max_retries": 2,

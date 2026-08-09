@@ -27,3 +27,5 @@ python -m contextopt agent-eval --fixtures all --repetitions 3 \
 
 The first real-provider run must keep the same fixture IDs, strategy set, budgets, prompts,
 and at least three repetitions before comparing against this control artifact.
+
+The manifest pins the source revision used for this baseline (`4794ddbe6dc856939631b4f6cb1ead37c75d4c6b`).
