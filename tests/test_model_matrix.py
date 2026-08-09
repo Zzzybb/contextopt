@@ -154,6 +154,12 @@ class AgentEvalModelMatrixTests(unittest.TestCase):
             self.assertIn(
                 "Cross-model consistency", markdown.read_text(encoding="utf-8")
             )
+            markdown_text = markdown.read_text(encoding="utf-8")
+            self.assertIn(
+                "| `model-a` | `scripted` | `model-a` | `n/a` | `n/a` | `n/a` |",
+                markdown_text,
+            )
+            self.assertNotIn("| `None`", markdown_text)
             self.assertIn("machine-readable analysis", html.read_text(encoding="utf-8"))
 
 

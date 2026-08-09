@@ -76,6 +76,13 @@ def _non_negative_integer(value: Any, label: str) -> int:
     return result
 
 
+def _display(value: Any) -> str:
+    if value is None:
+        return "n/a"
+    text = str(value).strip()
+    return text or "n/a"
+
+
 def _read_json(path: str | Path, label: str) -> Mapping[str, Any]:
     target = Path(path)
     try:
@@ -636,13 +643,13 @@ def render_agent_eval_model_matrix_markdown(
     for model in report.models:
         bundle = model.bundle
         lines.append(
-            f"| `{escape(str(bundle.get('label', '')))}` | "
-            f"`{escape(str(bundle.get('adapter', '')))}` | "
-            f"`{escape(str(bundle.get('model', 'n/a')))}` | "
-            f"`{escape(str(bundle.get('planner_model', 'n/a')))}` | "
-            f"`{escape(str(bundle.get('solver_model', 'n/a')))}` | "
-            f"`{escape(str(bundle.get('reviewer_model', 'n/a')))}` | "
-            f"`{escape(str(bundle.get('repository_revision', '')))}` |"
+            f"| `{escape(_display(bundle.get('label')))}` | "
+            f"`{escape(_display(bundle.get('adapter')))}` | "
+            f"`{escape(_display(bundle.get('model')))}` | "
+            f"`{escape(_display(bundle.get('planner_model')))}` | "
+            f"`{escape(_display(bundle.get('solver_model')))}` | "
+            f"`{escape(_display(bundle.get('reviewer_model')))}` | "
+            f"`{escape(_display(bundle.get('repository_revision')))}` |"
         )
     lines.extend(
         [
