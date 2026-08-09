@@ -10,7 +10,7 @@ import shlex
 import uuid
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlsplit, urlunsplit
 
 from contextopt import __version__
@@ -22,13 +22,19 @@ from contextopt.benchmark import (
 )
 from contextopt.evaluation import (
     AgentEvalConfig,
+    AgentStrategy,
     ContextRoutingEvalConfig,
     RecoveryEvalConfig,
     RobustnessEvalConfig,
     SemanticContextEvalConfig,
     SemanticMemoryEvalConfig,
+    build_agent_eval_model_matrix,
     build_algorithm_fixtures,
     build_openai_model_factory,
+    load_agent_eval_bundle,
+    render_agent_eval_model_matrix_console,
+    render_agent_eval_model_matrix_html,
+    render_agent_eval_model_matrix_markdown,
     render_agent_evaluation_console,
     render_agent_evaluation_html,
     render_agent_evaluation_markdown,
@@ -335,6 +341,22 @@ def _agent_eval(args: argparse.Namespace) -> int:
     _write(args.html, render_agent_evaluation_html(report))
     # A completed evaluation is useful even when an intentionally weak baseline
     # fails; callers should inspect the success-rate columns.
+    return 0
+
+
+def _agent_eval_compare(args: argparse.Namespace) -> int:
+    bundles = tuple(
+        load_agent_eval_bundle(label, report_path, manifest_path)
+        for label, report_path, manifest_path in args.bundle
+    )
+    report = build_agent_eval_model_matrix(
+        bundles,
+        baseline_strategy=cast(AgentStrategy, args.baseline_strategy),
+    )
+    print(render_agent_eval_model_matrix_console(report), end="")
+    _write(args.output, json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n")
+    _write(args.markdown, render_agent_eval_model_matrix_markdown(report))
+    _write(args.html, render_agent_eval_model_matrix_html(report))
     return 0
 
 
@@ -1347,6 +1369,32 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     agent_eval.set_defaults(handler=_agent_eval)
+
+    agent_eval_compare = subparsers.add_parser(
+        "agent-eval-compare",
+        help="compare matched agent-eval report/manifest bundles across models",
+    )
+    agent_eval_compare.add_argument(
+        "--bundle",
+        action="append",
+        nargs=3,
+        required=True,
+        metavar=("LABEL", "REPORT", "MANIFEST"),
+        help="one label/report/manifest triple; repeat at least twice",
+    )
+    agent_eval_compare.add_argument(
+        "--baseline-strategy",
+        choices=("single_pass", "best_of_n", "orchestrated"),
+        default="single_pass",
+    )
+    agent_eval_compare.add_argument("--output", help="write the aggregate JSON report")
+    agent_eval_compare.add_argument(
+        "--markdown", help="write the aggregate report as Markdown"
+    )
+    agent_eval_compare.add_argument(
+        "--html", help="write a self-contained aggregate HTML dashboard"
+    )
+    agent_eval_compare.set_defaults(handler=_agent_eval_compare)
 
     recovery_eval = subparsers.add_parser(
         "recovery-eval",

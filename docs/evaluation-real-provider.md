@@ -59,6 +59,19 @@ and atomic checkpoint. If a provider call or runner stops, rerun the same matrix
 `--resume --checkpoint` or use the same workflow inputs and inspect the new run separately; do
 not combine different model, prompt, fixture, or budget configurations into one comparison.
 
+After collecting at least two matched model bundles, run the separate protocol-checked
+comparison step:
+
+```text
+python -m contextopt agent-eval-compare \
+  --bundle model-a artifacts/model-a.json artifacts/model-a.manifest.json \
+  --bundle model-b artifacts/model-b.json artifacts/model-b.manifest.json \
+  --output model-matrix.json --markdown model-matrix.md --html model-matrix.html
+```
+
+The analyzer rejects protocol drift before pooling and reports model-level direction
+consistency rather than pretending that a small fixed matrix is a generalization study.
+
 ## What the result means
 
 The matrix pairs the same ACM/math fixture and repetition across `single_pass`, `best_of_n`, and

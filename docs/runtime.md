@@ -843,7 +843,9 @@ Remaining milestones are:
    idempotency, best-effort local HTTP transport cancellation, and an opt-in provider-specific
    `--cancellation-url`, but cannot prove server-side generation stopped without provider evidence.
 2. Run the strategy harness against multiple real model versions and independent hidden
-   tests, preserving paired budgets and full ledgers.
+   tests, preserving paired budgets and full ledgers; the `agent-eval-compare` analyzer now
+   rejects protocol drift and summarizes cross-model direction consistency once those bundles
+   exist.
 3. Extend the provider-free Docker smoke to a reviewed Docker/VM policy and complete a controlled
    real-model coding benchmark with fixed snapshots, image/model versions, repetitions, and
    independent hidden tests.

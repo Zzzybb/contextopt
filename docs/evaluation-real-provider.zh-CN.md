@@ -54,6 +54,18 @@ bundle 包含 JSON ledger、Markdown 摘要、自包含 HTML dashboard、manifes
 或者用同样的 workflow 参数重新运行；不要把不同模型、prompt、fixture 或预算配置混在一份
 对比里。
 
+当至少收集到两份匹配的模型 bundle 后，再运行独立的协议校验比较步骤：
+
+```text
+python -m contextopt agent-eval-compare \
+  --bundle model-a artifacts/model-a.json artifacts/model-a.manifest.json \
+  --bundle model-b artifacts/model-b.json artifacts/model-b.manifest.json \
+  --output model-matrix.json --markdown model-matrix.md --html model-matrix.html
+```
+
+分析器会在合并前拒绝协议漂移，并输出模型层面的方向一致性；它不会把小规模固定矩阵
+伪装成通用泛化研究。
+
 ## 结果代表什么
 
 矩阵会在相同 ACM/数学 fixture 和 repetition 上配对比较 `single_pass`、`best_of_n` 以及

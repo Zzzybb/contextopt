@@ -601,6 +601,21 @@ python -m contextopt agent-eval \
 
 This path records provider usage but is still not a statistically powered benchmark; keep
 model versions, prompts, fixtures, tools, and budgets fixed when comparing strategies.
+
+When multiple completed provider bundles are available, compare them only through the matched
+artifact analyzer. It validates the report/manifest protocol fingerprint before computing
+cross-model direction consistency:
+
+```bash
+python -m contextopt agent-eval-compare \
+  --bundle model-a artifacts/model-a.json artifacts/model-a.manifest.json \
+  --bundle model-b artifacts/model-b.json artifacts/model-b.manifest.json \
+  --output model-matrix.json --markdown model-matrix.md --html model-matrix.html
+```
+
+The analyzer is descriptive and refuses protocol drift; it is not a powered generalization
+claim. Its bilingual PR note is [`model-matrix-analysis`](docs/pr/0001-v1.0-model-matrix-analysis.md)
+and [`中文版`](docs/pr/0001-v1.0-model-matrix-analysis.zh-CN.md).
 The optional manifest records the adapter, model names, endpoint origin/path, runtime settings,
 evaluation configuration, and an explicitly supplied revision (`CONTEXTOPT_GIT_REVISION` or
 `GITHUB_SHA`) without writing the API key.
@@ -896,6 +911,8 @@ The role-identity persistence change is documented in [the v1.0 note](docs/pr/00
 and [Chinese version](docs/pr/0001-v1.0-role-model-overrides.zh-CN.md).
 The exact paired-outcome McNemar diagnostic is documented in [the v1.0 note](docs/pr/0001-v1.0-paired-mcnemar-evidence.md)
 and [Chinese version](docs/pr/0001-v1.0-paired-mcnemar-evidence.zh-CN.md).
+The matched multi-model artifact analyzer is documented in [the v1.0 note](docs/pr/0001-v1.0-model-matrix-analysis.md)
+and [Chinese version](docs/pr/0001-v1.0-model-matrix-analysis.zh-CN.md).
 The cross-platform CI type-check fix is documented in [the v1.0 note](docs/pr/0001-v1.0-ci-cross-platform-typecheck.md)
 and [Chinese version](docs/pr/0001-v1.0-ci-cross-platform-typecheck.zh-CN.md).
 The real-provider workflow's secret boundary is documented in [the v0.9 note](docs/pr/0001-v0.9-real-provider-secret-scope.md)
@@ -927,8 +944,9 @@ and [Chinese version](docs/pr/0001-v1.0-robustness-eval.zh-CN.md), with its fixe
 [`experiments/v1.0-robustness-matrix`](experiments/v1.0-robustness-matrix/README.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers. The
-  manual workflow is the reproducibility entry point; the checked-in scripted artifacts remain
-  controls rather than real-model evidence.
+  manual workflow is the reproducibility entry point, and `agent-eval-compare` now performs the
+  protocol-checked cross-model analysis; the checked-in scripted artifacts remain controls rather
+  than real-model evidence.
 
 The provider transcript cassette is documented in [the English PR note](docs/pr/0001-v1.0-provider-transcript-replay.md)
 and [Chinese version](docs/pr/0001-v1.0-provider-transcript-replay.zh-CN.md). It is an opt-in

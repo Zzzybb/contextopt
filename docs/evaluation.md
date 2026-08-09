@@ -319,6 +319,13 @@ may run again.
 `--manifest PATH` writes a sidecar identity record containing the adapter/model names, a
 query-free endpoint, runtime settings, the full evaluation configuration, and an optional
 revision from `CONTEXTOPT_GIT_REVISION` or `GITHUB_SHA`; the API key value is never serialized.
+
+When several provider bundles are complete, `agent-eval-compare` loads each report together
+with its manifest, hashes the protocol controls, and refuses to pool mismatched source
+revisions, budgets, fixture sets, or sandbox policies. It then reports per-model paired
+deltas and direction consistency across models. This is a descriptive pre-analysis guard,
+not a random-effects model or a powered generalization claim. See the bilingual [model-matrix
+analysis note](pr/0001-v1.0-model-matrix-analysis.md).
 In particular, a `best_of_n` or orchestrated success here must not be reported as evidence
 that a real model would discover the same candidate.
 

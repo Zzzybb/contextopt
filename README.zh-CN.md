@@ -55,7 +55,7 @@ planner 和 reviewer 仍然顺序调用，仍不声称 exactly-once。还可以�
 当前 v0.9 已经提供显式、可审计的跨运行语义记忆 notebook，以及一个可选的、受预算约束的
 自动候选上下文模式；它仍然不是 embedding 检索、自动总结或学习型置信度校准。Docker
 路径已经由 GitHub Actions 的 provider-free smoke 真实执行，但不是所有部署都强制使用的
-OS sandbox；统计严谨的真实模型评测仍在后续计划中。
+OS sandbox；真实模型采集仍需要 provider secret，配套的跨模型协议校验分析器已经准备好。
 另外提供不调用模型的 `semantic-context-eval` 矩阵，固定 ACM/数学任务，比较
 `recent`、`topk`、`density`、`submodular` 在候选上下文上的检索、预算淘汰、receipt
 确定性和无 store 重放。这里的 recall 只是固定 fixture id 的保留率，不是语义理解、模型
@@ -345,6 +345,20 @@ python -m contextopt agent-eval \
 真实模型路径会记录 provider token，但仍是固定小样本的探索性评测，不能直接当成统计
 严谨的模型能力结论。HTML 会生成自包含 dashboard，展示 visible/hidden 成功率、成本
 指标和嵌入式 JSON ledger，适合放在 PR 或作品集里。
+
+当有多份真实 provider bundle 时，只通过配对 artifact 分析器比较。它会先校验 report/manifest
+的协议 fingerprint，再计算跨模型的策略方向一致性：
+
+~~~text
+python -m contextopt agent-eval-compare \
+  --bundle model-a artifacts/model-a.json artifacts/model-a.manifest.json \
+  --bundle model-b artifacts/model-b.json artifacts/model-b.manifest.json \
+  --output model-matrix.json --markdown model-matrix.md --html model-matrix.html
+~~~
+
+分析器只做描述性汇总，并会拒绝协议漂移，不能当作有统计功效的泛化结论。实现见双语
+PR 说明[英文版](docs/pr/0001-v1.0-model-matrix-analysis.md) /
+[中文版](docs/pr/0001-v1.0-model-matrix-analysis.zh-CN.md)。
 `--manifest` 会记录 adapter、模型名、去掉 query/fragment 的 endpoint、运行时设置、
 评测配置和显式提供的 revision（`CONTEXTOPT_GIT_REVISION` 或 `GITHUB_SHA`），不会写入 API key。
 `--checkpoint` 会在每个 fixture/strategy/repetition cell 完成后原子写入；provider 或进程
@@ -450,6 +464,8 @@ python -m contextopt agent-eval \
   [experiments/v1.0-acm-math-4-fixtures](experiments/v1.0-acm-math-4-fixtures/README.zh-CN.md)
 - v1.0 配对结果 McNemar 诊断：[docs/pr/0001-v1.0-paired-mcnemar-evidence.zh-CN.md](docs/pr/0001-v1.0-paired-mcnemar-evidence.zh-CN.md)
   和 [英文版](docs/pr/0001-v1.0-paired-mcnemar-evidence.md)
+- v1.0 配对多模型矩阵分析：[docs/pr/0001-v1.0-model-matrix-analysis.zh-CN.md](docs/pr/0001-v1.0-model-matrix-analysis.zh-CN.md)
+  和 [英文版](docs/pr/0001-v1.0-model-matrix-analysis.md)
 - v1.0 Level 4 运行时鲁棒性矩阵：[docs/pr/0001-v1.0-robustness-eval.zh-CN.md](docs/pr/0001-v1.0-robustness-eval.zh-CN.md)
   和 [英文版](docs/pr/0001-v1.0-robustness-eval.md)；固定产物位于
   [experiments/v1.0-robustness-matrix](experiments/v1.0-robustness-matrix/README.zh-CN.md)
