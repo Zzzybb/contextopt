@@ -70,6 +70,10 @@ tool-call id 做幂等键，把 helpful / not_helpful 信号以有界的排序�
 assistant block，并和普通上下文一起竞争 token 预算。候选可能被淘汰，receipt 会保存完整候选
 快照和 store fingerprint，因此挂起请求可以在 store 变化后重放原候选。它不是当前 workspace
 文件状态的证明，也不会覆盖观察记忆账本。
+`orchestrate` 也可以用 `--memory-store`、`--memory-scope` 和
+`--context-memory versioned-v1+semantic` 给 planner、solver、reviewer 挂载同一个 store；
+每个角色仍有独立历史和 ContextReceipt，进程在 role request 边界停止后会重放原候选快照，
+不会因为 live store 失效而偷偷换一组候选。
 如果记忆带有 `source_refs`，成功的 `create_file` / `replace_text` 会在对应文件变更后
 自动追加失效事件；进程在写入后、记忆失效前停止时，reconcile 也会补做这一步。非文件
 原因导致的过期仍可通过 `memory_invalidate` 显式记录。
@@ -145,6 +149,23 @@ python -m contextopt memory-eval \
 固定报告把 hit@1/hit@k、MRR、负查询通过率、scope 隔离、失效记忆排除和重复检索确定性与
 代码成功率分开；提交中的产物说明在
 [`experiments/v0.9-semantic-memory`](experiments/v0.9-semantic-memory/README.zh-CN.md)。
+
+多智能体编排也可以打开同一份 durable memory：
+
+~~~text
+python -m contextopt orchestrate \
+  --task "Fix the parser" \
+  --root-files root-files.json \
+  --checkpoint orchestration.json \
+  --memory-store .contextopt/memory.jsonl \
+  --memory-scope project:parser \
+  --context-memory versioned-v1+semantic \
+  --planner-script planner.json --solver-script solver.json --reviewer-script reviewer.json \
+  --test-command "python -m unittest discover -s ." --allow-command
+~~~
+
+三个角色各自保存候选上下文 receipt；挂起的 role request 恢复时使用原快照，而不是使用
+变化后的 live store 重新检索。
 
 还可以评测自动 durable-memory 候选和上下文预算的边界：
 
@@ -330,6 +351,8 @@ python -m contextopt agent-eval \
   和 [英文版](docs/pr/0001-v0.9-semantic-memory-context.md)
 - v0.9 自动语义上下文候选评测：[docs/pr/0001-v0.9-semantic-context-evaluation.zh-CN.md](docs/pr/0001-v0.9-semantic-context-evaluation.zh-CN.md)
   和 [英文版](docs/pr/0001-v0.9-semantic-context-evaluation.md)
+- v0.9 编排接入语义记忆：[docs/pr/0001-v0.9-orchestration-semantic-memory.zh-CN.md](docs/pr/0001-v0.9-orchestration-semantic-memory.zh-CN.md)
+  和 [英文版](docs/pr/0001-v0.9-orchestration-semantic-memory.md)
 - v0.7 编排补充的中文回顾：[docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md](docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、

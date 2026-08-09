@@ -300,6 +300,13 @@ The command makes zero model calls; it does not establish semantic quality or an
 generated patches. See the [English artifact note](../experiments/v0.9-semantic-context/README.md)
 and [Chinese note](../experiments/v0.9-semantic-context/README.zh-CN.md).
 
+The same opt-in boundary is available to the multi-agent orchestrator. Pass
+`--context-memory versioned-v1+semantic`, `--memory-store`, and `--memory-scope` to
+`orchestrate`; planner, solver, and reviewer each compile their isolated role history plus the
+same bounded durable candidate search. Their receipts retain the candidate snapshot and store
+fingerprint. If a role request is pending at a process stop, `resume --retry-pending` reuses that
+receipt snapshot rather than silently searching the changed live store.
+
 ### Per-turn receipt and recovery contract
 
 Every new `model.requested` event includes a `context` receipt. It contains:

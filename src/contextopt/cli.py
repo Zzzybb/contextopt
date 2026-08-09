@@ -81,6 +81,7 @@ from contextopt.search import (
     evaluate_case,
     propose_case,
     read_apply_receipt,
+    read_orchestration_checkpoint,
     read_session_checkpoint,
     render_branch_console,
     render_branch_html,
@@ -670,25 +671,50 @@ def _orchestrate(args: argparse.Namespace) -> int:
             search_policy=args.search_policy,
             exploration_constant=args.exploration_constant,
         )
-    report = asyncio.run(
-        run_orchestration(
-            planner,
-            solver,
-            reviewer,
-            task=args.task,
-            root_files=root_files,
-            execution_config=execution_config,
-            config=config,
-            planner_config=planner_config,
-            solver_config=solver_config,
-            reviewer_config=reviewer_config,
-            search_config=search_config,
-            run_id=args.run_id or uuid.uuid4().hex,
-            checkpoint_path=args.checkpoint,
-            resume=args.resume,
-            retry_pending=args.retry_pending,
+    memory_store: SemanticMemoryStore | None = None
+    try:
+        if args.memory_store is not None:
+            memory_store = SemanticMemoryStore(args.memory_store)
+        if args.resume:
+            checkpoint_state = read_orchestration_checkpoint(args.checkpoint)
+            checkpoint_memory_policy = (
+                checkpoint_state.config.context_config.memory_policy
+            )
+            if checkpoint_memory_policy == "versioned-v1+semantic" and (
+                memory_store is None
+            ):
+                raise ValueError(
+                    "--memory-store is required when resuming semantic-memory "
+                    "orchestration"
+                )
+        elif args.context_memory == "versioned-v1+semantic" and memory_store is None:
+            raise ValueError(
+                "--memory-store is required with --context-memory versioned-v1+semantic"
+            )
+        report = asyncio.run(
+            run_orchestration(
+                planner,
+                solver,
+                reviewer,
+                task=args.task,
+                root_files=root_files,
+                execution_config=execution_config,
+                config=config,
+                planner_config=planner_config,
+                solver_config=solver_config,
+                reviewer_config=reviewer_config,
+                search_config=search_config,
+                memory_store=memory_store,
+                memory_scope=args.memory_scope,
+                run_id=args.run_id or uuid.uuid4().hex,
+                checkpoint_path=args.checkpoint,
+                resume=args.resume,
+                retry_pending=args.retry_pending,
+            )
         )
-    )
+    finally:
+        if memory_store is not None:
+            memory_store.close()
     print(render_orchestration_console(report), end="")
     _write(args.output, json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n")
     _write(args.markdown, render_orchestration_markdown(report))
@@ -1321,9 +1347,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     orchestrate.add_argument(
         "--context-memory",
-        choices=("none", "versioned-v1"),
+        choices=("none", "versioned-v1", "versioned-v1+semantic"),
         default="versioned-v1",
-        help="observed-memory validity signals supplied to role context routing",
+        help=(
+            "observed-memory validity signals, or bounded durable semantic "
+            "candidates when paired with --memory-store"
+        ),
+    )
+    orchestrate.add_argument(
+        "--memory-store",
+        help="append-only JSONL semantic-memory store for role context candidates",
+    )
+    orchestrate.add_argument(
+        "--memory-scope",
+        help="optional scope used for automatic semantic-memory candidates",
     )
     orchestrate.add_argument("--planner-max-items", type=int, default=6)
     orchestrate.add_argument("--planner-max-item-chars", type=int, default=600)

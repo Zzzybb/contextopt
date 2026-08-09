@@ -25,6 +25,7 @@ from contextopt.runtime.context import (
     ContextCompilerConfig,
     ContextReceipt,
     compile_runtime_context,
+    durable_memory_matches_from_receipt,
 )
 from contextopt.runtime.errors import ModelError, RuntimeContractError
 from contextopt.runtime.identity import stable_hash
@@ -35,6 +36,7 @@ from contextopt.runtime.protocol import (
     ModelResponse,
     TokenUsage,
 )
+from contextopt.runtime.semantic_memory import SemanticMemoryStore
 from contextopt.search.branching import (
     BranchCase,
     BranchSearch,
@@ -1695,6 +1697,9 @@ def _compile_role_request(
     request: ModelRequest,
     *,
     task: str,
+    memory_store: SemanticMemoryStore | None = None,
+    memory_scope: str | None = None,
+    replay_receipt: ContextReceipt | None = None,
 ) -> tuple[ModelRequest, ContextReceipt]:
     """Compile a role's prior assistant summaries plus its fresh request.
 
@@ -1705,12 +1710,73 @@ def _compile_role_request(
     """
 
     compiler = ContextCompiler(context_config)
+    durable_memory_matches = None
+    durable_memory_store_fingerprint = None
+    if replay_receipt is not None:
+        metadata = replay_receipt.frame.get("metadata")
+        if isinstance(metadata, Mapping) and "durable_memory_matches" in metadata:
+            durable_memory_matches = durable_memory_matches_from_receipt(
+                metadata["durable_memory_matches"]
+            )
+            durable_memory_store_fingerprint = metadata.get(
+                "durable_memory_store_fingerprint"
+            )
     compiled = compile_runtime_context(
         compiler,
         (*tuple(history), *request.messages),
         task=task,
+        memory_store=(None if durable_memory_matches is not None else memory_store),
+        memory_scope=memory_scope,
+        durable_memory_matches=durable_memory_matches,
+        durable_memory_store_fingerprint=durable_memory_store_fingerprint,
     )
     return replace(request, messages=compiled.messages), compiled.receipt
+
+
+def _pending_context_receipt(
+    state: OrchestrationReport, role: str
+) -> ContextReceipt | None:
+    """Return the receipt from the latest pending role request, if any."""
+
+    event_type = f"{role}.requested"
+    completed_types = {f"{role}.received", f"{role}.rejected"}
+    for event in reversed(state.events):
+        if event.type in completed_types:
+            return None
+        if event.type != event_type:
+            continue
+        raw = event.data.get("context_receipt")
+        return None if not isinstance(raw, Mapping) else ContextReceipt.from_dict(raw)
+    return None
+
+
+def _pending_solver_context_receipts(
+    state: OrchestrationReport,
+) -> dict[int, ContextReceipt]:
+    """Return per-lane receipts from a pending speculative solver request."""
+
+    raw_lanes: Any = None
+    for event in reversed(state.events):
+        if event.type in {"solver.received", "solver.rejected"}:
+            return {}
+        if event.type == "solver.requested":
+            raw_lanes = event.data.get("speculative_lanes")
+            break
+    if not isinstance(raw_lanes, list):
+        return {}
+    receipts: dict[int, ContextReceipt] = {}
+    for raw_lane in raw_lanes:
+        if not isinstance(raw_lane, Mapping):
+            continue
+        lane = raw_lane.get("lane")
+        raw_receipt = raw_lane.get("context_receipt")
+        if (
+            isinstance(lane, int)
+            and not isinstance(lane, bool)
+            and isinstance(raw_receipt, Mapping)
+        ):
+            receipts[lane] = ContextReceipt.from_dict(raw_receipt)
+    return receipts
 
 
 def _append_role_response(
@@ -1816,6 +1882,8 @@ class OrchestrationRunner:
         solver_config: ProposalConfig | None = None,
         reviewer_config: ReviewerConfig | None = None,
         search_config: BranchSearchConfig | None = None,
+        memory_store: SemanticMemoryStore | None = None,
+        memory_scope: str | None = None,
     ) -> None:
         self.planner = planner
         self.solver = solver
@@ -1826,6 +1894,8 @@ class OrchestrationRunner:
         self.solver_config = solver_config
         self.reviewer_config = reviewer_config
         self.search_config = search_config
+        self.memory_store = memory_store
+        self.memory_scope = memory_scope
 
     @property
     def models(self) -> Mapping[str, ModelClient]:
@@ -2111,6 +2181,7 @@ class OrchestrationRunner:
             raise ValueError("planner configuration is incomplete")
         turn = state.planner_calls + 1
         receipt: ContextReceipt | None = None
+        replay_receipt = _pending_context_receipt(state, "planner")
         try:
             request, receipt = _compile_role_request(
                 state.config.context_config,
@@ -2124,6 +2195,9 @@ class OrchestrationRunner:
                     feedback=state.feedback,
                 ),
                 task=state.task,
+                memory_store=self.memory_store,
+                memory_scope=self.memory_scope,
+                replay_receipt=replay_receipt,
             )
         except (RuntimeContractError, ValueError) as exc:
             message = f"{type(exc).__name__}: {str(exc)[:800]}"
@@ -2257,6 +2331,7 @@ class OrchestrationRunner:
             )
         turn = state.solver_calls + 1
         prepared: list[tuple[int, ModelRequest, ContextReceipt]] = []
+        replay_receipts = _pending_solver_context_receipts(state)
         try:
             for lane in range(width):
                 request, receipt = _compile_role_request(
@@ -2274,6 +2349,9 @@ class OrchestrationRunner:
                         speculation_count=width,
                     ),
                     task=state.task,
+                    memory_store=self.memory_store,
+                    memory_scope=self.memory_scope,
+                    replay_receipt=replay_receipts.get(lane),
                 )
                 prepared.append((lane, request, receipt))
         except (RuntimeContractError, ValueError) as exc:
@@ -2828,6 +2906,7 @@ class OrchestrationRunner:
         receipt: ContextReceipt | None = None
         request: ModelRequest | None = None
         preparation_error: str | None = None
+        replay_receipt = _pending_context_receipt(state, "reviewer")
         try:
             request, receipt = _compile_role_request(
                 state.config.context_config,
@@ -2842,6 +2921,9 @@ class OrchestrationRunner:
                     feedback=state.feedback,
                 ),
                 task=state.task,
+                memory_store=self.memory_store,
+                memory_scope=self.memory_scope,
+                replay_receipt=replay_receipt,
             )
         except (RuntimeContractError, ValueError) as exc:
             preparation_error = f"{type(exc).__name__}: {str(exc)[:800]}"
@@ -3117,6 +3199,8 @@ async def run_orchestration(
     solver_config: ProposalConfig | None = None,
     reviewer_config: ReviewerConfig | None = None,
     search_config: BranchSearchConfig | None = None,
+    memory_store: SemanticMemoryStore | None = None,
+    memory_scope: str | None = None,
     run_id: str = "multi-agent-orchestration",
     checkpoint_path: str | Path | None = None,
     resume: bool = False,
@@ -3132,6 +3216,8 @@ async def run_orchestration(
         solver_config=solver_config,
         reviewer_config=reviewer_config,
         search_config=search_config,
+        memory_store=memory_store,
+        memory_scope=memory_scope,
     )
     return await runner.run(
         task=task,

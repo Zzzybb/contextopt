@@ -252,6 +252,10 @@ recompute the complete chain because there is no secret or external trust anchor
   candidates before each model request. They are ordinary advisory assistant blocks: the live
   context policy may evict them under the same token budget, and the receipt stores their full
   snapshot plus the durable-store fingerprint for deterministic recovery.
+- The planner/solver/reviewer orchestrator can mount the same store with
+  `orchestrate --context-memory versioned-v1+semantic --memory-store ... --memory-scope ...`.
+  Each role receives its own candidate projection and receipt; a pending role request reuses
+  its persisted candidate snapshot after a process stop, even if the live store was invalidated.
 - The store is advisory: default `versioned-v1` runs still require an explicit tool call, while
   the opt-in semantic context mode performs only the bounded candidate projection described
   above. `global` entries can be inherited by a project scope, and neither path overrides the
@@ -369,6 +373,24 @@ The complete two-run offline demonstration is in
 [`examples/semantic_memory_demo`](examples/semantic_memory_demo/README.md): one fresh Agent
 writes a procedure, a second fresh Agent searches the same store, and the reader trace shows the
 retrieval evidence.
+
+The multi-agent path uses the same boundary for planner, solver, and reviewer:
+
+```bash
+python -m contextopt orchestrate \
+  --task "Fix the parser" \
+  --root-files root-files.json \
+  --checkpoint orchestration.json \
+  --memory-store .contextopt/memory.jsonl \
+  --memory-scope project:parser \
+  --context-memory versioned-v1+semantic \
+  --planner-script planner.json --solver-script solver.json --reviewer-script reviewer.json \
+  --test-command "python -m unittest discover -s ." --allow-command
+```
+
+Every role's request receipt records the same store-derived candidate snapshot boundary, while
+the role histories remain isolated. The replay path never silently substitutes a new candidate
+set for a pending request.
 
 Evaluate the retrieval boundary itself:
 
@@ -780,6 +802,8 @@ The opt-in semantic context projection is documented in [the English PR note](do
 and [Chinese version](docs/pr/0001-v0.9-semantic-memory-context.zh-CN.md).
 The provider-free automatic candidate matrix is documented in [the English PR note](docs/pr/0001-v0.9-semantic-context-evaluation.md)
 and [Chinese version](docs/pr/0001-v0.9-semantic-context-evaluation.zh-CN.md).
+The multi-agent semantic-memory integration is documented in [the English PR note](docs/pr/0001-v0.9-orchestration-semantic-memory.md)
+and [Chinese version](docs/pr/0001-v0.9-orchestration-semantic-memory.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers. The
   manual workflow is the reproducibility entry point; the checked-in scripted artifacts remain

@@ -8,9 +8,11 @@ import unittest
 from pathlib import Path
 
 from contextopt.cli import main
+from contextopt.runtime.context import ContextCompilerConfig
 from contextopt.runtime.identity import stable_hash
 from contextopt.runtime.model import ScriptedModel
 from contextopt.runtime.protocol import ModelRequest, ModelResponse, ToolCall
+from contextopt.runtime.semantic_memory import SemanticMemoryStore
 from contextopt.search import (
     BranchSearchConfig,
     CandidatePatch,
@@ -246,6 +248,90 @@ def _merge_proposal() -> str:
 
 
 class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
+    async def test_semantic_memory_candidates_reach_all_roles(self) -> None:
+        planner = ScriptedModel(
+            [{"response": {"content": _plan()}}], name="semantic-p:v1"
+        )
+        solver = ScriptedModel(
+            [
+                {
+                    "response": {
+                        "content": _proposal(
+                            "semantic-good",
+                            "def solve(values):\n    return sorted(values)\n",
+                        )
+                    }
+                }
+            ],
+            name="semantic-s:v1",
+        )
+        reviewer = ScriptedModel(
+            [{"response": {"content": _review("accept", "round-0-semantic-good")}}],
+            name="semantic-r:v1",
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = SemanticMemoryStore(Path(temp_dir) / "memory.jsonl")
+            entry = store.put(
+                "Use sorted(values) to preserve the public solve signature and "
+                "return ascending values.",
+                scope="project:solver",
+                kind="procedure",
+                tags=("sorting", "acm"),
+                confidence=0.95,
+                source_run_id="semantic-orchestration-test",
+            ).entry
+            try:
+                report = await run_orchestration(
+                    planner,
+                    solver,
+                    reviewer,
+                    task="make solve return ascending values",
+                    root_files=ROOT_FILES,
+                    execution_config=_execution(),
+                    config=OrchestrationConfig(
+                        max_rounds=1,
+                        max_model_calls=3,
+                        max_planner_calls=1,
+                        max_solver_calls=1,
+                        max_reviewer_calls=1,
+                        max_candidates=1,
+                        max_test_calls=1,
+                        context_config=ContextCompilerConfig(
+                            policy="submodular",
+                            budget_tokens=16_000,
+                            recent_blocks=2,
+                            max_tool_output_tokens=96,
+                            memory_policy="versioned-v1+semantic",
+                        ),
+                    ),
+                    solver_config=ProposalConfig(max_candidates=1),
+                    search_config=BranchSearchConfig(max_depth=1, beam_width=1),
+                    memory_store=store,
+                    memory_scope="project:solver",
+                    run_id="semantic-orchestration-test",
+                )
+            finally:
+                store.close()
+
+        self.assertEqual(report.status, "accepted")
+        self.assertEqual(report.best_candidate_id, "round-0-semantic-good")
+        for item in report.rounds:
+            for call in (item.planner_call, item.solver_call, item.reviewer_call):
+                receipt = call.context_receipt
+                self.assertIsNotNone(receipt)
+                assert receipt is not None
+                metadata = receipt.frame["metadata"]
+                self.assertIn(entry.memory_id, metadata["durable_memory_ids"])
+                self.assertIn(entry.memory_id, metadata["durable_memory_selected_ids"])
+        self.assertTrue(
+            any(
+                "[contextopt durable memory candidate]" in message.content
+                for model in (planner, solver, reviewer)
+                for request in model.requests
+                for message in request.messages
+            )
+        )
+
     def test_three_way_merge_is_conflict_safe(self) -> None:
         left = CandidatePatch(
             id="left",
@@ -578,6 +664,107 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
             any(event.type == "solver.speculative.reused" for event in resumed.events)
         )
 
+    async def test_pending_semantic_solver_request_replays_memory_snapshot(
+        self,
+    ) -> None:
+        planner_steps = [{"response": {"content": _plan()}}]
+        reviewer_steps = [
+            {"response": {"content": _review("accept", "round-0-spec-0-good")}}
+        ]
+        context_config = ContextCompilerConfig(
+            policy="submodular",
+            budget_tokens=16_000,
+            recent_blocks=2,
+            max_tool_output_tokens=96,
+            memory_policy="versioned-v1+semantic",
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint = Path(temp_dir) / "semantic-pending.json"
+            memory_path = Path(temp_dir) / "memory.jsonl"
+            store = SemanticMemoryStore(memory_path)
+            entry = store.put(
+                "Use sorted(values) to preserve the public solve signature and "
+                "return ascending values.",
+                scope="project:solver",
+                kind="procedure",
+                tags=("sorting",),
+                confidence=0.95,
+                source_run_id="semantic-pending-test",
+            ).entry
+            first_solver = PartialSpeculativeModel(
+                _proposal("good", "def solve(values):\n    return sorted(values)\n"),
+                block_after=1,
+            )
+            runner_task = asyncio.create_task(
+                run_orchestration(
+                    ScriptedModel(planner_steps, name="semantic-pending-p:v1"),
+                    first_solver,
+                    ScriptedModel(reviewer_steps, name="semantic-pending-r:v1"),
+                    task="find a correct sorting implementation",
+                    root_files=ROOT_FILES,
+                    execution_config=_execution(),
+                    config=OrchestrationConfig(
+                        max_rounds=1,
+                        max_model_calls=4,
+                        max_planner_calls=1,
+                        max_solver_calls=2,
+                        max_reviewer_calls=1,
+                        max_candidates=2,
+                        max_test_calls=2,
+                        speculative_solver_width=2,
+                        context_config=context_config,
+                    ),
+                    solver_config=ProposalConfig(max_candidates=1),
+                    search_config=BranchSearchConfig(max_depth=1, beam_width=2),
+                    memory_store=store,
+                    memory_scope="project:solver",
+                    run_id="semantic-pending-test",
+                    checkpoint_path=checkpoint,
+                )
+            )
+            for _ in range(100):
+                if checkpoint.exists():
+                    partial = read_orchestration_checkpoint(checkpoint)
+                    if partial.pending_solver_responses:
+                        break
+                await asyncio.sleep(0.01)
+            else:
+                self.fail("semantic solver lane response was not checkpointed")
+            runner_task.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await runner_task
+            store.invalidate(
+                entry.memory_id, "fixture changed while request was pending"
+            )
+            store.close()
+
+            resumed_solver = PartialSpeculativeModel(
+                _proposal("good", "def solve(values):\n    return sorted(values)\n"),
+                block_after=None,
+            )
+            resumed_store = SemanticMemoryStore(memory_path)
+            try:
+                resumed = await run_orchestration(
+                    ScriptedModel(planner_steps, name="semantic-pending-p:v1"),
+                    resumed_solver,
+                    ScriptedModel(reviewer_steps, name="semantic-pending-r:v1"),
+                    checkpoint_path=checkpoint,
+                    resume=True,
+                    retry_pending=True,
+                    memory_store=resumed_store,
+                    memory_scope="project:solver",
+                )
+            finally:
+                resumed_store.close()
+        self.assertEqual(resumed.status, "accepted")
+        self.assertEqual(len(resumed_solver.requests), 1)
+        self.assertTrue(
+            any(
+                entry.memory_id in message.content
+                for message in resumed_solver.requests[0].messages
+            )
+        )
+
     async def test_adaptive_scheduler_stops_after_first_passing_batch(self) -> None:
         report = await run_orchestration(
             ScriptedModel([{"response": {"content": _plan()}}], name="adaptive-p:v1"),
@@ -814,6 +1001,17 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
             solver_script = root / "solver.json"
             reviewer_script = root / "reviewer.json"
             output = root / "report.json"
+            memory_path = root / "memory.jsonl"
+            memory_store = SemanticMemoryStore(memory_path)
+            memory_store.put(
+                "Use sorted(values) to preserve the public solve signature and "
+                "return ascending values.",
+                scope="project:solver",
+                kind="procedure",
+                tags=("sorting",),
+                confidence=0.9,
+            )
+            memory_store.close()
             root_files.write_text(json.dumps(ROOT_FILES), encoding="utf-8")
             planner_script.write_text(
                 json.dumps([{"response": {"content": _plan()}}]),
@@ -860,6 +1058,12 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
                     "--allow-command",
                     "--output",
                     str(output),
+                    "--memory-store",
+                    str(memory_path),
+                    "--memory-scope",
+                    "project:solver",
+                    "--context-memory",
+                    "versioned-v1+semantic",
                 ]
             )
             self.assertEqual(exit_code, 0)
