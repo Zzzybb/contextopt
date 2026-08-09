@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import sys
 import tempfile
 import time
@@ -188,6 +189,24 @@ class BranchExecutorTests(unittest.TestCase):
             result = evaluate_candidate(_case().by_id["good"], config)
         self.assertFalse(result.is_success)
         self.assertIn("docker executable was not found", result.error or "")
+
+    @unittest.skipUnless(shutil.which("docker"), "Docker is not installed")
+    def test_docker_sandbox_executes_candidate_on_enabled_runner(self) -> None:
+        result = evaluate_candidate(
+            _case().by_id["good"],
+            ExecutableSearchConfig(
+                command=(
+                    "python",
+                    "-c",
+                    "from pathlib import Path; print(Path('solver.py').exists())",
+                ),
+                sandbox="docker",
+                container_image="python:3.12-slim",
+                timeout_seconds=30,
+            ),
+        )
+        self.assertTrue(result.is_success, result.error)
+        self.assertIn("True", result.output_excerpt or "")
 
     def test_cli_executes_a_serialized_case_only_with_explicit_permission(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

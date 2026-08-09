@@ -844,13 +844,13 @@ Remaining milestones are:
    `--cancellation-url`, but cannot prove server-side generation stopped without provider evidence.
 2. Run the strategy harness against multiple real model versions and independent hidden
    tests, preserving paired budgets and full ledgers.
-3. Exercise the opt-in Docker/VM path on a Docker-enabled runner and complete a controlled
+3. Extend the provider-free Docker smoke to a reviewed Docker/VM policy and complete a controlled
    real-model coding benchmark with fixed snapshots, image/model versions, repetitions, and
    independent hidden tests.
 
-The repository now has an opt-in Docker execution path, but no published real-model benchmark;
-the default host path and explicit apply/rollback adapter remain local safety boundaries, not
-universal security guarantees.
+The repository now has an opt-in Docker execution path and a provider-free Docker smoke in CI,
+but no published real-model benchmark; the default host path and explicit apply/rollback adapter
+remain local safety boundaries, not universal security guarantees.
 
 The deterministic long-horizon recovery matrix is available as `python -m contextopt
 recovery-eval`. It demonstrates the covered event boundaries and conservative tool policies,
