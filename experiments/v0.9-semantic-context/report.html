@@ -1,0 +1,2179 @@
+<!doctype html><html><head><meta charset='utf-8'><title>Semantic-context evaluation</title><style>body{font:14px system-ui;margin:2rem}table{border-collapse:collapse}th,td{border:1px solid #ddd;padding:.35rem .5rem}.boundary{background:#fff8e1;padding:1rem;border-left:4px solid #d99a00}</style></head><body><h1>Semantic-context candidate evaluation</h1><div class='boundary'>This is a deterministic context-projection conformance evaluation. It measures lexical candidate retrieval, budgeted selection, receipt determinism, and replay without a provider; it does not measure model reasoning, memory usefulness, semantic understanding, or coding success.</div><table><thead><tr><th>Policy</th><th>Budget</th><th>Retrieved</th><th>Selected</th><th>Candidate tokens</th><th>Selected candidate tokens</th><th>Context tokens</th><th>Retrieved recall</th><th>Selected recall</th><th>Evicted</th><th>Deterministic</th><th>Replayable</th></tr></thead><tbody><tr><td>recent</td><td>128</td><td>3</td><td>0</td><td>475</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>recent</td><td>128</td><td>3</td><td>0</td><td>475</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>recent</td><td>128</td><td>3</td><td>0</td><td>475</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>recent</td><td>256</td><td>3</td><td>1</td><td>475</td><td>143</td><td>183</td><td>1.0</td><td>0.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>recent</td><td>256</td><td>3</td><td>1</td><td>475</td><td>143</td><td>183</td><td>1.0</td><td>0.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>recent</td><td>256</td><td>3</td><td>1</td><td>475</td><td>143</td><td>183</td><td>1.0</td><td>0.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>recent</td><td>512</td><td>3</td><td>2</td><td>475</td><td>290</td><td>330</td><td>1.0</td><td>0.0</td><td>1</td><td>True</td><td>True</td></tr><tr><td>recent</td><td>512</td><td>3</td><td>2</td><td>475</td><td>290</td><td>330</td><td>1.0</td><td>0.0</td><td>1</td><td>True</td><td>True</td></tr><tr><td>recent</td><td>512</td><td>3</td><td>2</td><td>475</td><td>290</td><td>330</td><td>1.0</td><td>0.0</td><td>1</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>128</td><td>3</td><td>0</td><td>475</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>128</td><td>3</td><td>0</td><td>475</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>128</td><td>3</td><td>0</td><td>475</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>256</td><td>3</td><td>1</td><td>475</td><td>185</td><td>225</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>256</td><td>3</td><td>1</td><td>475</td><td>185</td><td>225</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>256</td><td>3</td><td>1</td><td>475</td><td>185</td><td>225</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>512</td><td>3</td><td>2</td><td>475</td><td>328</td><td>368</td><td>1.0</td><td>1.0</td><td>1</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>512</td><td>3</td><td>2</td><td>475</td><td>328</td><td>368</td><td>1.0</td><td>1.0</td><td>1</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>512</td><td>3</td><td>2</td><td>475</td><td>328</td><td>368</td><td>1.0</td><td>1.0</td><td>1</td><td>True</td><td>True</td></tr><tr><td>density</td><td>128</td><td>3</td><td>0</td><td>475</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>density</td><td>128</td><td>3</td><td>0</td><td>475</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>density</td><td>128</td><td>3</td><td>0</td><td>475</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>density</td><td>256</td><td>3</td><td>1</td><td>475</td><td>185</td><td>225</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>density</td><td>256</td><td>3</td><td>1</td><td>475</td><td>185</td><td>225</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>density</td><td>256</td><td>3</td><td>1</td><td>475</td><td>185</td><td>225</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>density</td><td>512</td><td>3</td><td>2</td><td>475</td><td>328</td><td>368</td><td>1.0</td><td>1.0</td><td>1</td><td>True</td><td>True</td></tr><tr><td>density</td><td>512</td><td>3</td><td>2</td><td>475</td><td>328</td><td>368</td><td>1.0</td><td>1.0</td><td>1</td><td>True</td><td>True</td></tr><tr><td>density</td><td>512</td><td>3</td><td>2</td><td>475</td><td>328</td><td>368</td><td>1.0</td><td>1.0</td><td>1</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>128</td><td>3</td><td>0</td><td>475</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>128</td><td>3</td><td>0</td><td>475</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>128</td><td>3</td><td>0</td><td>475</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>256</td><td>3</td><td>1</td><td>475</td><td>185</td><td>225</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>256</td><td>3</td><td>1</td><td>475</td><td>185</td><td>225</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>256</td><td>3</td><td>1</td><td>475</td><td>185</td><td>225</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>512</td><td>3</td><td>2</td><td>475</td><td>332</td><td>372</td><td>1.0</td><td>1.0</td><td>1</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>512</td><td>3</td><td>2</td><td>475</td><td>332</td><td>372</td><td>1.0</td><td>1.0</td><td>1</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>512</td><td>3</td><td>2</td><td>475</td><td>332</td><td>372</td><td>1.0</td><td>1.0</td><td>1</td><td>True</td><td>True</td></tr><tr><td>recent</td><td>128</td><td>3</td><td>0</td><td>471</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>recent</td><td>128</td><td>3</td><td>0</td><td>471</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>recent</td><td>128</td><td>3</td><td>0</td><td>471</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>recent</td><td>256</td><td>3</td><td>1</td><td>471</td><td>143</td><td>183</td><td>1.0</td><td>0.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>recent</td><td>256</td><td>3</td><td>1</td><td>471</td><td>143</td><td>183</td><td>1.0</td><td>0.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>recent</td><td>256</td><td>3</td><td>1</td><td>471</td><td>143</td><td>183</td><td>1.0</td><td>0.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>recent</td><td>512</td><td>3</td><td>3</td><td>471</td><td>471</td><td>511</td><td>1.0</td><td>1.0</td><td>0</td><td>True</td><td>True</td></tr><tr><td>recent</td><td>512</td><td>3</td><td>3</td><td>471</td><td>471</td><td>511</td><td>1.0</td><td>1.0</td><td>0</td><td>True</td><td>True</td></tr><tr><td>recent</td><td>512</td><td>3</td><td>3</td><td>471</td><td>471</td><td>511</td><td>1.0</td><td>1.0</td><td>0</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>128</td><td>3</td><td>0</td><td>471</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>128</td><td>3</td><td>0</td><td>471</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>128</td><td>3</td><td>0</td><td>471</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>256</td><td>3</td><td>1</td><td>471</td><td>181</td><td>221</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>256</td><td>3</td><td>1</td><td>471</td><td>181</td><td>221</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>256</td><td>3</td><td>1</td><td>471</td><td>181</td><td>221</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>512</td><td>3</td><td>3</td><td>471</td><td>471</td><td>511</td><td>1.0</td><td>1.0</td><td>0</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>512</td><td>3</td><td>3</td><td>471</td><td>471</td><td>511</td><td>1.0</td><td>1.0</td><td>0</td><td>True</td><td>True</td></tr><tr><td>topk</td><td>512</td><td>3</td><td>3</td><td>471</td><td>471</td><td>511</td><td>1.0</td><td>1.0</td><td>0</td><td>True</td><td>True</td></tr><tr><td>density</td><td>128</td><td>3</td><td>0</td><td>471</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>density</td><td>128</td><td>3</td><td>0</td><td>471</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>density</td><td>128</td><td>3</td><td>0</td><td>471</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>density</td><td>256</td><td>3</td><td>1</td><td>471</td><td>181</td><td>221</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>density</td><td>256</td><td>3</td><td>1</td><td>471</td><td>181</td><td>221</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>density</td><td>256</td><td>3</td><td>1</td><td>471</td><td>181</td><td>221</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>density</td><td>512</td><td>3</td><td>3</td><td>471</td><td>471</td><td>511</td><td>1.0</td><td>1.0</td><td>0</td><td>True</td><td>True</td></tr><tr><td>density</td><td>512</td><td>3</td><td>3</td><td>471</td><td>471</td><td>511</td><td>1.0</td><td>1.0</td><td>0</td><td>True</td><td>True</td></tr><tr><td>density</td><td>512</td><td>3</td><td>3</td><td>471</td><td>471</td><td>511</td><td>1.0</td><td>1.0</td><td>0</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>128</td><td>3</td><td>0</td><td>471</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>128</td><td>3</td><td>0</td><td>471</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>128</td><td>3</td><td>0</td><td>471</td><td>0</td><td>40</td><td>1.0</td><td>0.0</td><td>3</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>256</td><td>3</td><td>1</td><td>471</td><td>181</td><td>221</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>256</td><td>3</td><td>1</td><td>471</td><td>181</td><td>221</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>256</td><td>3</td><td>1</td><td>471</td><td>181</td><td>221</td><td>1.0</td><td>1.0</td><td>2</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>512</td><td>3</td><td>3</td><td>471</td><td>471</td><td>511</td><td>1.0</td><td>1.0</td><td>0</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>512</td><td>3</td><td>3</td><td>471</td><td>471</td><td>511</td><td>1.0</td><td>1.0</td><td>0</td><td>True</td><td>True</td></tr><tr><td>submodular</td><td>512</td><td>3</td><td>3</td><td>471</td><td>471</td><td>511</td><td>1.0</td><td>1.0</td><td>0</td><td>True</td><td>True</td></tr></tbody></table><details><summary>Full JSON ledger</summary><pre>{
+  &quot;claim_boundary&quot;: &quot;This is a deterministic context-projection conformance evaluation. It measures lexical candidate retrieval, budgeted selection, receipt determinism, and replay without a provider; it does not measure model reasoning, memory usefulness, semantic understanding, or coding success.&quot;,
+  &quot;config&quot;: {
+    &quot;budgets&quot;: [
+      128,
+      256,
+      512
+    ],
+    &quot;max_tool_output_tokens&quot;: 96,
+    &quot;policies&quot;: [
+      &quot;recent&quot;,
+      &quot;topk&quot;,
+      &quot;density&quot;,
+      &quot;submodular&quot;
+    ],
+    &quot;recent_blocks&quot;: 0,
+    &quot;repetitions&quot;: 3
+  },
+  &quot;fixture&quot;: {
+    &quot;cases&quot;: [
+      {
+        &quot;case_id&quot;: &quot;two-sum&quot;,
+        &quot;expected_memory_ids&quot;: [
+          &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+        ],
+        &quot;messages&quot;: [
+          {
+            &quot;content&quot;: &quot;You are a coding agent.&quot;,
+            &quot;role&quot;: &quot;system&quot;,
+            &quot;tool_call_id&quot;: null,
+            &quot;tool_calls&quot;: [],
+            &quot;tool_name&quot;: null
+          },
+          {
+            &quot;content&quot;: &quot;Implement two-sum with the hash-map complement invariant and duplicate values.&quot;,
+            &quot;role&quot;: &quot;user&quot;,
+            &quot;tool_call_id&quot;: null,
+            &quot;tool_calls&quot;: [],
+            &quot;tool_name&quot;: null
+          }
+        ],
+        &quot;scope&quot;: &quot;project:acm&quot;,
+        &quot;task&quot;: &quot;Implement two-sum with the hash-map complement invariant and duplicate values.&quot;
+      },
+      {
+        &quot;case_id&quot;: &quot;extended-gcd&quot;,
+        &quot;expected_memory_ids&quot;: [
+          &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+        ],
+        &quot;messages&quot;: [
+          {
+            &quot;content&quot;: &quot;You are a coding agent.&quot;,
+            &quot;role&quot;: &quot;system&quot;,
+            &quot;tool_call_id&quot;: null,
+            &quot;tool_calls&quot;: [],
+            &quot;tool_name&quot;: null
+          },
+          {
+            &quot;content&quot;: &quot;Implement extended gcd and preserve the Bezout invariant at the b == 0 base case.&quot;,
+            &quot;role&quot;: &quot;user&quot;,
+            &quot;tool_call_id&quot;: null,
+            &quot;tool_calls&quot;: [],
+            &quot;tool_name&quot;: null
+          }
+        ],
+        &quot;scope&quot;: &quot;project:math&quot;,
+        &quot;task&quot;: &quot;Implement extended gcd and preserve the Bezout invariant at the b == 0 base case.&quot;
+      }
+    ],
+    &quot;entries&quot;: [
+      {
+        &quot;confidence&quot;: 0.95,
+        &quot;content_sha256&quot;: &quot;ca65ef2b34a37b5a285ccfc61360e8aa2a546c18eeb747a1aa645ba6472a8818&quot;,
+        &quot;created_seq&quot;: 1,
+        &quot;invalidation_reason&quot;: null,
+        &quot;kind&quot;: &quot;procedure&quot;,
+        &quot;memory_id&quot;: &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;schema_version&quot;: &quot;1&quot;,
+        &quot;scope&quot;: &quot;project:acm&quot;,
+        &quot;source_refs&quot;: [
+          &quot;two_sum.py&quot;
+        ],
+        &quot;source_run_id&quot;: &quot;semantic-context-fixture&quot;,
+        &quot;status&quot;: &quot;active&quot;,
+        &quot;supersedes&quot;: null,
+        &quot;tags&quot;: [
+          &quot;hash-map&quot;,
+          &quot;two-sum&quot;
+        ],
+        &quot;text&quot;: &quot;Two-sum complement invariant: save each prior value in a hash map before scanning the next value; duplicate values must remain valid.&quot;,
+        &quot;updated_seq&quot;: 1
+      },
+      {
+        &quot;confidence&quot;: 0.95,
+        &quot;content_sha256&quot;: &quot;5a9f89bef246ffb0c95a297755a9d65030d9a8717dd0cc836e90dc309bb33eda&quot;,
+        &quot;created_seq&quot;: 2,
+        &quot;invalidation_reason&quot;: null,
+        &quot;kind&quot;: &quot;fact&quot;,
+        &quot;memory_id&quot;: &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;schema_version&quot;: &quot;1&quot;,
+        &quot;scope&quot;: &quot;project:math&quot;,
+        &quot;source_refs&quot;: [
+          &quot;extended_gcd.py&quot;
+        ],
+        &quot;source_run_id&quot;: &quot;semantic-context-fixture&quot;,
+        &quot;status&quot;: &quot;active&quot;,
+        &quot;supersedes&quot;: null,
+        &quot;tags&quot;: [
+          &quot;bezout&quot;,
+          &quot;extended-gcd&quot;
+        ],
+        &quot;text&quot;: &quot;Extended Euclid invariant: a*x + b*y equals the current gcd, and the b == 0 base case returns Bezout coefficients.&quot;,
+        &quot;updated_seq&quot;: 2
+      },
+      {
+        &quot;confidence&quot;: 0.6,
+        &quot;content_sha256&quot;: &quot;d46b6b36c852f1dbfca6f0c07b0f06b38a71cd0c08d2016f0a6a97b794c724d2&quot;,
+        &quot;created_seq&quot;: 3,
+        &quot;invalidation_reason&quot;: null,
+        &quot;kind&quot;: &quot;procedure&quot;,
+        &quot;memory_id&quot;: &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;schema_version&quot;: &quot;1&quot;,
+        &quot;scope&quot;: &quot;global&quot;,
+        &quot;source_refs&quot;: [],
+        &quot;source_run_id&quot;: &quot;semantic-context-fixture&quot;,
+        &quot;status&quot;: &quot;active&quot;,
+        &quot;supersedes&quot;: null,
+        &quot;tags&quot;: [
+          &quot;binary-search&quot;
+        ],
+        &quot;text&quot;: &quot;Binary search keeps a half-open interval and recomputes the midpoint without changing the public API.&quot;,
+        &quot;updated_seq&quot;: 3
+      },
+      {
+        &quot;confidence&quot;: 0.7,
+        &quot;content_sha256&quot;: &quot;b8a1e7de3933980db38b666a6f03a988360548a04e5e455d1021339a43482668&quot;,
+        &quot;created_seq&quot;: 4,
+        &quot;invalidation_reason&quot;: null,
+        &quot;kind&quot;: &quot;decision&quot;,
+        &quot;memory_id&quot;: &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;,
+        &quot;schema_version&quot;: &quot;1&quot;,
+        &quot;scope&quot;: &quot;global&quot;,
+        &quot;source_refs&quot;: [],
+        &quot;source_run_id&quot;: &quot;semantic-context-fixture&quot;,
+        &quot;status&quot;: &quot;active&quot;,
+        &quot;supersedes&quot;: null,
+        &quot;tags&quot;: [
+          &quot;testing&quot;
+        ],
+        &quot;text&quot;: &quot;Visible tests are the authoritative gate before accepting a complete coding-agent snapshot.&quot;,
+        &quot;updated_seq&quot;: 4
+      }
+    ],
+    &quot;fingerprint&quot;: &quot;7df53ef7bb85650f36099c8f43c1fede298bf138f8b907900aca01d355ab6234&quot;
+  },
+  &quot;kind&quot;: &quot;contextopt.semantic-context-eval.report&quot;,
+  &quot;model_calls&quot;: 0,
+  &quot;runs&quot;: [
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;c83370c43f774be9157fefaad08e4b08b4524241b2d8d5a03d95e769c3efe685&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 143,
+      &quot;selected_context_tokens&quot;: 183,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;c83370c43f774be9157fefaad08e4b08b4524241b2d8d5a03d95e769c3efe685&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 143,
+      &quot;selected_context_tokens&quot;: 183,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;c83370c43f774be9157fefaad08e4b08b4524241b2d8d5a03d95e769c3efe685&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 143,
+      &quot;selected_context_tokens&quot;: 183,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 1,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;af462574caa8d71c47aa29bb077b10b885fe76fab2e80e91ece244598b1c5c27&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 290,
+      &quot;selected_context_tokens&quot;: 330,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 1,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;af462574caa8d71c47aa29bb077b10b885fe76fab2e80e91ece244598b1c5c27&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 290,
+      &quot;selected_context_tokens&quot;: 330,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 1,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;af462574caa8d71c47aa29bb077b10b885fe76fab2e80e91ece244598b1c5c27&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 290,
+      &quot;selected_context_tokens&quot;: 330,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 185,
+      &quot;selected_context_tokens&quot;: 225,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 185,
+      &quot;selected_context_tokens&quot;: 225,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 185,
+      &quot;selected_context_tokens&quot;: 225,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 1,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 328,
+      &quot;selected_context_tokens&quot;: 368,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 1,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 328,
+      &quot;selected_context_tokens&quot;: 368,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 1,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 328,
+      &quot;selected_context_tokens&quot;: 368,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 185,
+      &quot;selected_context_tokens&quot;: 225,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 185,
+      &quot;selected_context_tokens&quot;: 225,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 185,
+      &quot;selected_context_tokens&quot;: 225,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 1,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 328,
+      &quot;selected_context_tokens&quot;: 368,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 1,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 328,
+      &quot;selected_context_tokens&quot;: 368,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 1,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 328,
+      &quot;selected_context_tokens&quot;: 368,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 185,
+      &quot;selected_context_tokens&quot;: 225,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 185,
+      &quot;selected_context_tokens&quot;: 225,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 185,
+      &quot;selected_context_tokens&quot;: 225,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 1,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;03de4a4d8a9580a7291e5b1598e5c8bc29cd5d4dda1ba9177a2b7bd9a5c03472&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 332,
+      &quot;selected_context_tokens&quot;: 372,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 1,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;03de4a4d8a9580a7291e5b1598e5c8bc29cd5d4dda1ba9177a2b7bd9a5c03472&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 332,
+      &quot;selected_context_tokens&quot;: 372,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 475,
+      &quot;case_id&quot;: &quot;two-sum&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 1,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;03de4a4d8a9580a7291e5b1598e5c8bc29cd5d4dda1ba9177a2b7bd9a5c03472&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 332,
+      &quot;selected_context_tokens&quot;: 372,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-8bc63aaaee2754011daf765d83321d9f&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;17356a7a2fcbaeee0b11bf5674ee066d3cbc2ab1029bae92f75028fa489c4155&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 143,
+      &quot;selected_context_tokens&quot;: 183,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;17356a7a2fcbaeee0b11bf5674ee066d3cbc2ab1029bae92f75028fa489c4155&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 143,
+      &quot;selected_context_tokens&quot;: 183,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;17356a7a2fcbaeee0b11bf5674ee066d3cbc2ab1029bae92f75028fa489c4155&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 143,
+      &quot;selected_context_tokens&quot;: 183,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 0,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 471,
+      &quot;selected_context_tokens&quot;: 511,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 0,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 471,
+      &quot;selected_context_tokens&quot;: 511,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 0,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c&quot;,
+      &quot;policy&quot;: &quot;recent&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 471,
+      &quot;selected_context_tokens&quot;: 511,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 181,
+      &quot;selected_context_tokens&quot;: 221,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 181,
+      &quot;selected_context_tokens&quot;: 221,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 181,
+      &quot;selected_context_tokens&quot;: 221,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 0,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 471,
+      &quot;selected_context_tokens&quot;: 511,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 0,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 471,
+      &quot;selected_context_tokens&quot;: 511,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 0,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c&quot;,
+      &quot;policy&quot;: &quot;topk&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 471,
+      &quot;selected_context_tokens&quot;: 511,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 181,
+      &quot;selected_context_tokens&quot;: 221,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 181,
+      &quot;selected_context_tokens&quot;: 221,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 181,
+      &quot;selected_context_tokens&quot;: 221,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 0,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 471,
+      &quot;selected_context_tokens&quot;: 511,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 0,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 471,
+      &quot;selected_context_tokens&quot;: 511,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 0,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c&quot;,
+      &quot;policy&quot;: &quot;density&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 471,
+      &quot;selected_context_tokens&quot;: 511,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 128,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 3,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 0,
+      &quot;selected_context_tokens&quot;: 40,
+      &quot;selected_memory_ids&quot;: [],
+      &quot;selected_recall&quot;: 0.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 181,
+      &quot;selected_context_tokens&quot;: 221,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 181,
+      &quot;selected_context_tokens&quot;: 221,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 256,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 2,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 181,
+      &quot;selected_context_tokens&quot;: 221,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 0,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 0,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 471,
+      &quot;selected_context_tokens&quot;: 511,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 0,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 1,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 471,
+      &quot;selected_context_tokens&quot;: 511,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    },
+    {
+      &quot;budget_compliant&quot;: true,
+      &quot;budget_tokens&quot;: 512,
+      &quot;candidate_tokens&quot;: 471,
+      &quot;case_id&quot;: &quot;extended-gcd&quot;,
+      &quot;deterministic&quot;: true,
+      &quot;error&quot;: null,
+      &quot;evicted_candidates&quot;: 0,
+      &quot;expected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;
+      ],
+      &quot;messages_sha256&quot;: &quot;9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c&quot;,
+      &quot;policy&quot;: &quot;submodular&quot;,
+      &quot;repetition&quot;: 2,
+      &quot;replayable&quot;: true,
+      &quot;retrieved_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;retrieved_recall&quot;: 1.0,
+      &quot;selected_candidate_tokens&quot;: 471,
+      &quot;selected_context_tokens&quot;: 511,
+      &quot;selected_memory_ids&quot;: [
+        &quot;mem-5af541c535930d6d03e9aac5647d397a&quot;,
+        &quot;mem-7aa0e6e87998685598d6ceebc718871a&quot;,
+        &quot;mem-46ea806aa44ad5d91119faf4bb2dd730&quot;
+      ],
+      &quot;selected_recall&quot;: 1.0
+    }
+  ],
+  &quot;schema_version&quot;: &quot;1&quot;,
+  &quot;store_revision&quot;: 4,
+  &quot;summary&quot;: {
+    &quot;budget_compliant_rate&quot;: 1.0,
+    &quot;cell_count&quot;: 72,
+    &quot;deterministic_rate&quot;: 1.0,
+    &quot;failed_count&quot;: 0,
+    &quot;mean_evicted_candidates&quot;: 1.833333,
+    &quot;mean_retrieved_candidates&quot;: 3.0,
+    &quot;mean_selected_candidates&quot;: 1.166667,
+    &quot;model_calls&quot;: 0,
+    &quot;replayable_rate&quot;: 1.0,
+    &quot;retrieved_recall_rate&quot;: 1.0,
+    &quot;selected_recall_rate&quot;: 0.541667
+  }
+}</pre></details><script type='application/json' id='semantic-context-report'>{"claim_boundary": "This is a deterministic context-projection conformance evaluation. It measures lexical candidate retrieval, budgeted selection, receipt determinism, and replay without a provider; it does not measure model reasoning, memory usefulness, semantic understanding, or coding success.", "config": {"budgets": [128, 256, 512], "max_tool_output_tokens": 96, "policies": ["recent", "topk", "density", "submodular"], "recent_blocks": 0, "repetitions": 3}, "fixture": {"cases": [{"case_id": "two-sum", "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages": [{"content": "You are a coding agent.", "role": "system", "tool_call_id": null, "tool_calls": [], "tool_name": null}, {"content": "Implement two-sum with the hash-map complement invariant and duplicate values.", "role": "user", "tool_call_id": null, "tool_calls": [], "tool_name": null}], "scope": "project:acm", "task": "Implement two-sum with the hash-map complement invariant and duplicate values."}, {"case_id": "extended-gcd", "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages": [{"content": "You are a coding agent.", "role": "system", "tool_call_id": null, "tool_calls": [], "tool_name": null}, {"content": "Implement extended gcd and preserve the Bezout invariant at the b == 0 base case.", "role": "user", "tool_call_id": null, "tool_calls": [], "tool_name": null}], "scope": "project:math", "task": "Implement extended gcd and preserve the Bezout invariant at the b == 0 base case."}], "entries": [{"confidence": 0.95, "content_sha256": "ca65ef2b34a37b5a285ccfc61360e8aa2a546c18eeb747a1aa645ba6472a8818", "created_seq": 1, "invalidation_reason": null, "kind": "procedure", "memory_id": "mem-8bc63aaaee2754011daf765d83321d9f", "schema_version": "1", "scope": "project:acm", "source_refs": ["two_sum.py"], "source_run_id": "semantic-context-fixture", "status": "active", "supersedes": null, "tags": ["hash-map", "two-sum"], "text": "Two-sum complement invariant: save each prior value in a hash map before scanning the next value; duplicate values must remain valid.", "updated_seq": 1}, {"confidence": 0.95, "content_sha256": "5a9f89bef246ffb0c95a297755a9d65030d9a8717dd0cc836e90dc309bb33eda", "created_seq": 2, "invalidation_reason": null, "kind": "fact", "memory_id": "mem-5af541c535930d6d03e9aac5647d397a", "schema_version": "1", "scope": "project:math", "source_refs": ["extended_gcd.py"], "source_run_id": "semantic-context-fixture", "status": "active", "supersedes": null, "tags": ["bezout", "extended-gcd"], "text": "Extended Euclid invariant: a*x + b*y equals the current gcd, and the b == 0 base case returns Bezout coefficients.", "updated_seq": 2}, {"confidence": 0.6, "content_sha256": "d46b6b36c852f1dbfca6f0c07b0f06b38a71cd0c08d2016f0a6a97b794c724d2", "created_seq": 3, "invalidation_reason": null, "kind": "procedure", "memory_id": "mem-7aa0e6e87998685598d6ceebc718871a", "schema_version": "1", "scope": "global", "source_refs": [], "source_run_id": "semantic-context-fixture", "status": "active", "supersedes": null, "tags": ["binary-search"], "text": "Binary search keeps a half-open interval and recomputes the midpoint without changing the public API.", "updated_seq": 3}, {"confidence": 0.7, "content_sha256": "b8a1e7de3933980db38b666a6f03a988360548a04e5e455d1021339a43482668", "created_seq": 4, "invalidation_reason": null, "kind": "decision", "memory_id": "mem-46ea806aa44ad5d91119faf4bb2dd730", "schema_version": "1", "scope": "global", "source_refs": [], "source_run_id": "semantic-context-fixture", "status": "active", "supersedes": null, "tags": ["testing"], "text": "Visible tests are the authoritative gate before accepting a complete coding-agent snapshot.", "updated_seq": 4}], "fingerprint": "7df53ef7bb85650f36099c8f43c1fede298bf138f8b907900aca01d355ab6234"}, "kind": "contextopt.semantic-context-eval.report", "model_calls": 0, "runs": [{"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038", "policy": "recent", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038", "policy": "recent", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038", "policy": "recent", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "c83370c43f774be9157fefaad08e4b08b4524241b2d8d5a03d95e769c3efe685", "policy": "recent", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 143, "selected_context_tokens": 183, "selected_memory_ids": ["mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "c83370c43f774be9157fefaad08e4b08b4524241b2d8d5a03d95e769c3efe685", "policy": "recent", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 143, "selected_context_tokens": 183, "selected_memory_ids": ["mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "c83370c43f774be9157fefaad08e4b08b4524241b2d8d5a03d95e769c3efe685", "policy": "recent", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 143, "selected_context_tokens": 183, "selected_memory_ids": ["mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 1, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "af462574caa8d71c47aa29bb077b10b885fe76fab2e80e91ece244598b1c5c27", "policy": "recent", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 290, "selected_context_tokens": 330, "selected_memory_ids": ["mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 1, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "af462574caa8d71c47aa29bb077b10b885fe76fab2e80e91ece244598b1c5c27", "policy": "recent", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 290, "selected_context_tokens": 330, "selected_memory_ids": ["mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 1, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "af462574caa8d71c47aa29bb077b10b885fe76fab2e80e91ece244598b1c5c27", "policy": "recent", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 290, "selected_context_tokens": 330, "selected_memory_ids": ["mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038", "policy": "topk", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038", "policy": "topk", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038", "policy": "topk", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4", "policy": "topk", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 185, "selected_context_tokens": 225, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4", "policy": "topk", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 185, "selected_context_tokens": 225, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4", "policy": "topk", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 185, "selected_context_tokens": 225, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 1, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048", "policy": "topk", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 328, "selected_context_tokens": 368, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 1, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048", "policy": "topk", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 328, "selected_context_tokens": 368, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 1, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048", "policy": "topk", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 328, "selected_context_tokens": 368, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038", "policy": "density", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038", "policy": "density", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038", "policy": "density", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4", "policy": "density", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 185, "selected_context_tokens": 225, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4", "policy": "density", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 185, "selected_context_tokens": 225, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4", "policy": "density", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 185, "selected_context_tokens": 225, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 1, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048", "policy": "density", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 328, "selected_context_tokens": 368, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 1, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048", "policy": "density", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 328, "selected_context_tokens": 368, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 1, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "4bfd3f30447b7e6f1faa58b97a73ffbe385696af0609f2a8e04d84bb54fa9048", "policy": "density", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 328, "selected_context_tokens": 368, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038", "policy": "submodular", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038", "policy": "submodular", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "e77e14de7219e72d866b2ea7304bec431a8dd46cbb8c91f0ec7867d549d18038", "policy": "submodular", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4", "policy": "submodular", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 185, "selected_context_tokens": 225, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4", "policy": "submodular", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 185, "selected_context_tokens": 225, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "4a1e00e2a598a21d759f6ccd63052235108ec5ff23ce6cff5018c6e1ad3a65e4", "policy": "submodular", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 185, "selected_context_tokens": 225, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 1, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "03de4a4d8a9580a7291e5b1598e5c8bc29cd5d4dda1ba9177a2b7bd9a5c03472", "policy": "submodular", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 332, "selected_context_tokens": 372, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 1, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "03de4a4d8a9580a7291e5b1598e5c8bc29cd5d4dda1ba9177a2b7bd9a5c03472", "policy": "submodular", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 332, "selected_context_tokens": 372, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 475, "case_id": "two-sum", "deterministic": true, "error": null, "evicted_candidates": 1, "expected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f"], "messages_sha256": "03de4a4d8a9580a7291e5b1598e5c8bc29cd5d4dda1ba9177a2b7bd9a5c03472", "policy": "submodular", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 332, "selected_context_tokens": 372, "selected_memory_ids": ["mem-8bc63aaaee2754011daf765d83321d9f", "mem-7aa0e6e87998685598d6ceebc718871a"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981", "policy": "recent", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981", "policy": "recent", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981", "policy": "recent", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "17356a7a2fcbaeee0b11bf5674ee066d3cbc2ab1029bae92f75028fa489c4155", "policy": "recent", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 143, "selected_context_tokens": 183, "selected_memory_ids": ["mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "17356a7a2fcbaeee0b11bf5674ee066d3cbc2ab1029bae92f75028fa489c4155", "policy": "recent", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 143, "selected_context_tokens": 183, "selected_memory_ids": ["mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "17356a7a2fcbaeee0b11bf5674ee066d3cbc2ab1029bae92f75028fa489c4155", "policy": "recent", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 143, "selected_context_tokens": 183, "selected_memory_ids": ["mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 0, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c", "policy": "recent", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 471, "selected_context_tokens": 511, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 0, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c", "policy": "recent", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 471, "selected_context_tokens": 511, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 0, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c", "policy": "recent", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 471, "selected_context_tokens": 511, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981", "policy": "topk", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981", "policy": "topk", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981", "policy": "topk", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b", "policy": "topk", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 181, "selected_context_tokens": 221, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b", "policy": "topk", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 181, "selected_context_tokens": 221, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b", "policy": "topk", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 181, "selected_context_tokens": 221, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 0, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c", "policy": "topk", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 471, "selected_context_tokens": 511, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 0, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c", "policy": "topk", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 471, "selected_context_tokens": 511, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 0, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c", "policy": "topk", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 471, "selected_context_tokens": 511, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981", "policy": "density", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981", "policy": "density", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981", "policy": "density", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b", "policy": "density", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 181, "selected_context_tokens": 221, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b", "policy": "density", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 181, "selected_context_tokens": 221, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b", "policy": "density", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 181, "selected_context_tokens": 221, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 0, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c", "policy": "density", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 471, "selected_context_tokens": 511, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 0, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c", "policy": "density", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 471, "selected_context_tokens": 511, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 0, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c", "policy": "density", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 471, "selected_context_tokens": 511, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981", "policy": "submodular", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981", "policy": "submodular", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 128, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 3, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "12040cb704d66d46bb7d3d73dcc00eabc3e5be55addb3fc38a78b37d18dfb981", "policy": "submodular", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 0, "selected_context_tokens": 40, "selected_memory_ids": [], "selected_recall": 0.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b", "policy": "submodular", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 181, "selected_context_tokens": 221, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b", "policy": "submodular", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 181, "selected_context_tokens": 221, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 256, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 2, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "0309b2400cec50761461793780e72b5801d5d3fafcde4a8dc4d7144518808d4b", "policy": "submodular", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 181, "selected_context_tokens": 221, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 0, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c", "policy": "submodular", "repetition": 0, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 471, "selected_context_tokens": 511, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 0, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c", "policy": "submodular", "repetition": 1, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 471, "selected_context_tokens": 511, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}, {"budget_compliant": true, "budget_tokens": 512, "candidate_tokens": 471, "case_id": "extended-gcd", "deterministic": true, "error": null, "evicted_candidates": 0, "expected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a"], "messages_sha256": "9ab4bf54e0ac1ce6419d35282ab604534896851891af8ac193788dad2ca63c4c", "policy": "submodular", "repetition": 2, "replayable": true, "retrieved_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "retrieved_recall": 1.0, "selected_candidate_tokens": 471, "selected_context_tokens": 511, "selected_memory_ids": ["mem-5af541c535930d6d03e9aac5647d397a", "mem-7aa0e6e87998685598d6ceebc718871a", "mem-46ea806aa44ad5d91119faf4bb2dd730"], "selected_recall": 1.0}], "schema_version": "1", "store_revision": 4, "summary": {"budget_compliant_rate": 1.0, "cell_count": 72, "deterministic_rate": 1.0, "failed_count": 0, "mean_evicted_candidates": 1.833333, "mean_retrieved_candidates": 3.0, "mean_selected_candidates": 1.166667, "model_calls": 0, "replayable_rate": 1.0, "retrieved_recall_rate": 1.0, "selected_recall_rate": 0.541667}}</script></body></html>

@@ -1,0 +1,7 @@
+[
+  {
+    "response": {
+      "content": "{\"goal\":\"return values in ascending order\",\"constraints\":[\"preserve the public solve signature\"],\"hypotheses\":[\"use the standard sorted primitive\"],\"test_focus\":[\"visible ordering test\"],\"risks\":[\"do not mutate caller-owned input\"]}"
+    }
+  }
+]

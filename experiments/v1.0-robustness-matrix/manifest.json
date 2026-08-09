@@ -1,0 +1,19 @@
+{
+  "claim_boundary": "This is a deterministic Level 4 runtime robustness evaluation. It measures local fault-injection outcomes for context compaction, source-aware memory invalidation, duplicate tool-result rejection, and compare-and-swap write conflicts without a model provider; it does not prove machine-loss recovery, sandbox security, provider reliability, exactly-once external effects, or coding quality.",
+  "config": {
+    "scenarios": [
+      "tool-output-compaction",
+      "stale-memory-invalidation",
+      "duplicate-tool-result",
+      "cas-write-conflict"
+    ]
+  },
+  "fault_injection": {
+    "adapter": "local-runtime-contract-v1",
+    "external_network": false,
+    "model_calls": 0
+  },
+  "kind": "contextopt.robustness-eval.manifest",
+  "repository_revision": "330e047a3170a799fc4c434a94b2178f33d6791a",
+  "schema_version": "1"
+}

@@ -1,0 +1,67 @@
+{
+  "budget": 760,
+  "decisions": [
+    {
+      "added_tokens": 80,
+      "item_id": "goal",
+      "marginal_gain": null,
+      "reason": "mandatory item",
+      "status": "selected"
+    },
+    {
+      "added_tokens": 120,
+      "item_id": "jwt-interface",
+      "marginal_gain": 2.1099999999999994,
+      "reason": "best feasible marginal objective gain per token",
+      "status": "selected"
+    },
+    {
+      "added_tokens": 220,
+      "item_id": "refresh-handler",
+      "marginal_gain": 2.490000000000001,
+      "reason": "best feasible marginal objective gain per token",
+      "status": "selected"
+    },
+    {
+      "added_tokens": 150,
+      "item_id": "failing-test",
+      "marginal_gain": 2.4800000000000004,
+      "reason": "best feasible marginal objective gain per token",
+      "status": "selected"
+    },
+    {
+      "added_tokens": null,
+      "item_id": "search-log-1",
+      "marginal_gain": null,
+      "reason": "token budget exceeded: 830 > 760",
+      "status": "rejected"
+    },
+    {
+      "added_tokens": null,
+      "item_id": "search-log-2",
+      "marginal_gain": null,
+      "reason": "token budget exceeded: 810 > 760",
+      "status": "rejected"
+    },
+    {
+      "added_tokens": null,
+      "item_id": "old-auth-doc",
+      "marginal_gain": null,
+      "reason": "conflict: jwt-interface vs old-auth-doc",
+      "status": "rejected"
+    }
+  ],
+  "metadata": {
+    "iterations": 3
+  },
+  "objective_score": 9.780000000000001,
+  "policy": "submodular",
+  "selected_ids": [
+    "goal",
+    "jwt-interface",
+    "failing-test",
+    "refresh-handler"
+  ],
+  "used_tokens": 570,
+  "utilization": 0.75
+}

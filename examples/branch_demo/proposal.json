@@ -1,0 +1,7 @@
+[
+  {
+    "response": {
+      "content": "{\"candidates\":[{\"id\":\"sorted-fix\",\"parent_id\":\"root\",\"hypothesis\":\"sort a copy before returning it\",\"files\":{\"solver.py\":\"def solve(values):\\n    return sorted(values)\\n\",\"test_solver.py\":\"import unittest\\nfrom solver import solve\\n\\n\\nclass SolverTests(unittest.TestCase):\\n    def test_orders_values(self):\\n        self.assertEqual(solve([3, 1, 2]), [1, 2, 3])\\n\\n\\nif __name__ == '__main__':\\n    unittest.main()\\n\"},\"evidence\":[\"preserves the input and returns ascending values\"]},{\"id\":\"reverse-fix\",\"parent_id\":\"root\",\"hypothesis\":\"reverse the input to improve ordering\",\"files\":{\"solver.py\":\"def solve(values):\\n    return list(reversed(values))\\n\",\"test_solver.py\":\"import unittest\\nfrom solver import solve\\n\\n\\nclass SolverTests(unittest.TestCase):\\n    def test_orders_values(self):\\n        self.assertEqual(solve([3, 1, 2]), [1, 2, 3])\\n\\n\\nif __name__ == '__main__':\\n    unittest.main()\\n\"},\"evidence\":[\"changes ordering with one operation\"]}]}"
+    }
+  }
+]

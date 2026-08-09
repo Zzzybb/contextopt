@@ -1,0 +1,46 @@
+{
+  "name": "scripted:semantic-memory-writer-v1",
+  "steps": [
+    {
+      "response": {
+        "content": "I will record the safe edit procedure for the next run.",
+        "tool_calls": [
+          {
+            "id": "save-procedure",
+            "name": "memory_save",
+            "arguments": {
+              "text": "Before replace_text, read the file and use its latest sha256.",
+              "scope": "project:semantic-memory-demo",
+              "kind": "procedure",
+              "tags": ["cas", "editing"],
+              "confidence": 0.95,
+              "source_refs": ["semantic-memory-demo"]
+            }
+          }
+        ],
+        "usage": {
+          "input_tokens": 12,
+          "output_tokens": 6
+        }
+      }
+    },
+    {
+      "expect": {
+        "turn": 2,
+        "last_tool": "memory_save",
+        "tool_call_id": "save-procedure",
+        "observation_contains": [
+          "memory_id",
+          "created"
+        ]
+      },
+      "response": {
+        "content": "The procedure is durable and can be recalled by a later run.",
+        "usage": {
+          "input_tokens": 20,
+          "output_tokens": 9
+        }
+      }
+    }
+  ]
+}

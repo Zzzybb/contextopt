@@ -1,0 +1,78 @@
+{
+  "claim_boundary": "This is a deterministic Level 4 runtime robustness evaluation. It measures local fault-injection outcomes for context compaction, source-aware memory invalidation, duplicate tool-result rejection, and compare-and-swap write conflicts without a model provider; it does not prove machine-loss recovery, sandbox security, provider reliability, exactly-once external effects, or coding quality.",
+  "config": {
+    "scenarios": [
+      "tool-output-compaction",
+      "stale-memory-invalidation",
+      "duplicate-tool-result",
+      "cas-write-conflict"
+    ]
+  },
+  "kind": "contextopt.robustness-eval.report",
+  "results": [
+    {
+      "error": null,
+      "observations": {
+        "compacted_block_ids": [
+          "block-000001"
+        ],
+        "compacted_tokens": 80,
+        "deterministic": true,
+        "has_head_sentinel": true,
+        "has_tail_sentinel": true,
+        "max_tool_output_tokens": 80,
+        "selected_tokens": 132
+      },
+      "passed": true,
+      "scenario_id": "tool-output-compaction",
+      "title": "Compact oversized tool output while preserving sentinels"
+    },
+    {
+      "error": null,
+      "observations": {
+        "invalidated_ids": [
+          "mem-3141790e193f0985e529479539bd848a"
+        ],
+        "memory_id": "mem-3141790e193f0985e529479539bd848a",
+        "persisted_status": "invalidated",
+        "retrieved_after": [],
+        "retrieved_before": [
+          "mem-3141790e193f0985e529479539bd848a"
+        ],
+        "revision": 2
+      },
+      "passed": true,
+      "scenario_id": "stale-memory-invalidation",
+      "title": "Invalidate source-aware memory after a workspace change"
+    },
+    {
+      "error": null,
+      "observations": {
+        "error": "duplicate tool result at message index 0",
+        "rejected": true
+      },
+      "passed": true,
+      "scenario_id": "duplicate-tool-result",
+      "title": "Reject a repeated tool result inside one exchange"
+    },
+    {
+      "error": null,
+      "observations": {
+        "error_code": "content_conflict",
+        "read_ok": true,
+        "stale_sha_present": true,
+        "workspace_unchanged": true,
+        "write_ok": false
+      },
+      "passed": true,
+      "scenario_id": "cas-write-conflict",
+      "title": "Refuse a stale compare-and-swap workspace write"
+    }
+  ],
+  "schema_version": "1",
+  "summary": {
+    "failed_count": 0,
+    "passed_count": 4,
+    "scenario_count": 4
+  }
+}

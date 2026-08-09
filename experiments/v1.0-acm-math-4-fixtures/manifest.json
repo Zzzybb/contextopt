@@ -1,0 +1,55 @@
+{
+  "claim_boundary": "The manifest records experiment identity and configuration; it does not prove model quality or provider reproducibility.",
+  "config": {
+    "container_image": "python:3.12-slim",
+    "exploration_constant": 1.0,
+    "fixtures": [
+      "two-sum",
+      "extended-gcd",
+      "merge-intervals",
+      "modular-inverse"
+    ],
+    "include_hidden_tests": true,
+    "max_candidates": 2,
+    "max_model_calls": 6,
+    "max_rounds": 2,
+    "max_test_calls": 2,
+    "model_adapter": "scripted",
+    "planner_model": null,
+    "repetitions": 3,
+    "reviewer_model": null,
+    "sandbox": "host",
+    "search_policy": "beam",
+    "solver_model": null,
+    "strategies": [
+      "single_pass",
+      "best_of_n",
+      "orchestrated"
+    ]
+  },
+  "kind": "contextopt.agent-eval.manifest",
+  "provider": {
+    "adapter": "scripted",
+    "base_url": null,
+    "cancellation_url": null,
+    "model": null,
+    "planner_model": null,
+    "reviewer_model": null,
+    "solver_model": null
+  },
+  "repository_revision": "f0bfc4333d16768614350d5ef75c3e55440a43c1",
+  "runtime": {
+    "api_key_env": "CONTEXTOPT_API_KEY",
+    "container_image": "python:3.12-slim",
+    "max_retries": 2,
+    "sandbox": "host",
+    "temperature": 0.0,
+    "timeout_seconds": 90.0
+  },
+  "schema_version": "1",
+  "transcript": {
+    "directory": null,
+    "layout": null,
+    "mode": null
+  }
+}

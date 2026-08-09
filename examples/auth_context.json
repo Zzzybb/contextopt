@@ -1,0 +1,81 @@
+{
+  "budget": 760,
+  "weights": {
+    "relevance": 1.0,
+    "importance": 0.8,
+    "freshness": 0.2,
+    "topic_coverage": 0.7,
+    "duplicate_penalty": 0.6
+  },
+  "items": [
+    {
+      "id": "goal",
+      "tokens": 80,
+      "relevance": 1.0,
+      "importance": 1.0,
+      "mandatory": true,
+      "kind": "state",
+      "topics": ["goal"],
+      "content": "Fix refresh-token authorization without breaking access tokens."
+    },
+    {
+      "id": "jwt-interface",
+      "tokens": 120,
+      "relevance": 0.62,
+      "importance": 0.86,
+      "kind": "code",
+      "topics": ["jwt-contract"],
+      "source": "src/auth/tokens.py:18"
+    },
+    {
+      "id": "refresh-handler",
+      "tokens": 220,
+      "relevance": 0.91,
+      "importance": 0.92,
+      "kind": "code",
+      "topics": ["refresh-flow"],
+      "dependencies": ["jwt-interface"],
+      "source": "src/auth/routes.py:74"
+    },
+    {
+      "id": "failing-test",
+      "tokens": 150,
+      "relevance": 0.78,
+      "importance": 1.0,
+      "kind": "test_failure",
+      "topics": ["regression-test"],
+      "source": "tests/test_refresh.py:42"
+    },
+    {
+      "id": "search-log-1",
+      "tokens": 260,
+      "relevance": 0.94,
+      "importance": 0.25,
+      "freshness": 0.7,
+      "kind": "tool_output",
+      "topics": ["jwt-search"],
+      "duplicate_group": "jwt-search"
+    },
+    {
+      "id": "search-log-2",
+      "tokens": 240,
+      "relevance": 0.92,
+      "importance": 0.2,
+      "freshness": 0.65,
+      "kind": "tool_output",
+      "topics": ["jwt-search"],
+      "duplicate_group": "jwt-search"
+    },
+    {
+      "id": "old-auth-doc",
+      "tokens": 180,
+      "relevance": 0.8,
+      "importance": 0.45,
+      "freshness": 0.12,
+      "kind": "documentation",
+      "topics": ["old-contract"],
+      "conflicts": ["jwt-interface"],
+      "source": "docs/auth-v1.md"
+    }
+  ]
+}
