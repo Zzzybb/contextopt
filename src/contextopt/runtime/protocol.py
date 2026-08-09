@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from math import isfinite
 from typing import Any, Literal, Protocol, cast
 
 RunStatus = Literal["completed", "stopped", "failed", "cancelled", "paused"]
@@ -49,13 +50,12 @@ def _integer(value: Any, label: str, *, minimum: int = 0) -> int:
 
 
 def _number(value: Any, label: str, *, minimum: float = 0.0) -> float:
-    if (
-        not isinstance(value, (int, float))
-        or isinstance(value, bool)
-        or float(value) < minimum
-    ):
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
         raise ValueError(f"{label} must be a number >= {minimum}")
-    return float(value)
+    result = float(value)
+    if not isfinite(result) or result < minimum:
+        raise ValueError(f"{label} must be a number >= {minimum}")
+    return result
 
 
 def _boolean(value: Any, label: str) -> bool:
@@ -472,19 +472,31 @@ class RunLimits:
         )
 
     def __post_init__(self) -> None:
-        positive = (
+        integer_positive = (
             "max_turns",
             "max_tool_calls",
             "max_output_tokens_per_call",
-            "wall_timeout_seconds",
-            "command_timeout_seconds",
             "max_tool_output_bytes",
         )
-        for field_name in positive:
-            if getattr(self, field_name) <= 0:
-                raise ValueError(f"{field_name} must be positive")
-        if self.max_total_tokens is not None and self.max_total_tokens <= 0:
-            raise ValueError("max_total_tokens must be positive when set")
+        for field_name in integer_positive:
+            value = getattr(self, field_name)
+            if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+                raise ValueError(f"{field_name} must be a positive integer")
+        if self.max_total_tokens is not None and (
+            not isinstance(self.max_total_tokens, int)
+            or isinstance(self.max_total_tokens, bool)
+            or self.max_total_tokens <= 0
+        ):
+            raise ValueError("max_total_tokens must be a positive integer when set")
+        for field_name in ("wall_timeout_seconds", "command_timeout_seconds"):
+            value = getattr(self, field_name)
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or not isfinite(float(value))
+                or value <= 0
+            ):
+                raise ValueError(f"{field_name} must be finite and positive")
 
     def to_dict(self) -> dict[str, Any]:
         return {

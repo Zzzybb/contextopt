@@ -115,6 +115,24 @@ def _tool_names(events: tuple[dict[str, object], ...]) -> list[str]:
     return names
 
 
+class RunLimitsTests(unittest.TestCase):
+    def test_limits_reject_non_finite_and_wrong_type_values(self) -> None:
+        with self.assertRaisesRegex(ValueError, "wall_timeout_seconds"):
+            RunLimits(wall_timeout_seconds=float("nan"))
+        with self.assertRaisesRegex(ValueError, "command_timeout_seconds"):
+            RunLimits(command_timeout_seconds=float("inf"))
+        with self.assertRaisesRegex(ValueError, "max_turns"):
+            RunLimits(max_turns=1.5)  # type: ignore[arg-type]
+        with self.assertRaisesRegex(ValueError, "max_total_tokens"):
+            RunLimits(max_total_tokens=True)  # type: ignore[arg-type]
+
+    def test_from_dict_rejects_non_finite_timeout(self) -> None:
+        payload = _limits().to_dict()
+        payload["wall_timeout_seconds"] = float("nan")
+        with self.assertRaisesRegex(ValueError, "wall_timeout_seconds"):
+            RunLimits.from_dict(payload)
+
+
 class RuntimeIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_scripted_model_fixes_real_python_fixture(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
