@@ -256,6 +256,11 @@ recompute the complete chain because there is no secret or external trust anchor
   `orchestrate --context-memory versioned-v1+semantic --memory-store ... --memory-scope ...`.
   Each role receives its own candidate projection and receipt; a pending role request reuses
   its persisted candidate snapshot after a process stop, even if the live store was invalidated.
+- `orchestrate --memory-feedback` closes the loop explicitly: when semantic context is enabled,
+  the terminal visible-test/oracle outcome records one idempotent `helpful` or `not_helpful`
+  label for each candidate that was actually selected by a role. The event ledger records the
+  feedback id, signal, and skipped-invalid-memory reason, so a resume cannot double-count a vote.
+  This is an outcome correlation signal, not proof that a memory caused the accepted patch.
 - The store is advisory: default `versioned-v1` runs still require an explicit tool call, while
   the opt-in semantic context mode performs only the bounded candidate projection described
   above. `global` entries can be inherited by a project scope, and neither path overrides the
@@ -806,6 +811,8 @@ The multi-agent semantic-memory integration is documented in [the English PR not
 and [Chinese version](docs/pr/0001-v0.9-orchestration-semantic-memory.zh-CN.md).
 The local OpenAI-compatible adapter smoke is documented in [the English PR note](docs/pr/0001-v0.9-provider-adapter-smoke.md)
 and [Chinese version](docs/pr/0001-v0.9-provider-adapter-smoke.zh-CN.md).
+The opt-in terminal semantic-memory feedback loop is documented in [the English PR note](docs/pr/0001-v0.9-semantic-memory-feedback-loop.md)
+and [Chinese version](docs/pr/0001-v0.9-semantic-memory-feedback-loop.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers. The
   manual workflow is the reproducibility entry point; the checked-in scripted artifacts remain

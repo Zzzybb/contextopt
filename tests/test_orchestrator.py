@@ -270,6 +270,7 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
             name="semantic-r:v1",
         )
         with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint = Path(temp_dir) / "semantic-orchestration.json"
             store = SemanticMemoryStore(Path(temp_dir) / "memory.jsonl")
             entry = store.put(
                 "Use sorted(values) to preserve the public solve signature and "
@@ -296,6 +297,7 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
                         max_reviewer_calls=1,
                         max_candidates=1,
                         max_test_calls=1,
+                        memory_feedback=True,
                         context_config=ContextCompilerConfig(
                             policy="submodular",
                             budget_tokens=16_000,
@@ -309,28 +311,152 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
                     memory_store=store,
                     memory_scope="project:solver",
                     run_id="semantic-orchestration-test",
+                    checkpoint_path=checkpoint,
                 )
+                self.assertEqual(report.status, "accepted")
+                self.assertEqual(report.best_candidate_id, "round-0-semantic-good")
+                self.assertEqual(report.metrics["memory_feedback_events"], 1)
+                for item in report.rounds:
+                    for call in (
+                        item.planner_call,
+                        item.solver_call,
+                        item.reviewer_call,
+                    ):
+                        receipt = call.context_receipt
+                        self.assertIsNotNone(receipt)
+                        assert receipt is not None
+                        metadata = receipt.frame["metadata"]
+                        self.assertIn(entry.memory_id, metadata["durable_memory_ids"])
+                        self.assertIn(
+                            entry.memory_id, metadata["durable_memory_selected_ids"]
+                        )
+                self.assertTrue(
+                    any(
+                        "[contextopt durable memory candidate]" in message.content
+                        for model in (planner, solver, reviewer)
+                        for request in model.requests
+                        for message in request.messages
+                    )
+                )
+                store.close()
+                with SemanticMemoryStore(Path(temp_dir) / "memory.jsonl") as reopened:
+                    matches = reopened.search(
+                        "make solve return ascending values", scope="project:solver"
+                    )
+                    self.assertEqual(matches[0].entry.memory_id, entry.memory_id)
+                    self.assertEqual(matches[0].feedback_signal, 1.0)
+                    resumed = await run_orchestration(
+                        ScriptedModel(
+                            [{"response": {"content": _plan()}}], name="semantic-p:v1"
+                        ),
+                        ScriptedModel(
+                            [
+                                {
+                                    "response": {
+                                        "content": _proposal(
+                                            "semantic-good",
+                                            "def solve(values):\n"
+                                            "    return sorted(values)\n",
+                                        )
+                                    }
+                                }
+                            ],
+                            name="semantic-s:v1",
+                        ),
+                        ScriptedModel(
+                            [
+                                {
+                                    "response": {
+                                        "content": _review(
+                                            "accept", "round-0-semantic-good"
+                                        )
+                                    }
+                                }
+                            ],
+                            name="semantic-r:v1",
+                        ),
+                        checkpoint_path=checkpoint,
+                        resume=True,
+                        memory_store=reopened,
+                        memory_scope="project:solver",
+                    )
+                    self.assertEqual(resumed.status, "accepted")
+                    self.assertEqual(resumed.metrics["memory_feedback_events"], 1)
             finally:
                 store.close()
 
-        self.assertEqual(report.status, "accepted")
-        self.assertEqual(report.best_candidate_id, "round-0-semantic-good")
-        for item in report.rounds:
-            for call in (item.planner_call, item.solver_call, item.reviewer_call):
-                receipt = call.context_receipt
-                self.assertIsNotNone(receipt)
-                assert receipt is not None
-                metadata = receipt.frame["metadata"]
-                self.assertIn(entry.memory_id, metadata["durable_memory_ids"])
-                self.assertIn(entry.memory_id, metadata["durable_memory_selected_ids"])
-        self.assertTrue(
-            any(
-                "[contextopt durable memory candidate]" in message.content
-                for model in (planner, solver, reviewer)
-                for request in model.requests
-                for message in request.messages
-            )
-        )
+    async def test_terminal_memory_feedback_marks_failed_run_not_helpful(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            memory_path = Path(temp_dir) / "memory.jsonl"
+            store = SemanticMemoryStore(memory_path)
+            entry = store.put(
+                "Use sorted(values) to preserve the public solve signature and "
+                "return ascending values.",
+                scope="project:solver",
+                kind="procedure",
+                confidence=0.9,
+            ).entry
+            try:
+                report = await run_orchestration(
+                    ScriptedModel([{"response": {"content": _plan()}}], name="fb-p:v1"),
+                    ScriptedModel(
+                        [
+                            {
+                                "response": {
+                                    "content": _proposal(
+                                        "bad",
+                                        "def solve(values):\n    return list(values)\n",
+                                    )
+                                }
+                            }
+                        ],
+                        name="fb-s:v1",
+                    ),
+                    ScriptedModel(
+                        [{"response": {"content": _review("retry", None)}}],
+                        name="fb-r:v1",
+                    ),
+                    task="make solve return ascending values",
+                    root_files=ROOT_FILES,
+                    execution_config=_execution(),
+                    config=OrchestrationConfig(
+                        max_rounds=1,
+                        max_model_calls=3,
+                        max_planner_calls=1,
+                        max_solver_calls=1,
+                        max_reviewer_calls=1,
+                        max_candidates=1,
+                        max_test_calls=1,
+                        memory_feedback=True,
+                        context_config=ContextCompilerConfig(
+                            policy="submodular",
+                            budget_tokens=16_000,
+                            recent_blocks=2,
+                            max_tool_output_tokens=96,
+                            memory_policy="versioned-v1+semantic",
+                        ),
+                    ),
+                    solver_config=ProposalConfig(max_candidates=1),
+                    search_config=BranchSearchConfig(max_depth=1, beam_width=1),
+                    memory_store=store,
+                    memory_scope="project:solver",
+                    run_id="semantic-feedback-failed",
+                )
+                self.assertEqual(report.status, "budget_exhausted")
+                self.assertEqual(report.metrics["memory_feedback_events"], 1)
+                feedback_events = [
+                    event for event in report.events if event.type == "memory.feedback"
+                ]
+                self.assertEqual(feedback_events[0].data["label"], "not_helpful")
+                self.assertEqual(
+                    store.search(
+                        "make solve return ascending values", scope="project:solver"
+                    )[0].feedback_signal,
+                    -1.0,
+                )
+                self.assertEqual(feedback_events[0].data["memory_id"], entry.memory_id)
+            finally:
+                store.close()
 
     def test_three_way_merge_is_conflict_safe(self) -> None:
         left = CandidatePatch(
@@ -1064,12 +1190,20 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
                     "project:solver",
                     "--context-memory",
                     "versioned-v1+semantic",
+                    "--memory-feedback",
                 ]
             )
             self.assertEqual(exit_code, 0)
-            self.assertEqual(
-                json.loads(output.read_text(encoding="utf-8"))["status"], "accepted"
-            )
+            report_payload = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(report_payload["status"], "accepted")
+            self.assertEqual(report_payload["metrics"]["memory_feedback_events"], 1)
+            with SemanticMemoryStore(memory_path) as reopened:
+                self.assertEqual(
+                    reopened.search(
+                        "make solve return ascending values", scope="project:solver"
+                    )[0].feedback_signal,
+                    1.0,
+                )
 
 
 if __name__ == "__main__":

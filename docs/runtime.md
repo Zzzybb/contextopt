@@ -263,6 +263,16 @@ same `--memory-store` path and `--memory-scope` because the store configuration 
 tool fingerprint. If a semantic model request is pending, recovery reuses the receipt snapshot
 even when the live store changed after the process stopped.
 
+For the multi-agent orchestrator, `--memory-feedback` is an explicit terminal feedback policy.
+With `versioned-v1+semantic` and an attached store, it collects the durable memory ids that were
+actually selected by planner/solver/reviewer receipts and writes one deterministic feedback id per
+run/memory pair. An accepted run records `helpful`; an exhausted or failed run records
+`not_helpful`; a candidate invalidated while the run was in flight is recorded as `skipped` in the
+orchestration event ledger rather than changing the run result. Reopening a terminal checkpoint
+replays the same idempotency key and does not append a second vote. The signal is a bounded outcome
+correlation used by later lexical ranking, not causal attribution or automatic memory
+consolidation.
+
 To enable the automatic projection:
 
 ```text

@@ -406,6 +406,9 @@ Secondary metrics:
 - wall-clock latency;
 - invalid or denied tool-call rate;
 - constraint retention after future compaction.
+- selected durable-memory ids and terminal helpful/not-helpful feedback events when the opt-in
+  `--memory-feedback` policy is enabled; this is an auditable outcome correlation, not a causal
+  memory-quality score.
 
 At least three repetitions per task are required for exploratory comparisons; stronger
 claims require more runs based on observed variance. The current renderer is ready to report

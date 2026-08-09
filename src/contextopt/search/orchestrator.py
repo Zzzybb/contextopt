@@ -36,7 +36,10 @@ from contextopt.runtime.protocol import (
     ModelResponse,
     TokenUsage,
 )
-from contextopt.runtime.semantic_memory import SemanticMemoryStore
+from contextopt.runtime.semantic_memory import (
+    MemoryFeedbackLabel,
+    SemanticMemoryStore,
+)
 from contextopt.search.branching import (
     BranchCase,
     BranchSearch,
@@ -221,6 +224,7 @@ class OrchestrationConfig:
     scheduler_policy: SchedulerPolicy = "fixed"
     merge_policy: MergePolicy = "disabled"
     max_total_tokens: int = 100_000
+    memory_feedback: bool = False
     context_config: ContextCompilerConfig = field(
         default_factory=lambda: ContextCompilerConfig(
             policy="submodular",
@@ -261,6 +265,8 @@ class OrchestrationConfig:
                 raise ValueError(f"{name} must be a positive integer")
         if self.merge_policy not in MERGE_POLICIES:
             raise ValueError(f"unsupported merge policy: {self.merge_policy!r}")
+        if not isinstance(self.memory_feedback, bool):
+            raise ValueError("memory_feedback must be a boolean")
         if not isinstance(self.context_config, ContextCompilerConfig):
             raise ValueError("context_config must be a ContextCompilerConfig")
 
@@ -281,6 +287,7 @@ class OrchestrationConfig:
             "scheduler_policy",
             "merge_policy",
             "max_total_tokens",
+            "memory_feedback",
             "context_config",
         }
         unknown = set(value) - allowed
@@ -313,6 +320,7 @@ class OrchestrationConfig:
                 "scheduler_policy",
                 "merge_policy",
                 "max_total_tokens",
+                "memory_feedback",
             )
         } | {"context_config": self.context_config.to_dict()}
 
@@ -1227,6 +1235,9 @@ class OrchestrationReport:
             "cancelled_solver_lanes": sum(
                 event.type == "solver.speculative.cancelled" for event in self.events
             ),
+            "memory_feedback_events": sum(
+                event.type == "memory.feedback" for event in self.events
+            ),
             "pending_solver_responses": (
                 0
                 if self.pending_solver_responses is None
@@ -1867,6 +1878,30 @@ def _finish(
     )
 
 
+def _selected_durable_memory_ids(report: OrchestrationReport) -> tuple[str, ...]:
+    """Return durable candidates that were actually selected by a role request."""
+
+    selected: set[str] = set()
+    for item in report.rounds:
+        calls = (item.planner_call, *item.solver_variants, item.reviewer_call)
+        for call in calls:
+            receipt = call.context_receipt
+            if receipt is None:
+                continue
+            metadata = receipt.frame.get("metadata")
+            if not isinstance(metadata, Mapping):
+                continue
+            raw_ids = metadata.get("durable_memory_selected_ids")
+            if not isinstance(raw_ids, list):
+                continue
+            selected.update(
+                memory_id
+                for memory_id in raw_ids
+                if isinstance(memory_id, str) and memory_id
+            )
+    return tuple(sorted(selected))
+
+
 class OrchestrationRunner:
     """Drive planner, solver, visible tests, and reviewer roles."""
 
@@ -1927,6 +1962,70 @@ class OrchestrationRunner:
         self.reviewer_config = state.reviewer_config
         self.search_config = state.search_config
         self.execution_config = state.execution_config
+
+    def _record_terminal_memory_feedback(
+        self, state: OrchestrationReport
+    ) -> OrchestrationReport:
+        """Persist one idempotent outcome label for selected durable memories.
+
+        Feedback is deliberately opt-in and only runs for a terminal orchestration
+        with semantic context enabled.  The event is appended after the store write;
+        replaying a checkpoint after a process stop is safe because the store uses the
+        same deterministic feedback id and returns the original aggregate.
+        """
+
+        if (
+            not state.config.memory_feedback
+            or self.memory_store is None
+            or state.config.context_config.memory_policy != "versioned-v1+semantic"
+            or state.status
+            not in {"accepted", "exhausted", "budget_exhausted", "failed"}
+        ):
+            return state
+        label: MemoryFeedbackLabel = (
+            "helpful" if state.status == "accepted" else "not_helpful"
+        )
+        existing_feedback_ids = {
+            event.data.get("feedback_id")
+            for event in state.events
+            if event.type == "memory.feedback"
+        }
+        updated = state
+        for memory_id in _selected_durable_memory_ids(state):
+            feedback_identity = stable_hash(
+                {"run_id": state.run_id, "memory_id": memory_id}
+            )
+            feedback_id = f"orch-feedback-{feedback_identity[:64]}"
+            if feedback_id in existing_feedback_ids:
+                continue
+            event_data: dict[str, Any] = {
+                "feedback_id": feedback_id,
+                "memory_id": memory_id,
+                "label": label,
+                "status": "recorded",
+            }
+            try:
+                result = self.memory_store.feedback(
+                    memory_id,
+                    label,
+                    feedback_id=feedback_id,
+                    source_run_id=state.run_id,
+                    query=state.task[:512],
+                )
+                event_data.update(result.to_dict())
+            except ValueError as exc:
+                # The candidate may have been invalidated while the run was in
+                # flight.  Preserve that fact in the orchestration audit without
+                # turning a successful coding result into a failure.
+                event_data.update(
+                    {
+                        "status": "skipped",
+                        "reason": f"{type(exc).__name__}: {str(exc)[:400]}",
+                    }
+                )
+            updated = _event(updated, "memory.feedback", event_data)
+            existing_feedback_ids.add(feedback_id)
+        return updated
 
     def _initial(
         self, task: str, root_files: Mapping[str, str], run_id: str
@@ -3131,6 +3230,7 @@ class OrchestrationRunner:
                     "budget_exhausted",
                     "maximum orchestration rounds reached",
                 )
+                state = self._record_terminal_memory_feedback(state)
                 if checkpoint is not None:
                     write_orchestration_checkpoint(state, checkpoint)
                 return state
@@ -3141,6 +3241,7 @@ class OrchestrationRunner:
                 state = _finish(
                     state, "budget_exhausted", "shared model budget reached"
                 )
+                state = self._record_terminal_memory_feedback(state)
                 if checkpoint is not None:
                     write_orchestration_checkpoint(state, checkpoint)
                 return state
@@ -3150,6 +3251,10 @@ class OrchestrationRunner:
                 else await self._planner(state, checkpoint)
             )
             retry_pending = False
+        updated = self._record_terminal_memory_feedback(state)
+        if checkpoint is not None and updated != state:
+            write_orchestration_checkpoint(updated, checkpoint)
+        state = updated
         return state
 
     async def run(
@@ -3174,7 +3279,10 @@ class OrchestrationRunner:
                     completed_turns += len(state.pending_solver_responses)
                 model.resume_from_turn(completed_turns)
             if state.status != "running":
-                return state
+                updated = self._record_terminal_memory_feedback(state)
+                if checkpoint is not None and updated != state:
+                    write_orchestration_checkpoint(updated, checkpoint)
+                return updated
         else:
             if task is None or root_files is None:
                 raise ValueError(
@@ -3250,6 +3358,7 @@ def render_orchestration_console(report: OrchestrationReport) -> str:
         f"pending_solver_lanes={report.metrics['pending_solver_responses']} "
         f"speculative_winners={report.metrics['speculative_winners']} "
         f"cancelled_solver_lanes={report.metrics['cancelled_solver_lanes']} "
+        f"memory_feedback={report.metrics['memory_feedback_events']} "
         f"context_receipts={context_receipts}"
     ]
     if report.best_candidate_id:
@@ -3287,6 +3396,7 @@ def render_orchestration_markdown(report: OrchestrationReport) -> str:
         f"reviewer {report.reviewer_calls})",
         f"- Actual test calls: {report.test_calls}; "
         f"cached reuses: {report.test_reuses}",
+        f"- Durable-memory feedback events: {report.metrics['memory_feedback_events']}",
         f"- Scheduler: max configured parallel tests "
         f"`{report.config.max_parallel_tests}`; "
         f"observed max in-flight `{report.max_in_flight}`",

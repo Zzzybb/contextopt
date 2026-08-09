@@ -635,6 +635,7 @@ def _orchestrate(args: argparse.Namespace) -> int:
             scheduler_policy=args.scheduler_policy,
             merge_policy=args.merge_policy,
             max_total_tokens=args.max_total_tokens,
+            memory_feedback=args.memory_feedback,
             context_config=ContextCompilerConfig(
                 policy=args.context_policy,
                 budget_tokens=args.context_budget,
@@ -1321,6 +1322,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="disabled or bounded three-way merge of independent solver branches",
     )
     orchestrate.add_argument("--max-total-tokens", type=int, default=100_000)
+    orchestrate.add_argument(
+        "--memory-feedback",
+        action="store_true",
+        help=(
+            "record an idempotent helpful/not_helpful outcome for selected durable "
+            "memory candidates at terminal run completion"
+        ),
+    )
     orchestrate.add_argument(
         "--context-policy",
         choices=("full", "recent", "topk", "density", "submodular"),

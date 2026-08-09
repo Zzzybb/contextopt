@@ -74,6 +74,10 @@ assistant block，并和普通上下文一起竞争 token 预算。候选可能�
 `--context-memory versioned-v1+semantic` 给 planner、solver、reviewer 挂载同一个 store；
 每个角色仍有独立历史和 ContextReceipt，进程在 role request 边界停止后会重放原候选快照，
 不会因为 live store 失效而偷偷换一组候选。
+加上 `orchestrate --memory-feedback` 后，语义上下文可以显式闭环：终态 visible-test/oracle
+结果会为每个角色实际选中的记忆候选写入一条幂等的 `helpful` 或 `not_helpful` 反馈；事件账本
+保存 feedback id、信号和记忆已失效时的跳过原因，恢复不会重复计票。这是运行结果相关性
+信号，不是“某条记忆导致补丁成功”的因果证明。
 如果记忆带有 `source_refs`，成功的 `create_file` / `replace_text` 会在对应文件变更后
 自动追加失效事件；进程在写入后、记忆失效前停止时，reconcile 也会补做这一步。非文件
 原因导致的过期仍可通过 `memory_invalidate` 显式记录。
@@ -355,6 +359,8 @@ python -m contextopt agent-eval \
   和 [英文版](docs/pr/0001-v0.9-orchestration-semantic-memory.md)
 - v0.9 provider adapter 本地 smoke：[docs/pr/0001-v0.9-provider-adapter-smoke.zh-CN.md](docs/pr/0001-v0.9-provider-adapter-smoke.zh-CN.md)
   和 [英文版](docs/pr/0001-v0.9-provider-adapter-smoke.md)
+- v0.9 终态语义记忆反馈闭环：[docs/pr/0001-v0.9-semantic-memory-feedback-loop.zh-CN.md](docs/pr/0001-v0.9-semantic-memory-feedback-loop.zh-CN.md)
+  和 [英文版](docs/pr/0001-v0.9-semantic-memory-feedback-loop.md)
 - v0.7 编排补充的中文回顾：[docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md](docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、
