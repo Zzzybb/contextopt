@@ -14,5 +14,6 @@
     "model_calls": 0
   },
   "kind": "contextopt.robustness-eval.manifest",
+  "repository_revision": "330e047a3170a799fc4c434a94b2178f33d6791a",
   "schema_version": "1"
 }

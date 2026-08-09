@@ -12,6 +12,8 @@ The matrix proves local contract behavior and records the observed evidence. It 
 claim machine-loss recovery, sandbox security, provider reliability, exactly-once external
 effects, or coding quality.
 
+The manifest pins the source revision used for this baseline (`330e047a3170a799fc4c434a94b2178f33d6791a`).
+
 Regenerate it from the repository root with:
 
 ```text

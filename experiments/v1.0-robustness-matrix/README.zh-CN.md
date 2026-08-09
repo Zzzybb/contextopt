@@ -11,6 +11,8 @@ happy path 演示掩盖的边界。
 矩阵证明的是本地 contract 行为并记录观察证据，不能声称机器掉电恢复、sandbox 安全、
 provider 稳定性、exactly-once 外部副作用或代码能力。
 
+manifest 固定了本基线使用的源码 revision：`330e047a3170a799fc4c434a94b2178f33d6791a`。
+
 从仓库根目录重新生成：
 
 ```text
