@@ -256,6 +256,9 @@ class OpenAICompatibleModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(raised.exception.code, "http_401")
         self.assertFalse(raised.exception.retryable)
         self.assertNotIn(secret, str(raised.exception))
+        self.assertEqual(
+            await model.request_cancellation(_model_request()), "not_observed"
+        )
         self.assertEqual(len(server.requests), 1)
         self.assertEqual(server.requests[0]["authorization"], f"Bearer {secret}")
         self.assertIsNotNone(server.requests[0]["idempotency_key"])
@@ -306,6 +309,26 @@ class OpenAICompatibleModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             await model.request_cancellation(_model_request()), "not_observed"
         )
+
+    async def test_transport_registry_survives_outer_task_cancellation(self) -> None:
+        response = _BlockingResponse()
+        model = OpenAICompatibleModel(
+            base_url="https://example.test/v1",
+            api_key="key",
+            model="unit-model",
+        )
+        request = _model_request()
+        with patch(
+            "contextopt.runtime.model.urllib.request.urlopen",
+            return_value=response,
+        ):
+            task = asyncio.create_task(model.complete(request))
+            self.assertTrue(await asyncio.to_thread(response.started.wait, 2))
+            task.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await task
+            self.assertEqual(await model.request_cancellation(request), "acknowledged")
+            self.assertTrue(await asyncio.to_thread(response.closed.wait, 2))
 
 
 class ScriptedModelTests(unittest.IsolatedAsyncioTestCase):

@@ -281,17 +281,33 @@ class OpenAICompatibleModel:
         cancellation = threading.Event()
         with self._cancellation_lock:
             self._cancellation_events[request_key] = cancellation
-        try:
-            return await asyncio.to_thread(
-                self._complete_sync, request, request_key, cancellation
-            )
-        finally:
+        worker = asyncio.create_task(
+            asyncio.to_thread(self._complete_sync, request, request_key, cancellation)
+        )
+
+        def cleanup(done: asyncio.Future[ModelResponse]) -> None:
             with self._cancellation_lock:
                 if self._cancellation_events.get(request_key) is cancellation:
                     self._cancellation_events.pop(request_key, None)
                 response = self._active_responses.pop(request_key, None)
             if response is not None:
                 response.close()
+            if not done.cancelled():
+                # A caller may cancel the outer task while the shielded worker is
+                # still running. Retrieve a late exception so it cannot become an
+                # unhandled-task warning after the caller has moved on.
+                done.exception()
+
+        try:
+            return await asyncio.shield(worker)
+        except asyncio.CancelledError:
+            worker.add_done_callback(cleanup)
+            raise
+        except BaseException:
+            cleanup(worker)
+            raise
+        else:
+            cleanup(worker)
 
     async def request_cancellation(self, request: ModelRequest) -> str:
         """Interrupt the local HTTP transport for an active request when possible.
