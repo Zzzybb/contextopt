@@ -659,6 +659,8 @@ The package-version alignment is documented in [the v0.9 note](docs/pr/0001-v0.9
 and [Chinese version](docs/pr/0001-v0.9-version-alignment.zh-CN.md).
 The built-in HTTP transport cancellation is documented in [the v0.9 note](docs/pr/0001-v0.9-http-transport-cancellation.md)
 and [Chinese version](docs/pr/0001-v0.9-http-transport-cancellation.zh-CN.md).
+The real-provider workflow's secret boundary is documented in [the v0.9 note](docs/pr/0001-v0.9-real-provider-secret-scope.md)
+and [Chinese version](docs/pr/0001-v0.9-real-provider-secret-scope.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers. The
   manual workflow is the reproducibility entry point; the checked-in scripted artifacts remain

@@ -236,6 +236,8 @@ python -m contextopt agent-eval \
   和 [英文版](docs/pr/0001-v0.9-version-alignment.md)
 - v0.9 本地 HTTP 传输取消：[docs/pr/0001-v0.9-http-transport-cancellation.zh-CN.md](docs/pr/0001-v0.9-http-transport-cancellation.zh-CN.md)
   和 [英文版](docs/pr/0001-v0.9-http-transport-cancellation.md)
+- v0.9 真实 provider secret 作用域：[docs/pr/0001-v0.9-real-provider-secret-scope.zh-CN.md](docs/pr/0001-v0.9-real-provider-secret-scope.zh-CN.md)
+  和 [英文版](docs/pr/0001-v0.9-real-provider-secret-scope.md)
 - v0.7 编排补充的中文回顾：[docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md](docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、
