@@ -939,6 +939,8 @@ The exact paired-outcome McNemar diagnostic is documented in [the v1.0 note](doc
 and [Chinese version](docs/pr/0001-v1.0-paired-mcnemar-evidence.zh-CN.md).
 The matched multi-model artifact analyzer is documented in [the v1.0 note](docs/pr/0001-v1.0-model-matrix-analysis.md)
 and [Chinese version](docs/pr/0001-v1.0-model-matrix-analysis.zh-CN.md).
+The model-matrix dashboard's explicit resource columns are documented in [the v1.0 note](docs/pr/0001-v1.0-model-matrix-cost-metrics.md)
+and [Chinese version](docs/pr/0001-v1.0-model-matrix-cost-metrics.zh-CN.md).
 The manual multi-model provider workflow is documented in [the v1.0 note](docs/pr/0001-v1.0-real-provider-model-matrix.md)
 and [Chinese version](docs/pr/0001-v1.0-real-provider-model-matrix.zh-CN.md).
 The cross-platform CI type-check fix is documented in [the v1.0 note](docs/pr/0001-v1.0-ci-cross-platform-typecheck.md)

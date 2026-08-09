@@ -657,8 +657,9 @@ def render_agent_eval_model_matrix_markdown(
             "## Per-model outcomes",
             "",
             "| Model | Strategy | Visible | Hidden | Visible Δ | Hidden Δ | "
+            "Mean calls | Mean tests | Mean tokens | Mean duration ms | "
             "Visible exact p |",
-            "|---|---|---:|---:|---:|---:|---:|",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     for model in report.models:
@@ -684,7 +685,11 @@ def render_agent_eval_model_matrix_markdown(
                 f"| `{model.label}` | `{summary.strategy}` | "
                 f"{summary.success_count}/{summary.run_count} | "
                 f"{summary.hidden_success_count}/{summary.hidden_run_count} | "
-                f"{visible_delta} | {hidden_delta} | {pvalue} |"
+                f"{visible_delta} | {hidden_delta} | "
+                f"{summary.mean_model_calls:.1f} | "
+                f"{summary.mean_test_calls:.1f} | "
+                f"{summary.mean_total_tokens:.0f} | "
+                f"{summary.mean_duration_ms:.1f} | {pvalue} |"
             )
     lines.extend(
         [
@@ -757,6 +762,10 @@ def render_agent_eval_model_matrix_html(
                 f"<td>{summary.hidden_success_count}/{summary.hidden_run_count}</td>"
                 f"<td>{visible_delta}</td>"
                 f"<td>{hidden_delta}</td>"
+                f"<td>{summary.mean_model_calls:.1f}</td>"
+                f"<td>{summary.mean_test_calls:.1f}</td>"
+                f"<td>{summary.mean_total_tokens:.0f}</td>"
+                f"<td>{summary.mean_duration_ms:.1f}</td>"
                 "</tr>"
             )
     payload = escape(json.dumps(report.to_dict(), ensure_ascii=False, sort_keys=True))
@@ -775,7 +784,9 @@ def render_agent_eval_model_matrix_html(
         f"{escape(str(report.protocol['fingerprint']))}</code></p>"
         "<table><thead><tr><th>model</th><th>strategy</th>"
         "<th>visible</th><th>hidden</th>"
-        "<th>visible Δ</th><th>hidden Δ</th></tr></thead><tbody>"
+        "<th>visible Δ</th><th>hidden Δ</th><th>mean calls</th>"
+        "<th>mean tests</th><th>mean tokens</th><th>mean duration ms</th>"
+        "</tr></thead><tbody>"
         f"{''.join(rows)}</tbody></table>"
         "<details><summary>machine-readable analysis</summary><code>"
         f"{payload}</code></details></body></html>"

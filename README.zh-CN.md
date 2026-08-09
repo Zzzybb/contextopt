@@ -484,6 +484,8 @@ PR 说明[英文版](docs/pr/0001-v1.0-model-matrix-analysis.md) /
   和 [英文版](docs/pr/0001-v1.0-paired-mcnemar-evidence.md)
 - v1.0 配对多模型矩阵分析：[docs/pr/0001-v1.0-model-matrix-analysis.zh-CN.md](docs/pr/0001-v1.0-model-matrix-analysis.zh-CN.md)
   和 [英文版](docs/pr/0001-v1.0-model-matrix-analysis.md)
+- v1.0 多模型矩阵成本列：[docs/pr/0001-v1.0-model-matrix-cost-metrics.zh-CN.md](docs/pr/0001-v1.0-model-matrix-cost-metrics.zh-CN.md)
+  和 [英文版](docs/pr/0001-v1.0-model-matrix-cost-metrics.md)
 - v1.0 手动真实 provider 多模型矩阵：[docs/pr/0001-v1.0-real-provider-model-matrix.zh-CN.md](docs/pr/0001-v1.0-real-provider-model-matrix.zh-CN.md)
   和 [英文版](docs/pr/0001-v1.0-real-provider-model-matrix.md)
 - v1.0 Level 4 运行时鲁棒性矩阵：[docs/pr/0001-v1.0-robustness-eval.zh-CN.md](docs/pr/0001-v1.0-robustness-eval.zh-CN.md)

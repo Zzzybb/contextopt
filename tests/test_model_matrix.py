@@ -160,7 +160,12 @@ class AgentEvalModelMatrixTests(unittest.TestCase):
                 markdown_text,
             )
             self.assertNotIn("| `None`", markdown_text)
+            self.assertIn("Mean tokens", markdown_text)
+            self.assertIn("Mean duration ms", markdown_text)
             self.assertIn("machine-readable analysis", html.read_text(encoding="utf-8"))
+            html_text = html.read_text(encoding="utf-8")
+            self.assertIn("mean tokens", html_text)
+            self.assertIn("mean duration ms", html_text)
 
 
 if __name__ == "__main__":
