@@ -192,6 +192,7 @@ python -m contextopt agent-eval \
 
 - 英文架构：[docs/architecture.md](docs/architecture.md)
 - 英文评测：[docs/evaluation.md](docs/evaluation.md)
+- 真实 provider 工作流：[docs/evaluation-real-provider.zh-CN.md](docs/evaluation-real-provider.zh-CN.md)
 - 运行时说明：[docs/runtime.md](docs/runtime.md)
 - PR 变更说明约定：[docs/pr/README.md](docs/pr/README.md)
 - PR #1 中文回顾：[docs/pr/0001-contextopt-evolution.zh-CN.md](docs/pr/0001-contextopt-evolution.zh-CN.md)
@@ -216,6 +217,10 @@ python -m contextopt agent-eval \
   和 [英文版](docs/pr/0001-v0.9-recovery-matrix.md)
 - v0.9 model request 幂等钩子：[docs/pr/0001-v0.9-idempotency-hook.zh-CN.md](docs/pr/0001-v0.9-idempotency-hook.zh-CN.md)
   和 [英文版](docs/pr/0001-v0.9-idempotency-hook.md)
+- v0.9 首个有效候选取消：[docs/pr/0001-v0.9-speculative-cancellation.zh-CN.md](docs/pr/0001-v0.9-speculative-cancellation.zh-CN.md)
+  和 [英文版](docs/pr/0001-v0.9-speculative-cancellation.md)
+- v0.9 真实 provider 手动工作流：[docs/pr/0001-v0.9-real-provider-workflow.zh-CN.md](docs/pr/0001-v0.9-real-provider-workflow.zh-CN.md)
+  和 [英文版](docs/pr/0001-v0.9-real-provider-workflow.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、
 指标名称是权威定义。

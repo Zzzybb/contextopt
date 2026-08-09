@@ -407,6 +407,12 @@ the process stops, rerun the same command with `--resume --checkpoint ...` to re
 cells and rerun only the missing cell. This is at-least-once provider execution, not an
 exactly-once claim.
 
+For a key that should stay out of the local shell, use the manual
+[`real-agent-eval` workflow](docs/evaluation-real-provider.md). It is not scheduled and does not
+run on pull requests: configure the `CONTEXTOPT_API_KEY` repository/environment secret, enter the
+endpoint and model in **Actions → real-agent-eval → Run workflow**, and download the uploaded
+JSON/Markdown/HTML/manifest/checkpoint bundle.
+
 Run the v0.4 test-guided branch-search demo and write all three report formats:
 
 ```bash
@@ -636,8 +642,14 @@ The bounded long-horizon recovery matrix is documented in [the v0.9 PR change no
 and [Chinese version](docs/pr/0001-v0.9-recovery-matrix.zh-CN.md).
 The model-request idempotency hook is documented in [the v0.9 idempotency addendum](docs/pr/0001-v0.9-idempotency-hook.md)
 and [Chinese version](docs/pr/0001-v0.9-idempotency-hook.zh-CN.md).
+The first-valid speculative cancellation is documented in [the v0.9 cancellation note](docs/pr/0001-v0.9-speculative-cancellation.md)
+and [Chinese version](docs/pr/0001-v0.9-speculative-cancellation.zh-CN.md).
+The manual real-provider path is documented in [the workflow guide](docs/evaluation-real-provider.md)
+and [Chinese version](docs/evaluation-real-provider.zh-CN.md), with its [PR note](docs/pr/0001-v0.9-real-provider-workflow.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
-  evaluations with independent hidden tests and compare measurable multi-agent schedulers.
+  evaluations with independent hidden tests and compare measurable multi-agent schedulers. The
+  manual workflow is the reproducibility entry point; the checked-in scripted artifacts remain
+  controls rather than real-model evidence.
 
 See [Architecture](docs/architecture.md), [Runtime](docs/runtime.md), and
 [Evaluation protocol](docs/evaluation.md) for the design and claim boundaries.
