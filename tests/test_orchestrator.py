@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from contextopt.cli import main
 from contextopt.runtime.context import ContextCompilerConfig
@@ -1204,6 +1205,107 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
                     )[0].feedback_signal,
                     1.0,
                 )
+
+    def test_cli_orchestrate_records_and_replays_role_transcripts(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            root_files = root / "root.json"
+            planner_script = root / "planner.json"
+            solver_script = root / "solver.json"
+            reviewer_script = root / "reviewer.json"
+            cassette_dir = root / "cassettes"
+            root_files.write_text(json.dumps(ROOT_FILES), encoding="utf-8")
+            planner_script.write_text(
+                json.dumps([{"response": {"content": _plan()}}]),
+                encoding="utf-8",
+            )
+            solver_script.write_text(
+                json.dumps(
+                    [
+                        {
+                            "response": {
+                                "content": _proposal(
+                                    "good",
+                                    "def solve(values):\n    return sorted(values)\n",
+                                )
+                            }
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            reviewer_script.write_text(
+                json.dumps(
+                    [{"response": {"content": _review("accept", "round-0-good")}}]
+                ),
+                encoding="utf-8",
+            )
+            common = [
+                "orchestrate",
+                "--task",
+                "make solve return ascending values",
+                "--root-files",
+                str(root_files),
+                "--planner-script",
+                str(planner_script),
+                "--solver-script",
+                str(solver_script),
+                "--reviewer-script",
+                str(reviewer_script),
+                "--test-command",
+                f"{sys.executable} -m unittest discover -s .",
+                "--allow-command",
+                "--run-id",
+                "role-transcript-replay",
+            ]
+            clock = iter(float(value) for value in range(4))
+            with patch("contextopt.search.executor.perf_counter", side_effect=clock):
+                first_exit = main(
+                    [
+                        *common,
+                        "--checkpoint",
+                        str(root / "first.json"),
+                        "--record-transcript-dir",
+                        str(cassette_dir),
+                    ]
+                )
+                second_exit = main(
+                    [
+                        item
+                        for item in common
+                        if item
+                        not in {
+                            "--planner-script",
+                            str(planner_script),
+                            "--solver-script",
+                            str(solver_script),
+                            "--reviewer-script",
+                            str(reviewer_script),
+                        }
+                    ]
+                    + [
+                        "--checkpoint",
+                        str(root / "second.json"),
+                        "--replay-transcript-dir",
+                        str(cassette_dir),
+                    ]
+                )
+            self.assertEqual(first_exit, 0)
+            self.assertEqual(
+                sorted(path.name for path in cassette_dir.glob("*.jsonl")),
+                ["planner.jsonl", "reviewer.jsonl", "solver.jsonl"],
+            )
+            self.assertTrue(
+                all(
+                    len(path.read_text(encoding="utf-8").splitlines()) == 1
+                    for path in cassette_dir.glob("*.jsonl")
+                )
+            )
+            self.assertEqual(second_exit, 0)
+            replay_payload = json.loads(
+                (root / "second.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(replay_payload["status"], "accepted")
 
 
 if __name__ == "__main__":

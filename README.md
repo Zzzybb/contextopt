@@ -565,6 +565,9 @@ For a completed single-agent trajectory, the `run`, `search-session`, `propose-c
 commands can write an opt-in provider cassette with `--record-transcript PATH`; a fresh offline
 run can use `--replay-transcript PATH` without an API key. Replay requires the same request sequence
 and fails closed on a hash mismatch.
+For `orchestrate`, use `--record-transcript-dir DIR` / `--replay-transcript-dir DIR` to keep
+separate planner, solver, and reviewer cassettes; role replay intentionally requires the same
+visible-test observations as the recorded trajectory.
 
 Run the v0.4 test-guided branch-search demo and write all three report formats:
 

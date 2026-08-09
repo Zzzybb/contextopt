@@ -619,27 +619,38 @@ def _build_model(args: argparse.Namespace) -> ModelClient:
 
 
 def _build_role_model(args: argparse.Namespace, role: str) -> ModelClient:
+    record_dir = getattr(args, "record_transcript_dir", None)
+    replay_dir = getattr(args, "replay_transcript_dir", None)
+    if replay_dir:
+        return ReplayModel(
+            Path(replay_dir) / f"{role}.jsonl",
+            name=f"replay:{role}",
+        )
     script = getattr(args, f"{role}_script")
     if script:
-        return ScriptedModel.from_path(script)
-    model_name = getattr(args, f"{role}_model")
-    if not model_name or not args.base_url:
-        raise ValueError(
-            f"--{role}-model and --base-url are required without --{role}-script"
+        model: ModelClient = ScriptedModel.from_path(script)
+    else:
+        model_name = getattr(args, f"{role}_model")
+        if not model_name or not args.base_url:
+            raise ValueError(
+                f"--{role}-model and --base-url are required without --{role}-script"
+            )
+        api_key = os.environ.get(args.api_key_env)
+        if not api_key:
+            raise ValueError(
+                f"model API key is missing from environment variable {args.api_key_env}"
+            )
+        model = OpenAICompatibleModel(
+            base_url=args.base_url,
+            api_key=api_key,
+            model=model_name,
+            timeout_seconds=args.model_timeout,
+            max_retries=args.model_retries,
+            temperature=args.temperature,
         )
-    api_key = os.environ.get(args.api_key_env)
-    if not api_key:
-        raise ValueError(
-            f"model API key is missing from environment variable {args.api_key_env}"
-        )
-    return OpenAICompatibleModel(
-        base_url=args.base_url,
-        api_key=api_key,
-        model=model_name,
-        timeout_seconds=args.model_timeout,
-        max_retries=args.model_retries,
-        temperature=args.temperature,
-    )
+    if record_dir:
+        return RecordingModel(model, Path(record_dir) / f"{role}.jsonl")
+    return model
 
 
 def _orchestrate(args: argparse.Namespace) -> int:
@@ -1363,6 +1374,15 @@ def build_parser() -> argparse.ArgumentParser:
     orchestrate.add_argument("--model-timeout", type=float, default=90.0)
     orchestrate.add_argument("--model-retries", type=int, default=2)
     orchestrate.add_argument("--temperature", type=float, default=0.0)
+    role_transcript = orchestrate.add_mutually_exclusive_group()
+    role_transcript.add_argument(
+        "--record-transcript-dir",
+        help="directory for planner.jsonl, solver.jsonl, and reviewer.jsonl cassettes",
+    )
+    role_transcript.add_argument(
+        "--replay-transcript-dir",
+        help="directory containing planner.jsonl, solver.jsonl, and reviewer.jsonl",
+    )
     orchestrate.add_argument("--run-id")
     orchestrate.add_argument("--test-command")
     orchestrate.add_argument("--allow-command", action="store_true")

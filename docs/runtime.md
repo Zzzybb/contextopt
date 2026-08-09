@@ -130,6 +130,12 @@ contextopt run "inspect the workspace" --workspace ./workspace \
   --replay-transcript .contextopt/provider.jsonl
 ```
 
+The multi-agent `orchestrate` command uses a directory cassette instead:
+`--record-transcript-dir DIR` writes `planner.jsonl`, `solver.jsonl`, and `reviewer.jsonl`,
+while `--replay-transcript-dir DIR` loads the three role-specific streams. Role replay is
+deliberately strict: a changed visible-test observation (including timing fields) is a
+different request and must be recorded again rather than silently reusing a stale review.
+
 ## Coding-agent strategy evaluation harness
 
 The repository also ships a model-free outer-loop comparison for the control policies that

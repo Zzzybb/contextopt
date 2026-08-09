@@ -153,6 +153,8 @@ contextopt run "修复 parser" \
 `--record-transcript PATH` 写入可选 provider cassette；新的离线运行用
 `--replay-transcript PATH` 即可，不需要 API key。重放必须使用相同的请求序列，hash 不匹配
 时会 fail closed。
+`orchestrate` 则使用 `--record-transcript-dir DIR` / `--replay-transcript-dir DIR`，分别保存
+ planner、solver、reviewer 三条 cassette；角色重放故意要求 visible-test 观察也一致。
 
 完整的“两次全新运行”离线演示在
 [`examples/semantic_memory_demo`](examples/semantic_memory_demo/README.md)：第一次运行保存
