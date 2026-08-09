@@ -2,6 +2,8 @@
 
 **An auditable long-horizon coding-agent runtime with an algorithmic context engine.**
 
+Package milestone: `0.9.0a1`.
+
 ForgeAgent is the runtime direction of this project: take a coding task, let a model inspect
 and change one workspace through bounded tools, feed every observation back into the next
 turn, and preserve an append-only trace of what happened. ContextOpt is the repository,
@@ -652,6 +654,8 @@ and [Chinese version](docs/evaluation-real-provider.zh-CN.md), with its [PR note
 The local evaluation-duration accounting is documented in [the v0.9 duration note](docs/pr/0001-v0.9-evaluation-duration.md)
 and [Chinese version](docs/pr/0001-v0.9-evaluation-duration.zh-CN.md). The earlier v0.7
 orchestration addendum also has a [Chinese retrospective](docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md).
+The package-version alignment is documented in [the v0.9 note](docs/pr/0001-v0.9-version-alignment.md)
+and [Chinese version](docs/pr/0001-v0.9-version-alignment.zh-CN.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers. The
   manual workflow is the reproducibility entry point; the checked-in scripted artifacts remain

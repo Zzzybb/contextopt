@@ -3,6 +3,8 @@
 这是一个面向长程代码 Agent 的实验型开源项目。目标不是做一个只能聊天的
 演示，而是把 Agent 在真实编码任务中需要的控制面拆出来并做成可验证的运行时：
 
+当前包版本：`0.9.0a1`。
+
 - 上下文编译：在有限预算下选择任务、代码、测试、工具观察和记忆证据；
 - 长程运行：持久化事件、checkpoint、恢复、预算和 pending 请求；
 - 代码搜索：生成完整候选工作区，执行可见测试，去重、beam search 和基于观测质量的 MCTS；
@@ -229,6 +231,8 @@ python -m contextopt agent-eval \
   和 [英文版](docs/pr/0001-v0.9-real-provider-workflow.md)
 - v0.9 评测本地耗时记账：[docs/pr/0001-v0.9-evaluation-duration.zh-CN.md](docs/pr/0001-v0.9-evaluation-duration.zh-CN.md)
   和 [英文版](docs/pr/0001-v0.9-evaluation-duration.md)
+- v0.9 包版本对齐：[docs/pr/0001-v0.9-version-alignment.zh-CN.md](docs/pr/0001-v0.9-version-alignment.zh-CN.md)
+  和 [英文版](docs/pr/0001-v0.9-version-alignment.md)
 - v0.7 编排补充的中文回顾：[docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md](docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、
