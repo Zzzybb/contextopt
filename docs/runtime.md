@@ -771,3 +771,9 @@ apply/rollback adapter is a local filesystem safety boundary, not a security bou
 The deterministic long-horizon recovery matrix is available as `python -m contextopt
 recovery-eval`. It demonstrates the covered event boundaries and conservative tool policies,
 but remains a local conformance artifact rather than a machine-loss or exactly-once guarantee.
+
+The complementary `python -m contextopt robustness-eval` command records four additional
+provider-free contracts: bounded tool-output compaction, source-aware semantic-memory
+invalidation after reopen, duplicate tool-result rejection, and stale compare-and-swap write
+refusal. Its checked-in `4/4` artifact is a local runtime contract test, not a security,
+provider, exactly-once, or coding-quality benchmark.

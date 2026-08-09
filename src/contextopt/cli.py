@@ -24,6 +24,7 @@ from contextopt.evaluation import (
     AgentEvalConfig,
     ContextRoutingEvalConfig,
     RecoveryEvalConfig,
+    RobustnessEvalConfig,
     SemanticContextEvalConfig,
     SemanticMemoryEvalConfig,
     build_algorithm_fixtures,
@@ -36,6 +37,9 @@ from contextopt.evaluation import (
     render_recovery_console,
     render_recovery_html,
     render_recovery_markdown,
+    render_robustness_console,
+    render_robustness_html,
+    render_robustness_markdown,
     render_semantic_context_console,
     render_semantic_context_html,
     render_semantic_context_markdown,
@@ -45,6 +49,7 @@ from contextopt.evaluation import (
     run_agent_evaluation,
     run_context_routing_evaluation,
     run_recovery_evaluation,
+    run_robustness_evaluation,
     run_semantic_context_evaluation,
     run_semantic_memory_evaluation,
 )
@@ -301,6 +306,38 @@ def _recovery_eval(args: argparse.Namespace) -> int:
                     "fresh_runner_on_resume": True,
                     "model_adapter": "scripted",
                 },
+                "claim_boundary": report.claim_boundary,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+    )
+    return 0 if report.failed_count == 0 else 1
+
+
+def _robustness_eval(args: argparse.Namespace) -> int:
+    raw = tuple(item.strip() for item in args.scenarios.split(",") if item.strip())
+    scenarios = RobustnessEvalConfig().scenarios if "all" in raw else raw
+    report = run_robustness_evaluation(RobustnessEvalConfig(scenarios=scenarios))
+    print(render_robustness_console(report), end="")
+    _write(args.output, json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n")
+    _write(args.markdown, render_robustness_markdown(report))
+    _write(args.html, render_robustness_html(report))
+    _write(
+        args.manifest,
+        json.dumps(
+            {
+                "schema_version": "1",
+                "kind": "contextopt.robustness-eval.manifest",
+                "config": report.config.to_dict(),
+                "fault_injection": {
+                    "adapter": "local-runtime-contract-v1",
+                    "model_calls": 0,
+                    "external_network": False,
+                },
+                "repository_revision": os.environ.get("CONTEXTOPT_GIT_REVISION")
+                or os.environ.get("GITHUB_SHA"),
                 "claim_boundary": report.claim_boundary,
             },
             indent=2,
@@ -1114,6 +1151,33 @@ def build_parser() -> argparse.ArgumentParser:
         "--manifest", help="write recovery protocol metadata without secrets"
     )
     recovery_eval.set_defaults(handler=_recovery_eval)
+
+    robustness_eval = subparsers.add_parser(
+        "robustness-eval",
+        help=(
+            "fault-inject local Level 4 context, memory, protocol, and workspace "
+            "boundaries"
+        ),
+    )
+    robustness_eval.add_argument(
+        "--scenarios",
+        default="all",
+        help=(
+            "all or comma-separated scenarios: tool-output-compaction,"
+            "stale-memory-invalidation,duplicate-tool-result,cas-write-conflict"
+        ),
+    )
+    robustness_eval.add_argument("--output", help="write the complete JSON report")
+    robustness_eval.add_argument(
+        "--markdown", help="write the robustness report as Markdown"
+    )
+    robustness_eval.add_argument(
+        "--html", help="write a self-contained robustness dashboard"
+    )
+    robustness_eval.add_argument(
+        "--manifest", help="write robustness protocol metadata without secrets"
+    )
+    robustness_eval.set_defaults(handler=_robustness_eval)
 
     memory_eval = subparsers.add_parser(
         "memory-eval",

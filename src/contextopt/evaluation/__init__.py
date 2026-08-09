@@ -43,6 +43,16 @@ from contextopt.evaluation.recovery import (
     render_recovery_markdown,
     run_recovery_evaluation,
 )
+from contextopt.evaluation.robustness import (
+    ROBUSTNESS_EVAL_SCHEMA_VERSION,
+    RobustnessCaseResult,
+    RobustnessEvalConfig,
+    RobustnessMatrixReport,
+    render_robustness_console,
+    render_robustness_html,
+    render_robustness_markdown,
+    run_robustness_evaluation,
+)
 from contextopt.evaluation.semantic_context import (
     SEMANTIC_CONTEXT_EVAL_SCHEMA_VERSION,
     SemanticContextEvalCase,
@@ -70,6 +80,7 @@ from contextopt.evaluation.semantic_memory import (
 
 __all__ = [
     "DEFAULT_SCENARIOS",
+    "ROBUSTNESS_EVAL_SCHEMA_VERSION",
     "SEMANTIC_CONTEXT_EVAL_SCHEMA_VERSION",
     "SEMANTIC_MEMORY_EVAL_SCHEMA_VERSION",
     "AgentEvalCheckpoint",
@@ -87,6 +98,9 @@ __all__ = [
     "RecoveryEvalConfig",
     "RecoveryMatrixReport",
     "RecoveryScenario",
+    "RobustnessCaseResult",
+    "RobustnessEvalConfig",
+    "RobustnessMatrixReport",
     "RoutingRunMetrics",
     "RoutingTraceCase",
     "SemanticContextEvalCase",
@@ -112,6 +126,9 @@ __all__ = [
     "render_recovery_console",
     "render_recovery_html",
     "render_recovery_markdown",
+    "render_robustness_console",
+    "render_robustness_html",
+    "render_robustness_markdown",
     "render_semantic_context_console",
     "render_semantic_context_html",
     "render_semantic_context_markdown",
@@ -121,6 +138,7 @@ __all__ = [
     "run_agent_evaluation",
     "run_context_routing_evaluation",
     "run_recovery_evaluation",
+    "run_robustness_evaluation",
     "run_semantic_context_evaluation",
     "run_semantic_memory_evaluation",
     "tool_protocol_issues",

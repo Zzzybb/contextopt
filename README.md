@@ -235,6 +235,18 @@ recompute the complete chain because there is no secret or external trust anchor
   It makes the winner/cancelled-lane ledger and configured-width budget accounting visible
   without pretending to measure remote provider aborts.
 
+### Level 4 runtime robustness — v1.0 follow-up
+
+- `robustness-eval` turns four local fault-injection contracts into one ledger: oversized
+  tool-output compaction preserves head/tail sentinels under a token bound; source-aware
+  semantic memory becomes invalid after a cited file changes and remains invalid after reopen;
+  duplicate tool results are rejected before a provider request is compiled; and a stale
+  compare-and-swap edit returns `content_conflict` without changing the workspace.
+- The provider-free JSON/Markdown/HTML/manifest artifact is checked in under
+  [`experiments/v1.0-robustness-matrix`](experiments/v1.0-robustness-matrix/README.md).
+  It is runtime-contract evidence, not machine-loss recovery, security, provider, exactly-once,
+  or coding-quality evidence.
+
 ### Durable cross-run semantic memory — v0.9 follow-up
 
 - An opt-in `SemanticMemoryStore` is an append-only, hash-chained JSONL notebook for compact
@@ -823,6 +835,9 @@ The opt-in terminal semantic-memory feedback loop is documented in [the English 
 and [Chinese version](docs/pr/0001-v0.9-semantic-memory-feedback-loop.zh-CN.md).
 The expanded ACM/math fixture suite is documented in [the English PR note](docs/pr/0001-v1.0-acm-math-fixture-suite.md)
 and [Chinese version](docs/pr/0001-v1.0-acm-math-fixture-suite.zh-CN.md).
+The Level 4 robustness matrix is documented in [the English PR note](docs/pr/0001-v1.0-robustness-eval.md)
+and [Chinese version](docs/pr/0001-v1.0-robustness-eval.zh-CN.md), with its fixed artifact in
+[`experiments/v1.0-robustness-matrix`](experiments/v1.0-robustness-matrix/README.md).
 - **v1.0 — Real-model evaluation and multi-agent:** run statistically defensible real-model coding
   evaluations with independent hidden tests and compare measurable multi-agent schedulers. The
   manual workflow is the reproducibility entry point; the checked-in scripted artifacts remain

@@ -58,6 +58,12 @@ OpenAI-compatible adapter 默认通过 `Idempotency-Key` 发送它，但是否�
 [`experiments/v0.9-speculative-cancellation`](experiments/v0.9-speculative-cancellation/README.zh-CN.md)，
 展示 winner/cancelled lane ledger 和按配置 width 计费的预算口径，但不冒充远端 abort 评测。
 
+现在还提供 `robustness-eval` Level 4 运行时鲁棒性矩阵：它把超大 tool output 压缩、
+source-aware 陈旧记忆、重复 tool result 和陈旧 compare-and-swap 写冲突四个边界整理成
+统一 ledger。矩阵不调用模型；`4/4` 场景通过，产物位于
+[`experiments/v1.0-robustness-matrix`](experiments/v1.0-robustness-matrix/README.zh-CN.md)，
+它是 runtime contract 证据，不是机器掉电恢复、安全、provider、exactly-once 或代码能力证据。
+
 现在还可以为多个运行挂载同一个 `SemanticMemoryStore`。它是 append-only、带 hash-chain
 和 lease 的 JSONL notebook，保存 `fact`、`decision`、`procedure`、`failure` 四类短记忆，
 并记录 scope、tags、confidence、source run/reference。Agent 必须显式调用
@@ -367,6 +373,9 @@ python -m contextopt agent-eval \
 - v1.0 四任务控制产物与 adapter smoke：[docs/pr/0001-v1.0-four-fixture-control-artifact.zh-CN.md](docs/pr/0001-v1.0-four-fixture-control-artifact.zh-CN.md)
   和 [英文版](docs/pr/0001-v1.0-four-fixture-control-artifact.md)；固定 ledger 位于
   [experiments/v1.0-acm-math-4-fixtures](experiments/v1.0-acm-math-4-fixtures/README.zh-CN.md)
+- v1.0 Level 4 运行时鲁棒性矩阵：[docs/pr/0001-v1.0-robustness-eval.zh-CN.md](docs/pr/0001-v1.0-robustness-eval.zh-CN.md)
+  和 [英文版](docs/pr/0001-v1.0-robustness-eval.md)；固定产物位于
+  [experiments/v1.0-robustness-matrix](experiments/v1.0-robustness-matrix/README.zh-CN.md)
 - v0.7 编排补充的中文回顾：[docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md](docs/pr/0001-v0.7-orchestration-addendum.zh-CN.md)
 
 本中文文件是当前英文 README 的工程化摘要。英文文档和代码中的 schema、命令、

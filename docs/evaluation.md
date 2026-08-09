@@ -445,10 +445,23 @@ explicit operator decisions rather than combining them under an unqualified “i
 “exactly once” label. It is still a local ScriptedModel conformance result; event-log survival
 alone is not counted as recovery.
 
-Remaining Level 4 work is intentionally broader than this bounded matrix: machine-loss and
-filesystem crash testing, forced context compaction, stale/conflicting memory, duplicated tool
-results, provider timeouts/retryable failures, repeated tool-call ids, workspace changes between
-read and compare-and-swap edit, OS isolation, and final hidden-test success on real coding tasks.
+The companion `robustness-eval` matrix covers four additional local contracts that do not need a
+provider: deterministic oversized tool-output compaction, source-aware stale-memory invalidation
+across a store reopen, duplicate tool-result rejection, and compare-and-swap refusal after an
+external workspace change. Its `4/4` artifact is checked in under
+[`experiments/v1.0-robustness-matrix`](../experiments/v1.0-robustness-matrix/README.md):
+
+```text
+python -m contextopt robustness-eval \
+  --output experiments/v1.0-robustness-matrix/report.json \
+  --markdown experiments/v1.0-robustness-matrix/report.md \
+  --html experiments/v1.0-robustness-matrix/report.html \
+  --manifest experiments/v1.0-robustness-matrix/manifest.json
+```
+
+Remaining Level 4 work is intentionally broader than these bounded matrices: machine-loss and
+filesystem crash testing, provider timeouts/retryable failures, repeated tool-call ids across
+resumed sessions, OS isolation, and final hidden-test success on real coding tasks.
 
 ## Level 5: bounded parallel candidate scheduling and adaptive tree selection — implemented
 
