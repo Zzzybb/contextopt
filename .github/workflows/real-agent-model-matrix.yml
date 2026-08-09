@@ -194,10 +194,11 @@ jobs:
           python "${args[@]}"
       - name: Upload model bundle
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: contextopt-model-${{ matrix.label }}
           path: artifacts/${{ matrix.label }}/
-          if-no-files-found: error
+          if-no-files-found: warn
 
   compare:
     needs: evaluate

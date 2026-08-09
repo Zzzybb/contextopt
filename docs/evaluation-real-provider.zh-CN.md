@@ -68,6 +68,9 @@ provider cassette 和 manifest，然后在最后的 `agent-eval-compare` job 中
 JSON/Markdown/HTML 矩阵。角色模型覆盖、fixture、策略、sandbox 和 endpoint 对所有 cell
 保持一致，因此分析器可以在合并前拒绝协议漂移。这个 workflow 仍然是手动触发，并且必须有
 `CONTEXTOPT_API_KEY` secret；只有操作者真正运行后才会产生结果。
+上传步骤即使 provider 调用失败也会执行，因此中断 cell 的 checkpoint 和已经完成的 ledger
+仍会保留，之后可以用 `--resume` 继续。只有所有模型 cell 都成功时才会执行最终比较；部分
+矩阵只能作为恢复证据，不能生成比较结论。
 
 当至少收集到两份匹配的模型 bundle 后，再运行独立的协议校验比较步骤：
 

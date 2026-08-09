@@ -138,7 +138,8 @@ jobs:
           python "${args[@]}"
       - name: Upload evaluation ledger
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: contextopt-real-agent-eval-${{ github.run_id }}
           path: artifacts/
-          if-no-files-found: error
+          if-no-files-found: warn

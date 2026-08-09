@@ -71,6 +71,9 @@ The workflow fans out one identical three-or-more-repetition bundle per model, r
 provider cassette and manifest for each, then downloads the bundles into a final
 `agent-eval-compare` job. It refuses duplicate or unsafe labels, rejects fewer than three
 repetitions, and uploads both the per-model evidence and the matched JSON/Markdown/HTML matrix.
+Its upload step runs even when a provider call fails, so an interrupted cell's checkpoint and any
+completed ledger files remain available for a later `--resume` run. The final comparison job runs
+only when every model cell succeeds; a partial matrix is evidence for recovery, not a comparison.
 Role-model overrides, fixture selection, strategy selection, sandbox, and endpoint are shared by
 all cells so the analyzer can reject protocol drift before pooling. The workflow is manual and
 still requires the `CONTEXTOPT_API_KEY` secret; it never claims a result until an operator runs it.

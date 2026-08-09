@@ -26,10 +26,19 @@ class RealProviderWorkflowContractTests(unittest.TestCase):
             "CONTEXTOPT_API_KEY: ${{ secrets.CONTEXTOPT_API_KEY }}",
             "--record-transcript-dir",
             "agent-eval-compare",
+            "if: always()",
+            "if-no-files-found: warn",
         )
         for fragment in required_fragments:
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, workflow)
+
+        single_model_workflow = (WORKFLOW.parent / "real-agent-eval.yml").read_text(
+            encoding="utf-8"
+        )
+        for fragment in ("if: always()", "if-no-files-found: warn"):
+            with self.subTest(workflow="single-model", fragment=fragment):
+                self.assertIn(fragment, single_model_workflow)
 
     def test_model_matrix_workflow_preserves_per_model_and_final_artifacts(
         self,
