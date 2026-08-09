@@ -26,6 +26,19 @@ root、drop capabilities、no-new-privileges、有限 pids/内存/CPU 和可写 
 - provider 轨迹：可选的 `RecordingModel` / `ReplayModel` cassette，不保存凭据，持久化请求/响应，
   只有完整请求 hash 匹配时才允许离线重放。
 
+## 30 秒作品集演示
+
+安装开发依赖后，可以直接运行完整的、无需 provider key 的 ACM/数学矩阵：
+
+~~~text
+python -m pip install -e ".[dev]"
+python scripts/run_model_matrix_demo.py
+~~~
+
+打开 `build/model-matrix-demo/model-matrix.html`，查看配对策略结果、protocol fingerprint 和
+跨模型一致性摘要。两个 label 是确定性的控制副本；配置授权 provider secret 后，再使用
+[真实 provider workflow](docs/evaluation-real-provider.zh-CN.md)。
+
 当前状态是 v0.9。已经实现单 Agent 运行时、上下文选择、分支搜索、可恢复的
 proposal/test session、顺序的 planner / solver / reviewer 编排，以及带独立隐藏测试的
 固定 ACM/数学题代码 Agent 策略评测。评测也可以接入 OpenAI-compatible 模型做探索性

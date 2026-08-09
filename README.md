@@ -21,6 +21,20 @@ Task ──> AgentRunner ──> ContextCompiler ──> ModelClient ──> too
 Every boundary ──> durable schema-2 JSONL event log + verified state projection
 ```
 
+## 30-second portfolio demo
+
+After installing the development package, run the complete provider-free ACM/math matrix:
+
+```bash
+python -m pip install -e ".[dev]"
+python scripts/run_model_matrix_demo.py
+```
+
+Open `build/model-matrix-demo/model-matrix.html` to inspect the paired strategy outcomes, protocol
+fingerprint, and cross-model consistency summary. The two labels are deterministic control replicas;
+the [real-provider workflow](docs/evaluation-real-provider.md) is the next step when an authorized
+provider secret is available.
+
 > **Status — v0.9 long-horizon recovery milestone:** the repository now contains a real
 > single-agent read/edit/test loop, recoverable event-sourced execution, a deterministic live
 > context compiler, an auditable beam/MCTS search over generated coding candidates, and a strict
